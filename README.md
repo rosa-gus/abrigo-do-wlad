@@ -106,7 +106,7 @@ Comandos principais:
 ## Autores
 
 Desenvolvido e mantido por **[Alan](https://github.com/AlanClimaco)** e
-**[Luis](https://github.com/spantalho)**.
+**[Luis](https://github.com/rosa-gus)**.
 
 ## Licença
 
