@@ -2,7 +2,7 @@
   "title": "Política de privacidade",
   "badge": "Transparência",
   "description": "Como protegemos seus dados e informações pessoais.",
-  "lastUpdate": "26 de agosto de 2026",
+  "lastUpdate": "10 de setembro de 2026",
   "sections": [
     {
       "id": "base-legal",
@@ -78,7 +78,7 @@
     {
       "id": "transparencia",
       "title": "Código-fonte aberto",
-      "content": "Acreditamos em transparência total. O código-fonte do site está aberto para leitura, estudo e contribuições da comunidade. Você pode acessar o repositório em: https://github.com/spantalho/abrigo-do-wlad"
+      "content": "Acreditamos em transparência total. O código-fonte do site está aberto para leitura, estudo e contribuições da comunidade. Você pode acessar o repositório em: https://github.com/rosa-gus/abrigo-do-wlad"
     },
     {
       "id": "sobre",
