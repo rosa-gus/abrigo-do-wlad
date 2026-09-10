@@ -2,7 +2,12 @@
   "name": "@jaci/ui",
   "private": true,
   "version": "0.0.0",
+  "license": "MIT",
   "type": "module",
+  "scripts": {
+    "gallery": "vite --config visual/vite.config.ts --configLoader runner --open /visual/",
+    "export:gallery": "node scripts/export-gallery.mjs"
+  },
   "sideEffects": [
     "**/*.css"
   ],

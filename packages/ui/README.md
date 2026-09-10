@@ -6,6 +6,44 @@ interativos são construídos sobre [Radix Primitives](https://www.radix-ui.com/
 que fornece a base de comportamento e acessibilidade. O Jaci UI define a API de
 uso, a composição, os estilos e a identidade visual aplicada sobre essa base.
 
+## Galeria e exportação
+
+A galeria visual reúne composições editoriais dos componentes em temas claro e
+escuro. Sua direção parte dos ciclos da natureza: o tema claro evoca o
+amanhecer, enquanto o escuro atravessa o entardecer e o anoitecer. Para abri-la
+no navegador a partir da raiz do monorepo:
+
+```sh
+npm run gallery --workspace @jaci/ui
+```
+
+As composições também podem ser exportadas em WebP com Chromium e Playwright.
+Na primeira execução, instale o navegador gerenciado pelo Playwright:
+
+```sh
+npx playwright install chromium
+```
+
+Exporte todas as cenas para `packages/ui/exports`:
+
+```sh
+npm run export:gallery --workspace @jaci/ui
+```
+
+O diretório de saída contém as imagens e um `manifest.json` com título,
+descrição, tema e dimensões de cada arquivo. Ele é ignorado pelo Git. Consulte
+as opções ou exporte cenas específicas com:
+
+```sh
+npm run export:gallery --workspace @jaci/ui -- --help
+npm run export:gallery --workspace @jaci/ui -- \
+  --scene actions,cards \
+  --theme dark \
+  --quality 92 \
+  --scale 2 \
+  --out /caminho/do/portfolio/public/jaci
+```
+
 ## Fundação visual
 
 Importe a fundação uma única vez no ponto de entrada de cada aplicação:
@@ -130,3 +168,8 @@ Os tons disponíveis são `neutral`, `primary`, `info`, `success`, `warning` e
 Componentes de aplicação, como navegação e layouts de página, permanecem nos
 respectivos aplicativos. Primitivos, comportamento acessível e identidade
 visual pertencem ao Jaci UI.
+
+## Licença
+
+O Jaci UI é disponibilizado sob a [Licença MIT](LICENSE.txt), com autoria de
+Luis Gustavo R.C. e Alan Climaco.
