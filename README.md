@@ -105,12 +105,14 @@ Comandos principais:
 
 ## Autores
 
-Desenvolvido e mantido por **[Alan](https://github.com/AlanClimaco)** e
-**[Luis](https://github.com/rosa-gus)**.
+Desenvolvido e mantido por **[Alan Climaco](https://github.com/AlanClimaco)** e
+**[Luis Gustavo R.C](https://github.com/rosa-gus)**.
 
 ## Licença
 
 Este projeto é de propriedade exclusiva do Abrigo do Wlad. O código-fonte está
 disponível para fins de estudo e manutenção, mas a utilização comercial ou a
 réplica da identidade visual sem autorização prévia é vedada. Todos os direitos
-reservados.
+reservados, exceto pelo pacote [Jaci UI](packages/ui), disponibilizado sob a
+[Licença MIT](packages/ui/LICENSE.txt), com autoria de Luis Gustavo R.C. e Alan
+Climaco.
