@@ -112,7 +112,7 @@ export function Footer() {
               Alan
             </ExternalLink>
             &{" "}
-            <ExternalLink href="https://github.com/spantalho">
+            <ExternalLink href="https://rosa-gus.github.io/portfolio/">
               Luis
             </ExternalLink>
           </p>
