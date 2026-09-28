@@ -43,7 +43,7 @@ export function Header() {
       : styles.navLink;
   };
 
-  const headerClasses = `${styles.headerContainer} ${
+  const headerClasses = `${styles.headerContainer} ${location.pathname.startsWith("/beta/formulario") ? styles.formNavigation : ""} ${
     isScrolled && !menuOpen ? styles.headerScrolled : ""
   }`;
 
@@ -126,7 +126,7 @@ export function Header() {
 
       {/* AÇÕES */}
       <div className={styles.actionsContainer}>
-        <ThemeToggle />
+        <div className={styles.themeControl}><ThemeToggle /></div>
 
         <button
           className={`${styles.hamburger} ${menuOpen ? styles.active : ""}`}

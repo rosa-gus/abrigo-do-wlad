@@ -73,6 +73,7 @@
 /* media query */
 @media (max-width: 768px) {
   .banner {
+    margin-top: var(--banner-mobile-top-space, 1.5rem);
     padding-top: 100px;
     align-items: flex-start;
   }

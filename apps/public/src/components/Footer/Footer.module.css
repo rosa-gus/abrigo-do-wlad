@@ -162,6 +162,10 @@
 
 /* media query */
 @media (max-width: 768px) {
+  .footer {
+    padding-bottom: calc(8rem + env(safe-area-inset-bottom));
+  }
+
   .footerGrid {
     display: flex;
     flex-direction: column;

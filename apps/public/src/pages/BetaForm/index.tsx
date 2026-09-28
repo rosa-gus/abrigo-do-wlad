@@ -118,6 +118,7 @@ export default function BetaForm() {
         </DialogContent>
       </Dialog>
       <Banner
+        className={styles.formBanner}
         image={heroImage as string}
         badge="Questionário"
         title="Intenção de adoção"

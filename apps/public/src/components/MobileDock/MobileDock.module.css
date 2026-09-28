@@ -1,0 +1,201 @@
+.dockStack {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .dockStack {
+    --dock-item-width: clamp(68px, 18vw, 76px);
+    --dock-two-items-width: calc(var(--dock-item-width) + var(--dock-item-width));
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: fixed;
+    left: 50%;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    z-index: 900;
+    touch-action: none;
+  }
+
+  .mobileDock {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    width: calc(var(--dock-two-items-width) + var(--dock-item-width) + 14px);
+    transition: width 220ms ease;
+  }
+
+  .mobileDock[data-expanded="false"] {
+    width: calc(var(--dock-two-items-width) + var(--dock-two-items-width) + 35px);
+  }
+
+  .donationDivider {
+    flex: 0 0 1px;
+    height: 32px;
+    margin-inline: 10px;
+    background: var(--border-light);
+  }
+
+  .handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 44px;
+    height: 34px;
+    padding: 0;
+    border: 0;
+    border-radius: 16px 16px 10px 10px;
+    background: transparent;
+    color: var(--primary);
+    font: inherit;
+    font-size: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    z-index: 1;
+  }
+
+  .handle:focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 1px;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    position: relative;
+  }
+
+  .row[data-active-carousel-slot]::before {
+    position: absolute;
+    top: 0;
+    width: var(--dock-item-width);
+    height: 52px;
+    border-radius: 15px;
+    background: var(--accent-primary);
+    box-shadow: var(--shadow-md);
+    content: "";
+    pointer-events: none;
+  }
+
+  .row[data-active-carousel-slot="0"]::before {
+    left: var(--dock-item-width);
+  }
+
+  .row[data-active-carousel-slot="1"]::before {
+    left: var(--dock-two-items-width);
+  }
+
+  .row[data-active-carousel-tone="danger"]::before {
+    background: var(--accent-red);
+  }
+
+  .row[data-active-carousel-tone="success"]::before {
+    background: var(--accent-green);
+  }
+
+  .row[data-active-carousel-tone="info"]::before {
+    background: var(--accent-secondary);
+  }
+
+  .carouselViewport {
+    width: var(--dock-two-items-width);
+    overflow: hidden;
+  }
+
+  .carouselTrack {
+    display: flex;
+    width: max-content;
+    transform: translateX(var(--carousel-offset));
+    transition: transform 260ms ease;
+  }
+
+  .mobileDock .carouselTrack > [aria-current="page"] {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .more {
+    width: 100%;
+    height: var(--dock-reveal);
+    overflow: hidden;
+    opacity: var(--dock-progress);
+    transition: height 220ms ease, opacity 220ms ease;
+  }
+
+  .pagesRow {
+    justify-content: flex-start;
+    padding-top: 4px;
+    margin-top: 2px;
+  }
+
+  .actionsDock {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 7px;
+    padding: 6px;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--glass) 35%, var(--surface-elevated));
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    animation: actionsAppear 180ms ease-out;
+  }
+
+  .actionsDock .action {
+    flex-direction: column;
+    gap: 5px;
+    width: clamp(56px, 16vw, 64px);
+    height: 52px;
+    border-radius: 15px;
+    background: transparent;
+  }
+
+  .actionsDock .action:is(:focus-visible, :active) {
+    background: color-mix(in srgb, var(--primary) 9%, transparent);
+  }
+
+  @media (hover: hover) {
+    .actionsDock .action:not(:disabled):hover {
+      background: color-mix(in srgb, var(--primary) 9%, transparent);
+    }
+  }
+
+  .action:disabled {
+    opacity: 0.5;
+    cursor: wait;
+  }
+
+  .more[aria-hidden="true"] {
+    pointer-events: none;
+  }
+
+  @keyframes actionsAppear {
+    from {
+      opacity: 0;
+      transform: translateY(5px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .more,
+  .carouselTrack,
+  .mobileDock {
+    transition: none;
+  }
+
+  .actionsDock {
+    animation: none;
+  }
+}

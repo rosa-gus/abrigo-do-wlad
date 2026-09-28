@@ -13,6 +13,7 @@ type BannerProps = {
   badge: string;
   title: string;
   description: string;
+  className?: string;
 };
 
 /**
@@ -23,6 +24,7 @@ export default function Banner({
   badge,
   title,
   description,
+  className,
 }: BannerProps) {
   const desktopImage = getOptimizedImageUrl(image, {
     ...DESKTOP_BANNER_SIZE,
@@ -58,7 +60,7 @@ export default function Banner({
   );
 
   return (
-    <section className={styles.banner}>
+    <section className={`${styles.banner} ${className ?? ""}`}>
       {desktopImage && (
         <picture className={styles.bannerBackground} aria-hidden="true">
           <source

@@ -1,0 +1,5 @@
+@media (max-width: 768px) {
+  :global(html[data-vlibras-in-dock] #vlibras-access-wrapper) {
+    display: none !important;
+  }
+}
