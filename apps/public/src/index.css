@@ -18,3 +18,9 @@ body.dark-mode {
   opacity: 1;
   transform: translateY(0);
 }
+
+@media (max-width: 768px) {
+  html[data-vlibras-in-dock] #vlibras-access-wrapper {
+    display: none !important;
+  }
+}
