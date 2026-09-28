@@ -14,6 +14,7 @@
   justify-content: space-between;
   align-items: center;
   transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    top 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     border-radius 0.3s cubic-bezier(0.4, 0, 0.2, 1),
@@ -148,7 +149,7 @@
 /* --- Mobile / Responsive --- */
 @media (max-width: 768px) {
   .headerContainer {
-    top: 0;
+    top: 1.75rem;
     left: 0;
     transform: none;
     width: 100%;
@@ -159,6 +160,7 @@
   }
 
   .headerScrolled {
+    top: 0;
     height: 80px;
     border-radius: 0;
     border: none;

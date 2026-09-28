@@ -358,7 +358,7 @@ export function WizardForm({ onSubmitSuccess }: WizardFormProps) {
             size="lg"
             className={styles.warningCard}
           >
-            <CardComponent.CardBody>
+            <CardComponent.CardBody className={styles.warningCardBody}>
               <CardComponent.CardHeader>
                 <CardComponent.CardTitle id="warning-title">
                   {warning.title}

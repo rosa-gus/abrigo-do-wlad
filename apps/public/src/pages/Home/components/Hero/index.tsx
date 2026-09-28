@@ -11,6 +11,8 @@ import {
 } from "@abrigo/media/cloudinary";
 
 import type { Dog } from "@/types/dogs";
+import mockHeroImage from "@/assets/images/wlad.jpg";
+import mockThumbnailImage from "@/assets/images/simba.jpg";
 
 import styles from "./Hero.module.css";
 
@@ -19,8 +21,10 @@ interface HeroProps {
 }
 
 export function Hero({ dog }: HeroProps) {
-  const mainImage = dog?.fotos?.[0] ?? null;
-  const secondaryImage = dog?.fotos?.[1] ?? null;
+  const mainImage = import.meta.env.DEV ? mockHeroImage : dog?.fotos?.[0] ?? null;
+  const secondaryImage = import.meta.env.DEV
+    ? mockThumbnailImage
+    : dog?.fotos?.[1] ?? null;
 
   const heroImageUrl = mainImage
     ? getOptimizedImageUrl(mainImage, {
@@ -68,7 +72,13 @@ export function Hero({ dog }: HeroProps) {
           <img
             className={styles.heroImage}
             src={heroImageUrl}
-            alt={dog ? `Foto de ${dog.nome}` : "Cachorro para adoção"}
+            alt={
+              import.meta.env.DEV
+                ? "Cães do Abrigo do Wlad"
+                : dog
+                  ? `Foto de ${dog.nome}`
+                  : "Cachorro para adoção"
+            }
           />
         ) : (
           <Skeleton className={styles.heroImage} />
@@ -78,10 +88,16 @@ export function Hero({ dog }: HeroProps) {
           <img
             className={styles.heroThumbnail}
             src={thumbnailImageUrl}
-            alt={dog ? `Foto de ${dog.nome}` : "Cachorro para adoção"}
+            alt={
+              import.meta.env.DEV
+                ? "Cão do Abrigo do Wlad"
+                : dog
+                  ? `Foto de ${dog.nome}`
+                  : "Cachorro para adoção"
+            }
           />
         )}
-        {dog && dog.nome && (
+        {!import.meta.env.DEV && dog && dog.nome && (
           <Badge
             variant="primary"
             size="md"

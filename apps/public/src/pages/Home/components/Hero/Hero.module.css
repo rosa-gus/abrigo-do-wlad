@@ -108,6 +108,14 @@
     display: block;
   }
 
+  .heroThumbnail {
+    left: 0;
+    width: auto;
+    height: auto;
+    max-width: 8rem;
+    object-fit: contain;
+  }
+
   .heroSecondaryImage {
     display: none;
   }

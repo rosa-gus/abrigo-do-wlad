@@ -104,6 +104,17 @@
 }
 
 @media (max-width: 600px) {
+  .wizardContainer {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .warningCard .warningCardBody {
+    padding: 1rem;
+  }
+
   .fieldRow {
     grid-template-columns: 1fr;
   }

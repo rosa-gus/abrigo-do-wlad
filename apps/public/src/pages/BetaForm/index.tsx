@@ -3,8 +3,14 @@ import { useNavigate } from "react-router";
 import * as Lucide from "lucide-react";
 
 import Banner from "@/components/Banner";
-import { Badge } from "@jaci/ui/Badge";
 import { Button } from "@jaci/ui/Button";
+import {
+  Card,
+  CardBody,
+  CardContent,
+  CardIcon,
+  CardTitle,
+} from "@jaci/ui/Card";
 import {
   Dialog,
   DialogContent,
@@ -149,39 +155,47 @@ export default function BetaForm() {
             }}
           />
         )}
-      </div>
-      <div className={styles.betaDisclaimer}>
-        <div>
-          <Badge variant="outline" size="sm" leftIcon={<Lucide.TestTube2 />}>
-            Funcionalidade em beta
-          </Badge>
-        </div>
-        <p>
-          Em caso de falha, utilize{" "}
-          <ExternalLink href={FALLBACK_FORM}>este formulário</ExternalLink>
-        </p>
+        <div className={styles.betaDisclaimer}>
+          <Card variant="callout" tone="info" size="xs" layout="inline">
+            <CardBody>
+              <CardIcon>
+                <Lucide.Sparkles size={20} aria-hidden="true" />
+              </CardIcon>
+              <CardTitle>Estamos aprimorando este formulário</CardTitle>
+              <CardContent>
+                <p>
+                  Se encontrar algum problema, você pode usar o{" "}
+                  <ExternalLink href={FALLBACK_FORM} className={styles.betaFallbackLink}>
+                    formulário alternativo
+                    <Lucide.ArrowUpRight size={15} aria-hidden="true" />
+                  </ExternalLink>
+                </p>
+              </CardContent>
+            </CardBody>
+          </Card>
 
-        {import.meta.env.DEV && (
-          <div style={{ marginTop: "1rem" }}>
-            <Button
-              size="sm"
-              variant="success"
-              leftIcon={<Lucide.TestTube size={18}/>}
-              onClick={async () => {
-                try {
-                  const res = await fetch('/api/tests/email');
-                  const body = await res.json();
-                  alert(res.ok ? `Sucesso: ${body.message}` : `Erro: ${body.message}`);
-                } catch(e) {
-                  alert('Falha na requisição. O servidor está rodando?');
-                  console.error(e);
-                }
-              }}
-            >
-              Testar e-mail de notificação
-            </Button>
-          </div>
-        )}
+          {import.meta.env.DEV && (
+            <div className={styles.betaTestAction}>
+              <Button
+                size="sm"
+                variant="success"
+                leftIcon={<Lucide.TestTube size={18} />}
+                onClick={async () => {
+                  try {
+                    const res = await fetch('/api/tests/email');
+                    const body = await res.json();
+                    alert(res.ok ? `Sucesso: ${body.message}` : `Erro: ${body.message}`);
+                  } catch (e) {
+                    alert('Falha na requisição. O servidor está rodando?');
+                    console.error(e);
+                  }
+                }}
+              >
+                Testar e-mail de notificação
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     </main>
   );

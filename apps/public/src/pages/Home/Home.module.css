@@ -4,3 +4,9 @@
   gap: 9rem;
   margin-top: 10rem;
 }
+
+@media (max-width: 768px) {
+  .homeContainer {
+    margin-top: 8.5rem;
+  }
+}

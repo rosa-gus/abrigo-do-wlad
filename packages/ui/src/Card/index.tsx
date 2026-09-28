@@ -12,7 +12,7 @@ type CardProps = HTMLAttributes<HTMLDivElement> & {
     | "coral"
     | "warning"
     | "danger";
-  size?: "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg";
   layout?: "stacked" | "inline";
   interactive?: boolean;
 };
@@ -41,6 +41,7 @@ export function Card({
         tone === "coral" && styles.toneCoral,
         tone === "warning" && styles.toneWarning,
         tone === "danger" && styles.toneDanger,
+        size === "xs" && styles.xs,
         size === "sm" && styles.sm,
         size === "lg" && styles.lg,
         layout === "inline" && styles.layoutInline,

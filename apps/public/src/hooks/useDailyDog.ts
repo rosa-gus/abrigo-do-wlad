@@ -5,6 +5,8 @@ export function useDailyDog() {
   const [dog, setDog] = React.useState<Dog | null>(null);
 
   React.useEffect(() => {
+    if (import.meta.env.DEV) return;
+
     async function fetchDailyDog() {
       try {
         const response = await fetch("/api/hero-dog");
