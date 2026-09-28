@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
 import { VLibrasWidget } from "./components/common/VLibrasWidget";
+import { MobileDock } from "./components/MobileDock";
 import Home from "./pages/Home";
 import About from "./pages/About";
 import Recycle from "./pages/Recycle";
@@ -17,6 +18,7 @@ export function AppRoutes() {
       <VLibrasWidget />
 
       <Header />
+      <MobileDock />
 
       <Routes>
         <Route path="/" element={<Home />} />

@@ -1,8 +1,6 @@
-import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import styles from "./ThemeToggle.module.css";
-import { analytics } from "@/utils/analytics";
-import { STORAGE_KEYS } from "@/lib/storage";
+import { useTheme } from "@/hooks/useTheme";
 import {
   TooltipProvider,
   Tooltip,
@@ -11,40 +9,8 @@ import {
 } from "@jaci/ui/Tooltip";
 import { motion } from "motion/react";
 
-function getInitialTheme(): boolean {
-  const savedTheme = localStorage.getItem(STORAGE_KEYS.UI.THEME);
-  const systemPrefersDark = window.matchMedia(
-    "(prefers-color-scheme: dark)",
-  ).matches;
-  return savedTheme === "dark" || (!savedTheme && systemPrefersDark);
-}
-
 export function ThemeToggle() {
-  const [isDark, setIsDark] = useState<boolean>(getInitialTheme);
-
-  useEffect(() => {
-    if (isDark) {
-      document.body.classList.add("dark-mode");
-    } else {
-      document.body.classList.remove("dark-mode");
-    }
-  }, [isDark]);
-
-  const toggleTheme = () => {
-    const newTheme = !isDark;
-    setIsDark(newTheme);
-
-    // Atualiza a classe no body e salva a preferência
-    if (newTheme) {
-      document.body.classList.add("dark-mode");
-      localStorage.setItem(STORAGE_KEYS.UI.THEME, "dark");
-      analytics.trackThemeToggle("dark");
-    } else {
-      document.body.classList.remove("dark-mode");
-      localStorage.setItem(STORAGE_KEYS.UI.THEME, "light");
-      analytics.trackThemeToggle("light");
-    }
-  };
+  const { isDark, toggleTheme } = useTheme();
 
   return (
     <TooltipProvider>
