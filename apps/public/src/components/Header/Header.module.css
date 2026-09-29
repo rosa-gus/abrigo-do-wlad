@@ -178,61 +178,12 @@
     box-shadow: none;
   }
 
-  .formNavigation {
-    position: fixed;
-    top: 1.75rem;
-    left: 0;
-    height: 80px;
-    min-height: 0;
-    padding: 0 1.5rem;
-    justify-content: space-between;
-    background: var(--bg-body);
-    backdrop-filter: var(--blur);
-    -webkit-backdrop-filter: var(--blur);
-    transition: background-color 0.3s ease, top 0.3s ease;
-  }
-
-  .formNavigation.headerScrolled {
-    top: 0;
-    background: var(--header-bg-scrolled);
-    border-bottom: 1px solid var(--border);
-  }
-
-  .formNavigation .themeControl {
-    display: block;
-  }
-
   .actionsContainer {
     display: none;
   }
 
-  .formNavigation .actionsContainer {
-    display: flex;
-  }
-
   .navMenu {
     display: none;
-  }
-
-  .formNavigation .navMenu {
-    display: flex;
-    position: fixed;
-    left: -100%;
-    top: 80px;
-    flex-direction: column;
-    background-color: var(--bg-body);
-    width: 100%;
-    height: calc(100vh - 80px);
-    text-align: center;
-    transition: 0.4s ease-in-out;
-    box-shadow: 0 10px 10px rgba(0, 0, 0, 0.1);
-    padding-top: 2rem;
-    gap: 2.5rem;
-    margin-right: 0;
-  }
-
-  .formNavigation .navMenu.active {
-    left: 0;
   }
 
   .navLink {
@@ -247,18 +198,7 @@
     width: auto;
   }
 
-  .formNavigation .logoLight,
-  .formNavigation .logoDark,
-  .formNavigation.headerScrolled .logoLight,
-  .formNavigation.headerScrolled .logoDark {
-    height: 50px;
-  }
-
   .hamburger {
     display: none;
-  }
-
-  .formNavigation .hamburger {
-    display: block;
   }
 }

@@ -14,6 +14,7 @@ import { Badge } from "@jaci/ui/Badge";
 import * as CardComponent from "@jaci/ui/Card";
 
 import { ExternalLink } from "@/components/common/ExternalLink";
+import { SHELTER_INSTAGRAM_URL } from "@/utils/links";
 
 export function FaqSection() {
   const [isVisible, setIsVisible] = React.useState(false);
@@ -124,7 +125,7 @@ export function FaqSection() {
                         E-mail
                       </Button>
                     </ExternalLink>
-                    <ExternalLink href="https://www.instagram.com/abrigodowlad/">
+                    <ExternalLink href={SHELTER_INSTAGRAM_URL}>
                       <Button
                         size="sm"
                         variant="secondary"

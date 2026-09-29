@@ -6,6 +6,12 @@
   background-color: var(--surface-elevated);
 }
 
+@media (max-width: 768px) {
+  .navContainer {
+    display: none;
+  }
+}
+
 .navScrollArea {
   height: auto;
   border: 0;

@@ -56,9 +56,3 @@
   max-width: 600px;
   line-height: 1.5;
 }
-
-@media (max-width: 768px) {
-  .formBanner {
-    --banner-mobile-top-space: 8.5rem;
-  }
-}

@@ -6,8 +6,7 @@ import { Badge } from "@jaci/ui/Badge";
 
 import styles from "./StoreSection.module.css";
 import storeImage from "@/assets/images/bazar.jpg";
-
-const STORE_URL = "https://www.instagram.com/bazar_pet_solidario";
+import { STORE_URL } from "@/utils/links";
 
 export function StoreSection() {
   const [isVisible, setIsVisible] = useState(false);

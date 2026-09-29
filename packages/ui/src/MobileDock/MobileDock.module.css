@@ -16,6 +16,30 @@
     transform: translateX(-50%);
     z-index: 900;
     touch-action: none;
+    transition: transform 280ms ease;
+  }
+
+  .dockStack[data-closed="true"] {
+    transform: translate(-50%, calc(100% - 8px));
+  }
+
+  .closedTrigger {
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    width: 150px;
+    height: 44px;
+    transform: translateX(-50%);
+    border: 0;
+    border-radius: 16px;
+    background: transparent;
+    cursor: pointer;
+    z-index: 3;
+  }
+
+  .closedTrigger:focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 2px;
   }
 
   .mobileDock {
@@ -30,7 +54,11 @@
     width: calc(var(--dock-two-items-width) + var(--dock-two-items-width) + 35px);
   }
 
-  .donationDivider {
+  .mobileDock[data-has-compact-action="false"][data-expanded="false"] {
+    width: calc(var(--dock-two-items-width) + var(--dock-item-width) + 14px);
+  }
+
+  .actionDivider {
     flex: 0 0 1px;
     height: 32px;
     margin-inline: 10px;
@@ -102,7 +130,13 @@
     background: var(--accent-secondary);
   }
 
+  .row[data-active-carousel-slot]:has(.carouselTrack > [aria-current="page"]:active)::before {
+    opacity: 0;
+  }
+
   .carouselViewport {
+    position: relative;
+    z-index: 1;
     width: var(--dock-two-items-width);
     overflow: hidden;
   }
@@ -114,7 +148,7 @@
     transition: transform 260ms ease;
   }
 
-  .mobileDock .carouselTrack > [aria-current="page"] {
+  .mobileDock .carouselTrack > [aria-current="page"]:not(:active) {
     background: transparent;
     box-shadow: none;
   }
@@ -148,7 +182,7 @@
     animation: actionsAppear 180ms ease-out;
   }
 
-  .actionsDock .action {
+  .actionsDock > * {
     flex-direction: column;
     gap: 5px;
     width: clamp(56px, 16vw, 64px);
@@ -157,17 +191,17 @@
     background: transparent;
   }
 
-  .actionsDock .action:is(:focus-visible, :active) {
+  .actionsDock > *:is(:focus-visible, :active) {
     background: color-mix(in srgb, var(--primary) 9%, transparent);
   }
 
   @media (hover: hover) {
-    .actionsDock .action:not(:disabled):hover {
+    .actionsDock > *:not(:disabled):hover {
       background: color-mix(in srgb, var(--primary) 9%, transparent);
     }
   }
 
-  .action:disabled {
+  .actionsDock > *:disabled {
     opacity: 0.5;
     cursor: wait;
   }
@@ -189,6 +223,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .dockStack,
   .more,
   .carouselTrack,
   .mobileDock {

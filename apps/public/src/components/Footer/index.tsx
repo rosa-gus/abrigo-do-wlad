@@ -2,6 +2,7 @@ import { Link, NavLink } from "react-router";
 import * as Lucide from "lucide-react";
 import styles from "./Footer.module.css";
 import { analytics } from "@/utils/analytics";
+import { SHELTER_INSTAGRAM_URL } from "@/utils/links";
 
 import logo from "@/assets/images/logo.png";
 import logoDark from "@/assets/images/logo-dark-mode.png";
@@ -70,7 +71,7 @@ export function Footer() {
           <h4 className={styles.columnTitle}>Fale conosco</h4>
 
           <a
-            href="https://instagram.com/abrigodowlad"
+            href={SHELTER_INSTAGRAM_URL}
             target="_blank"
             rel="noopener noreferrer"
             className={styles.contactItem}

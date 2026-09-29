@@ -18,6 +18,7 @@ describe("admin Vite authentication boundary", () => {
       "import.meta.env.ADMIN_MOCK_MODE": "true",
     });
     expect(config.envDir).toBe(false);
+    expect(config.server).toMatchObject({ port: 5174, strictPort: true });
     expect(config.plugins).toHaveLength(1);
   });
 
@@ -54,5 +55,6 @@ describe("admin Vite authentication boundary", () => {
     });
     expect(config.envDir).toBe(path.resolve(__dirname, "../.."));
     expect(config.plugins).toHaveLength(2);
+    expect(config.server).toMatchObject({ port: 5174, strictPort: true });
   });
 });

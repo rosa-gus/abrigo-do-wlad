@@ -74,3 +74,9 @@
     justify-content: center;
   }
 }
+
+@media (max-width: 768px) {
+  .footer {
+    padding-bottom: calc(8rem + env(safe-area-inset-bottom));
+  }
+}

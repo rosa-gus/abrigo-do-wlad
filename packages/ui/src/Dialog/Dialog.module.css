@@ -342,8 +342,24 @@
     right: 0.5rem;
   }
 
+  .header {
+    padding-right: 3.25rem;
+  }
+
   .structured .header {
-    padding: 1rem;
+    padding: 1rem 4.25rem 1rem 1rem;
+  }
+
+  .sizeSm .header {
+    padding-right: 0;
+  }
+
+  .structured.sizeSm .header {
+    padding-right: 1rem;
+  }
+
+  .sizeSm .title {
+    padding-inline: 3rem;
   }
 
   .structured .body {

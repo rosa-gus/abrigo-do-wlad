@@ -1,5 +1,4 @@
 import React from "react";
-import { useLocation } from "react-router";
 
 import { getVLibrasAccessButton, VLIBRAS_READY_EVENT } from "./vlibrasBridge";
 
@@ -13,14 +12,12 @@ type VLibrasWindow = Window &
 let vlibrasInitialized = false;
 
 export const VLibrasWidget = () => {
-  const { pathname } = useLocation();
-
   React.useEffect(() => {
     const mobileQuery = window.matchMedia("(max-width: 768px)");
     let readyAnnounced = false;
 
     const syncAccessButton = () => {
-      const useDock = mobileQuery.matches && !pathname.startsWith("/beta/formulario");
+      const useDock = mobileQuery.matches;
       document.documentElement.toggleAttribute("data-vlibras-in-dock", useDock);
       const accessButton = getVLibrasAccessButton();
       if (!accessButton) return;
@@ -66,7 +63,7 @@ export const VLibrasWidget = () => {
       window.clearInterval(readyInterval);
       document.documentElement.removeAttribute("data-vlibras-in-dock");
     };
-  }, [pathname]);
+  }, []);
 
   return React.createElement(
     "div",

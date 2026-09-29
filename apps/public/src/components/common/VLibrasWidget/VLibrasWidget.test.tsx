@@ -10,7 +10,7 @@ describe("VLibrasWidget", () => {
     vi.unstubAllGlobals();
   });
 
-  it("usa o botão original pela dock e o mostra quando a dock não existe", () => {
+  it("usa o botão original pela dock em todas as páginas mobile", () => {
     const accessButton = document.createElement("button");
     const click = vi.spyOn(accessButton, "click");
     vi.stubGlobal("VLibrasWidget", { initBtn: accessButton });
@@ -38,7 +38,7 @@ describe("VLibrasWidget", () => {
       </MemoryRouter>,
     );
 
-    expect(document.documentElement).not.toHaveAttribute("data-vlibras-in-dock");
-    expect(accessButton.hasAttribute("tabindex")).toBe(false);
+    expect(document.documentElement).toHaveAttribute("data-vlibras-in-dock", "");
+    expect(accessButton.tabIndex).toBe(-1);
   });
 });
