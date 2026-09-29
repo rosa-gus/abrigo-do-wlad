@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import AdoptionsDashboard from "./pages/AdoptionsDashboard";
 import Dashboard from "./pages/Dashboard";
 import DogDashboard from "./pages/DogDashboard";
+import DogArchive from "./pages/DogArchive";
 import EditDog from "./pages/EditDog";
 import EditRecycle from "./pages/EditRecycle";
 import NewDog from "./pages/NewDog";
@@ -57,6 +58,8 @@ export default function AppRoutes() {
             <Route element={<AdminLayout />}>
               <Route path="/admin" element={<Dashboard />} />
               <Route path="/admin/dog" element={<DogDashboard />} />
+              <Route path="/admin/archived" element={<DogArchive />} />
+              <Route path="/admin/dog/archive" element={<Navigate to="/admin/archived" replace />} />
               <Route path="/admin/dog/new" element={<NewDog />} />
               <Route path="/admin/dog/edit/:id" element={<EditDog />} />
               <Route path="/admin/recycle" element={<RecycleDashboard />} />

@@ -15,6 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@jaci/ui/Button";
+import { EmptyState } from "@jaci/ui/EmptyState";
 import { Card, CardBody, CardContent, CardFooter, CardIcon } from "@jaci/ui/Card";
 import { apiRequest } from "../../services/api";
 import type { AdminNotification, NotificationType } from "../../types/notifications";
@@ -276,7 +277,7 @@ export default function Dashboard() {
             ))}
           </div>
         ) : (
-          <p className={styles.emptyRecent}>Nenhum aviso no momento. Tudo em ordem!</p>
+          <EmptyState size="sm" icon={<CheckCircle2 />} title="Nenhum aviso no momento. Tudo em ordem!" />
         )}
       </div>}
     </div>

@@ -14,16 +14,23 @@ export async function addDog(dogData: DogInput) {
   return true;
 }
 
-export async function getDogs(): Promise<Dog[]> {
-  return dogEntitySchema.array().parse(await apiRequest<unknown>("/api/admin/dogs"));
+export async function getDogs(state: "active" | "archived" = "active"): Promise<Dog[]> {
+  return dogEntitySchema.array().parse(await apiRequest<unknown>(`/api/admin/dogs?state=${state}`));
 }
 
-export async function removeDogAndTrack(id: number, adoptedViaSite: boolean) {
-  await apiRequest<void>(
-    `/api/admin/dogs/${encodeURIComponent(id)}?adoptedViaSite=${String(adoptedViaSite)}`,
-    { method: "DELETE" },
+export async function archiveDog(id: number, adoptedViaSite: boolean) {
+  await apiRequest(
+    `/api/admin/dogs/${encodeURIComponent(id)}/archive`,
+    {
+      method: "POST",
+      body: JSON.stringify({ reason: adoptedViaSite ? "adopted_via_site" : "other" }),
+    },
   );
   return true;
+}
+
+export async function restoreDog(id: number): Promise<void> {
+  await apiRequest(`/api/admin/dogs/${encodeURIComponent(id)}/restore`, { method: "POST" });
 }
 
 export async function getDogById(id: number): Promise<Dog | null> {

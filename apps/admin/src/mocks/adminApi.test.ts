@@ -46,6 +46,68 @@ describe("mock admin API", () => {
     expect(dashboard.metrics.dogs).toBe(4);
   });
 
+  test("archives and restores a dog without deleting its record or duplicating adoption count", async () => {
+    const initialDashboard = await handleMockAdminRequest(request("/api/admin/dashboard"));
+    const initialCount = (await initialDashboard.json() as { metrics: { adoptionsViaSite: number } })
+      .metrics.adoptionsViaSite;
+    const archive = () => handleMockAdminRequest(request("/api/admin/dogs/103/archive", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: "adopted_via_site" }),
+    }));
+    const response = await archive();
+    expect(response.status).toBe(200);
+    const result = await response.json() as { archivedAt: string; purgeAfter: string };
+    expect(Date.parse(result.purgeAfter) - Date.parse(result.archivedAt)).toBe(30 * 86_400_000);
+    expect((await archive()).status).toBe(200);
+    expect((await handleMockAdminRequest(request("/api/admin/dogs/103", {
+      method: "DELETE",
+    }))).status).toBe(405);
+
+    const active = await handleMockAdminRequest(request("/api/admin/dogs"));
+    const archived = await handleMockAdminRequest(request("/api/admin/dogs?state=archived"));
+    expect((await active.json() as Array<{ id: number }>).some((dog) => dog.id === 103)).toBe(false);
+    expect(await archived.json()).toEqual([expect.objectContaining({ id: 103, nome: "Simba" })]);
+    const dashboard = await handleMockAdminRequest(request("/api/admin/dashboard"));
+    expect((await dashboard.json() as { metrics: { dogs: number; adoptionsViaSite: number } }).metrics)
+      .toMatchObject({ dogs: 2, adoptionsViaSite: initialCount + 1 });
+
+    const restore = await handleMockAdminRequest(request("/api/admin/dogs/103/restore", {
+      method: "POST",
+    }));
+    expect(restore.status).toBe(200);
+    const restored = await handleMockAdminRequest(request("/api/admin/dogs/103"));
+    await expect(restored.json()).resolves.toMatchObject({ id: 103, archivedAt: null });
+    expect((await archive()).status).toBe(200);
+    const dashboardAgain = await handleMockAdminRequest(request("/api/admin/dashboard"));
+    expect((await dashboardAgain.json() as { metrics: { adoptionsViaSite: number } }).metrics.adoptionsViaSite)
+      .toBe(initialCount + 1);
+  });
+
+  test("retains removed dog photos and refuses direct deletion of linked media", async () => {
+    const photo = "https://res.cloudinary.com/example/image/upload/dog.jpg";
+    const attach = await handleMockAdminRequest(request("/api/admin/dogs/103", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fotos: [photo] }),
+    }));
+    expect(attach.status).toBe(200);
+    const detach = await handleMockAdminRequest(request("/api/admin/dogs/103", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fotos: [] }),
+    }));
+    expect(detach.status).toBe(200);
+    const dog = await handleMockAdminRequest(request("/api/admin/dogs/103"));
+    await expect(dog.json()).resolves.toMatchObject({ retainedPhotos: [photo] });
+    const removeMedia = await handleMockAdminRequest(request("/api/admin/media/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageUrl: photo }),
+    }));
+    expect(removeMedia.status).toBe(409);
+  });
+
   test("rejects dog temperament longer than 80 characters", async () => {
     const response = await handleMockAdminRequest(request("/api/admin/dogs/103", {
       method: "PATCH",

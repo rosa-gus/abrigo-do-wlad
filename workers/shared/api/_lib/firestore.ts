@@ -937,6 +937,65 @@ export class FirestoreRestClient {
     );
   }
 
+  async updateDocumentAndIncrementField(
+    documentName: string,
+    data: Record<string, unknown>,
+    counterDocumentPath: string,
+    fieldPath: string,
+    amount: number,
+    options: UpdateDocumentOptions = {},
+  ): Promise<{ commitTime?: string }> {
+    assertDocumentName(documentName, this.documentsRoot);
+    assertFieldPath(fieldPath);
+    const fieldPaths = Object.keys(data);
+    if (fieldPaths.length === 0 || !Number.isFinite(amount)) {
+      throw new TypeError("Invalid update and increment.");
+    }
+    fieldPaths.forEach(assertFieldPath);
+    const [collectionId, documentId, ...rest] = counterDocumentPath.split("/");
+    if (!collectionId || !documentId || rest.length > 0) {
+      throw new TypeError("Firestore counter path must target a root document.");
+    }
+    const counterName = `${this.documentsRoot}/${collectionId}/${documentId}`;
+    if (counterName === documentName) {
+      throw new TypeError("Firestore counter and updated document must differ.");
+    }
+    const existingCounter = await this.getDocument<Record<string, unknown>>(counterDocumentPath);
+    const counterWrite = existingCounter
+      ? {
+          transform: {
+            document: existingCounter.name,
+            fieldTransforms: [{ fieldPath, increment: encodeFirestoreValue(amount) }],
+          },
+          currentDocument: { exists: true },
+        }
+      : {
+          update: {
+            name: counterName,
+            fields: { [fieldPath]: encodeFirestoreValue(amount) },
+          },
+          currentDocument: { exists: false },
+        };
+    return this.request<{ commitTime?: string }>(
+      `${this.databaseRoot}/documents:commit`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          writes: [
+            {
+              update: { name: documentName, fields: encodeDocumentFields(data) },
+              updateMask: { fieldPaths },
+              currentDocument: options.expectedUpdateTime
+                ? { updateTime: options.expectedUpdateTime }
+                : { exists: true },
+            },
+            counterWrite,
+          ],
+        }),
+      },
+    );
+  }
+
   async incrementDocumentField(
     documentPath: string,
     fieldPath: string,

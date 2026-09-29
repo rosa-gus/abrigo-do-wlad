@@ -3,6 +3,7 @@ import { createFirestoreClient } from "../_lib/firestore";
 import type { CloudflareEnv } from "../_lib/env";
 import { jsonResponse } from "../_lib/env";
 import { getKvStore } from "../_lib/kv";
+import { isDogArchived } from "./archive";
 import {
   ensureDogPublicSlug,
   isValidDogPublicSlug,
@@ -237,6 +238,7 @@ export async function updateDogFeed(
     DOGS_COLLECTION,
   );
   const sourceDogs = documents.flatMap((document) => {
+    if (isDogArchived(document.data)) return [];
     const dog = toPublicDog(document);
     return dog ? [dog] : [];
   });

@@ -1,0 +1,15 @@
+.header { margin-bottom: 1.5rem; }
+.header h1 { margin: 0; color: var(--text-primary); font-size: 2rem; }
+.header p { color: var(--text-muted); }
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
+.search { display: flex; align-items: center; gap: .75rem; width: min(100%, 400px); color: var(--text-muted); }
+.search input { width: 100%; }
+.loading { padding: 3rem; color: var(--text-muted); text-align: center; }
+.list { display: grid; gap: 1rem; }
+.item { display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; padding: 1.5rem; background: var(--surface-elevated); border: 1px solid var(--border-light); border-radius: var(--radius); }
+.details h2 { margin: 0 0 .25rem; font-size: 1.3rem; }
+.details p { margin: 0 0 1rem; color: var(--text-muted); }
+.details dl { display: flex; flex-wrap: wrap; gap: .75rem 2rem; margin: 0; }
+.details dt { color: var(--text-muted); font-size: .8rem; }
+.details dd { margin: .2rem 0 0; }
+@media (max-width: 650px) { .toolbar, .item { align-items: stretch; flex-direction: column; } }

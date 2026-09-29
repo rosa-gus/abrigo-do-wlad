@@ -74,7 +74,8 @@ validam origem e payload.
 | ------------ | --------------------------------------------------------- | --------------------------------------------------------- |
 | Sessão       | `/api/session`                                            | Identidade e papel atuais.                                |
 | Dashboard    | `/api/admin/dashboard`                                    | Métricas, retenção e aviso ativo.                         |
-| Animais      | `/api/admin/dogs[/:id]`                                   | Consulta e CRUD.                                          |
+| Animais      | `/api/admin/dogs[/:id]`                                   | Cadastro, consulta e edição; `GET /dogs?state=archived` lista arquivados. |
+| Arquivo      | `/api/admin/dogs/:id/archive`, `/api/admin/dogs/:id/restore` | `POST` para arquivar ou restaurar; não há exclusão definitiva pela API. |
 | Reciclagem   | `/api/admin/recycle-points[/:id]`                         | Consulta e CRUD.                                          |
 | Candidaturas | `/api/admin/adoptions`, `/api/admin/adoptions/:id/status` | Consulta e atualização de status.                         |
 | Auditoria    | `/api/admin/audit-log`                                    | Últimos 100 eventos; somente `developer`.                 |
@@ -93,6 +94,15 @@ As principais mutações geram eventos em `admin_audit_log` sem copiar payloads,
 candidaturas ou URLs de mídia. Mudanças em animais também agendam a reconstrução
 do catálogo público no KV, que pode levar um breve período para convergir entre
 regiões.
+
+O arquivamento recebe `reason: "adopted_via_site" | "other"`, preserva o documento
+e suas fotos e grava `archivedAt`, `purgeAfter`, `archiveReason` e `archivedBy`.
+`purgeAfter` é calculado 30 dias após o arquivamento de cada cão. A restauração
+remove o estado de arquivo e o tombstone público. A descoberta de candidatos à
+limpeza está em `workers/shared/api/dogs/purge-candidates.ts`; nenhuma tarefa
+agendada exclui cães nesta etapa.
+Fotos retiradas do cadastro permanecem registradas em `retainedPhotos`. O
+endpoint de mídia recusa a exclusão de imagens ligadas a qualquer cão.
 
 ## Publicação
 

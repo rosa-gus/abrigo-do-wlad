@@ -12,6 +12,7 @@ import {
   recyclePointInputSchema,
   recyclePointUpdateSchema,
 } from "../../shared/entities";
+import { dogArchiveDates, isDogArchived } from "../../../../workers/shared/api/dogs/archive";
 
 type AdoptionStatus = "pending" | "approved" | "rejected";
 
@@ -332,9 +333,21 @@ function recordMutation(request: Request, target: string): void {
   });
 }
 
-async function handleDogs(request: Request, idSegment?: string): Promise<Response> {
+async function handleDogs(
+  request: Request,
+  idSegment?: string,
+  operation?: string,
+): Promise<Response> {
   if (!idSegment) {
-    if (request.method === "GET") return jsonResponse(state.dogs);
+    if (request.method === "GET") {
+      const listState = new URL(request.url).searchParams.get("state") ?? "active";
+      if (listState !== "active" && listState !== "archived") {
+        return jsonResponse({ error: "Invalid dog list state." }, 400);
+      }
+      return jsonResponse(state.dogs.filter((dog) =>
+        isDogArchived(dog) === (listState === "archived")
+      ));
+    }
     if (request.method !== "POST") return methodNotAllowed(["GET", "POST"]);
 
     const parsedInput = dogInputSchema.safeParse(await readJson<unknown>(request));
@@ -351,30 +364,73 @@ async function handleDogs(request: Request, idSegment?: string): Promise<Respons
   }
 
   const id = Number(idSegment);
+  if (operation && request.method !== "POST") return methodNotAllowed(["POST"]);
+  if (!operation && request.method !== "GET" && request.method !== "PATCH") {
+    return methodNotAllowed(["GET", "PATCH"]);
+  }
   const index = state.dogs.findIndex((dog) => dog.id === id);
   if (index < 0) return jsonResponse({ error: "Dog not found." }, 404);
 
   if (request.method === "GET") return jsonResponse(state.dogs[index]);
   if (request.method === "PATCH") {
+    if (isDogArchived(state.dogs[index])) {
+      return jsonResponse({ error: "Archived dogs cannot be edited." }, 409);
+    }
     const parsedUpdate = dogUpdateSchema.safeParse(await readJson<unknown>(request));
     if (!parsedUpdate.success) {
       return validationErrorResponse(
         parsedUpdate.error.issues[0]?.message ?? "Atualização do cachorro inválida.",
       );
     }
-    state.dogs[index] = { ...state.dogs[index], ...parsedUpdate.data, id };
+    const previous = state.dogs[index];
+    const removedPhotos = parsedUpdate.data.fotos
+      ? previous.fotos.filter((photo) => !parsedUpdate.data.fotos?.includes(photo))
+      : [];
+    state.dogs[index] = {
+      ...previous, ...parsedUpdate.data, id,
+      retainedPhotos: Array.from(new Set([...(previous.retainedPhotos ?? []), ...removedPhotos])),
+    };
     recordMutation(request, `dogs/${id}`);
     return jsonResponse({ ok: true });
   }
-  if (request.method === "DELETE") {
-    state.dogs.splice(index, 1);
-    if (new URL(request.url).searchParams.get("adoptedViaSite") === "true") {
-      state.adoptionsViaSite += 1;
+  if (operation === "archive" && request.method === "POST") {
+    const input = await readJson<{ reason?: unknown }>(request);
+    if (input.reason !== "adopted_via_site" && input.reason !== "other") {
+      return jsonResponse({ error: "Invalid archive reason." }, 400);
     }
+    if (isDogArchived(state.dogs[index])) {
+      if (state.dogs[index].archiveReason !== input.reason) {
+        return jsonResponse({ error: "Dog is already archived." }, 409);
+      }
+      return jsonResponse({
+        id,
+        archivedAt: state.dogs[index].archivedAt,
+        purgeAfter: state.dogs[index].purgeAfter,
+      });
+    }
+    const dates = dogArchiveDates();
+    const shouldCountAdoption = input.reason === "adopted_via_site"
+      && !state.dogs[index].adoptionCountedAt;
+    state.dogs[index] = {
+      ...state.dogs[index], ...dates,
+      archiveReason: input.reason,
+      archivedBy: MOCK_AUTHOR,
+      ...(shouldCountAdoption ? { adoptionCountedAt: dates.archivedAt } : {}),
+    };
+    if (shouldCountAdoption) state.adoptionsViaSite += 1;
     recordMutation(request, `dogs/${id}`);
-    return noContentResponse();
+    return jsonResponse({ ...dates, id });
   }
-  return methodNotAllowed(["GET", "PATCH", "DELETE"]);
+  if (operation === "restore" && request.method === "POST") {
+    if (!isDogArchived(state.dogs[index])) return jsonResponse({ ok: true });
+    state.dogs[index] = {
+      ...state.dogs[index], archivedAt: null, purgeAfter: null,
+      archiveReason: null, archivedBy: null,
+    };
+    recordMutation(request, `dogs/${id}`);
+    return jsonResponse({ ok: true });
+  }
+  return methodNotAllowed(operation ? ["POST"] : ["GET", "PATCH"]);
 }
 
 async function handleRecyclePoints(request: Request, idSegment?: string): Promise<Response> {
@@ -453,6 +509,11 @@ async function handleMedia(request: Request, operation: string): Promise<Respons
   if (operation === "delete") {
     if (request.method !== "POST") return methodNotAllowed(["POST"]);
     const { imageUrl } = await readJson<{ imageUrl?: unknown }>(request);
+    if (state.dogs.some((dog) =>
+      dog.fotos.includes(String(imageUrl)) || dog.retainedPhotos?.includes(String(imageUrl))
+    )) {
+      return jsonResponse({ error: "Image is linked to a dog." }, 409);
+    }
     if (typeof imageUrl === "string" && imageUrl.startsWith("blob:")) {
       URL.revokeObjectURL(imageUrl);
     }
@@ -490,7 +551,7 @@ export async function handleMockAdminRequest(request: Request): Promise<Response
 
     return jsonResponse({
       metrics: {
-        dogs: state.dogs.length,
+        dogs: state.dogs.filter((dog) => !isDogArchived(dog)).length,
         recycles: state.recyclePoints.length,
         adoptions: state.adoptions.length,
         adoptionsViaSite: state.adoptionsViaSite,
@@ -526,8 +587,12 @@ export async function handleMockAdminRequest(request: Request): Promise<Response
     return jsonResponse({ ok: true });
   }
 
-  if (segments[2] === "dogs" && segments.length <= 4) {
-    return handleDogs(request, segments[3]);
+  if (segments[2] === "dogs" && segments.length <= 5) {
+    const operation = segments[4];
+    if (operation && operation !== "archive" && operation !== "restore") {
+      return jsonResponse({ error: "Not found" }, 404);
+    }
+    return handleDogs(request, segments[3], operation);
   }
 
   if (segments[2] === "recycle-points" && segments.length <= 4) {

@@ -165,6 +165,10 @@ diariamente três tarefas:
 - identificação e remoção de candidaturas vencidas conforme a política de
   retenção.
 
+Cães arquivados ficam fora do catálogo e da seleção de destaque. Cada registro
+recebe um prazo individual de 30 dias em `purgeAfter`, mas a exclusão automática
+de cães ainda não está habilitada.
+
 O endpoint `/api/dogs` aceita `page`, `limit`, `cateIdade`, `cor`, `tag` e uma
 `version` opcional. A versão mantém a ordem estável entre páginas; versões
 anteriores permanecem disponíveis temporariamente para sessões em andamento.

@@ -2,6 +2,7 @@ export type CloudflareStringEnvKey = string;
 
 type KvBinding = {
   get(key: string): Promise<string | null>;
+  delete?(key: string): Promise<void>;
   put(
     key: string,
     value: string | ArrayBuffer | ArrayBufferView | ReadableStream,
