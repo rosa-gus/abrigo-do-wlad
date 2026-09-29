@@ -280,6 +280,24 @@ test("deleteDocuments commits only documents from the configured database", asyn
   );
 });
 
+test("conditional deletes require the scanned document version", async () => {
+  let requestBody: Record<string, unknown> | undefined;
+  const client = new FirestoreRestClient("test-project", {
+    fetcher: mockFetch((_url, init) => {
+      requestBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      return Response.json({ commitTime: "2026-10-29T00:00:00.000Z" });
+    }),
+    tokenProvider: async () => "test-token",
+  });
+  const name = "projects/test-project/databases/(default)/documents/dogs/dog-1";
+  const updateTime = "2026-09-29T00:00:00.000Z";
+  const result = await client.deleteDocumentsIfUnchanged([{ name, updateTime }]);
+  assert.equal(result.deleted, 1);
+  assert.deepEqual(requestBody, {
+    writes: [{ delete: name, currentDocument: { updateTime } }],
+  });
+});
+
 test("createDocument encodes data and applies a server timestamp", async () => {
   let requestUrl = "";
   let requestBody: Record<string, unknown> | undefined;

@@ -12,6 +12,10 @@ const controller: ScheduledController = {
 test("cron runs hero rotation and LGPD cleanup in delete mode", async () => {
   const calls: string[] = [];
   const dependencies: CronDependencies = {
+    async purgeArchivedDogs(_env, options) {
+      calls.push(`dog-purge:${options.cutoff.toISOString()}`);
+      return { batches: 1, cutoff: options.cutoff.toISOString(), deleted: 1, hasMore: false, matched: 1 };
+    },
     async updateDogFeed() {
       calls.push("dogs-feed");
       return {
@@ -37,10 +41,11 @@ test("cron runs hero rotation and LGPD cleanup in delete mode", async () => {
     },
   };
 
-  await runCronJobs(controller, { ADOPTION_CLEANUP_MODE: "delete" }, dependencies);
+  await runCronJobs(controller, { ADOPTION_CLEANUP_MODE: "delete", DOG_PURGE_MODE: "delete" }, dependencies);
 
   assert.deepEqual(calls.sort(), [
     "cleanup:2026-08-21T03:00:00.000Z",
+    "dog-purge:2026-08-21T03:00:00.000Z",
     "dogs-feed",
     "hero",
   ]);
@@ -49,6 +54,10 @@ test("cron runs hero rotation and LGPD cleanup in delete mode", async () => {
 test("cron leaves destructive cleanup disabled by default", async () => {
   let cleanupCalled = false;
   const dependencies: CronDependencies = {
+    async purgeArchivedDogs() {
+      cleanupCalled = true;
+      throw new Error("must not run");
+    },
     async updateDogFeed() {
       return {
         schemaVersion: 2,
@@ -73,6 +82,10 @@ test("cron leaves destructive cleanup disabled by default", async () => {
 test("cron waits for both jobs and reports every failure", async () => {
   let cleanupFinished = false;
   const dependencies: CronDependencies = {
+    async purgeArchivedDogs() {
+      cleanupFinished = true;
+      throw new Error("dog purge failed");
+    },
     async updateDogFeed() {
       throw new Error("feed failed");
     },
@@ -86,8 +99,8 @@ test("cron waits for both jobs and reports every failure", async () => {
   };
 
   await assert.rejects(
-    () => runCronJobs(controller, { ADOPTION_CLEANUP_MODE: "delete" }, dependencies),
-    /hero-dog: status 500.*dogs-feed: feed failed.*adoption-cleanup: cleanup failed/,
+    () => runCronJobs(controller, { ADOPTION_CLEANUP_MODE: "delete", DOG_PURGE_MODE: "delete" }, dependencies),
+    /hero-dog: status 500.*dogs-feed: feed failed.*adoption-cleanup: cleanup failed.*dog-purge: dog purge failed/,
   );
   assert.equal(cleanupFinished, true);
 });

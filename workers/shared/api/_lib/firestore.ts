@@ -837,6 +837,37 @@ export class FirestoreRestClient {
     return this.deleteDocuments([documentName]);
   }
 
+  async deleteDocumentsIfUnchanged(
+    documents: Array<{ name: string; updateTime: string }>,
+  ): Promise<DeleteDocumentsResult> {
+    if (documents.length === 0) return { deleted: 0 };
+    if (documents.length > MAX_COMMIT_WRITES) {
+      throw new RangeError(`Firestore commit cannot contain more than ${MAX_COMMIT_WRITES} deletes.`);
+    }
+    if (new Set(documents.map((document) => document.name)).size !== documents.length) {
+      throw new TypeError("Firestore delete list contains duplicate documents.");
+    }
+    for (const document of documents) {
+      assertDocumentName(document.name, this.documentsRoot);
+      if (!Number.isFinite(Date.parse(document.updateTime))) {
+        throw new TypeError("Expected update time must be a valid timestamp.");
+      }
+    }
+    const result = await this.request<{ commitTime?: string }>(
+      `${this.databaseRoot}/documents:commit`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          writes: documents.map((document) => ({
+            delete: document.name,
+            currentDocument: { updateTime: document.updateTime },
+          })),
+        }),
+      },
+    );
+    return { deleted: documents.length, commitTime: result.commitTime };
+  }
+
   async deleteDocumentAndIncrementField(
     documentName: string,
     counterDocumentPath: string,

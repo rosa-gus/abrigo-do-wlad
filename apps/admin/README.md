@@ -99,8 +99,13 @@ O arquivamento recebe `reason: "adopted_via_site" | "other"`, preserva o documen
 e suas fotos e grava `archivedAt`, `purgeAfter`, `archiveReason` e `archivedBy`.
 `purgeAfter` é calculado 30 dias após o arquivamento de cada cão. A restauração
 remove o estado de arquivo e o tombstone público. A descoberta de candidatos à
-limpeza está em `workers/shared/api/dogs/purge-candidates.ts`; nenhuma tarefa
-agendada exclui cães nesta etapa.
+limpeza está em `workers/shared/api/dogs/purge-candidates.ts`. O cron consulta
+esse prazo diariamente e exclui os documentos elegíveis quando `DOG_PURGE_MODE`
+está em `delete`; em `dry-run`, apenas registra a quantidade encontrada.
+Ausência ou valor inválido mantém a tarefa desativada. A exclusão usa a versão
+do documento lida na consulta para impedir que uma restauração concorrente seja
+apagada. As imagens no Cloudinary permanecem armazenadas após a limpeza do
+documento.
 Fotos retiradas do cadastro permanecem registradas em `retainedPhotos`. O
 endpoint de mídia recusa a exclusão de imagens ligadas a qualquer cão.
 

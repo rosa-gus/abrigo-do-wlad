@@ -10,6 +10,7 @@ export interface DogPurgeCandidate {
   dogId: string;
   archivedAt: string;
   purgeAfter: string;
+  updateTime: string;
 }
 
 export interface DogPurgeSource {
@@ -34,12 +35,17 @@ export async function listDogPurgeCandidates(
   const documents = await source.findDocumentsByTimestampBefore(
     "dogs", "purgeAfter", now, limit,
   );
-  return documents.filter((document: FirestoreDocument<Record<string, unknown>>) =>
-    isDogPurgeEligible(document.data, now)
-  ).map((document) => ({
-    documentName: document.name,
-    dogId: document.id,
-    archivedAt: document.data.archivedAt as string,
-    purgeAfter: document.data.purgeAfter as string,
-  }));
+  return documents.flatMap((document: FirestoreDocument<Record<string, unknown>>) => {
+    if (!isDogPurgeEligible(document.data, now)) return [];
+    if (typeof document.updateTime !== "string" || !Number.isFinite(Date.parse(document.updateTime))) {
+      throw new Error(`Eligible dog ${document.id} is missing a valid update time.`);
+    }
+    return [{
+      documentName: document.name,
+      dogId: document.id,
+      archivedAt: document.data.archivedAt as string,
+      purgeAfter: document.data.purgeAfter as string,
+      updateTime: document.updateTime,
+    }];
+  });
 }
