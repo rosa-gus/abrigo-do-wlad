@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from "@jaci/ui/Dialog";
 import { getThirdPartyImage } from "@/utils/common";
+import { SHELTER_INSTAGRAM_URL } from "@/utils/links";
 import { WizardForm } from "./components/WizardForm";
 import { ExternalLink } from "@/components/common/ExternalLink";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
@@ -95,7 +96,7 @@ export default function BetaForm() {
               style={{ display: "flex", gap: "0.8rem" }}
               className={styles.modalContact}
             >
-              <ExternalLink href="https://www.instagram.com/abrigodowlad/">
+              <ExternalLink href={SHELTER_INSTAGRAM_URL}>
                 <Button
                   size="md"
                   variant="secondary"
@@ -118,7 +119,6 @@ export default function BetaForm() {
         </DialogContent>
       </Dialog>
       <Banner
-        className={styles.formBanner}
         image={heroImage as string}
         badge="Questionário"
         title="Intenção de adoção"
@@ -140,7 +140,7 @@ export default function BetaForm() {
               voltaremos a receber candidaturas!
             </p>
             <div style={{ marginTop: "1rem" }}>
-              <ExternalLink href="https://www.instagram.com/abrigodowlad/">
+              <ExternalLink href={SHELTER_INSTAGRAM_URL}>
                 <Button variant="secondary" leftIcon={<Lucide.Instagram />}>
                   Acompanhar no Instagram
                 </Button>

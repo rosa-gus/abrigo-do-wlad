@@ -43,9 +43,7 @@ export function Header() {
       : styles.navLink;
   };
 
-  const headerClasses = `${styles.headerContainer} ${location.pathname.startsWith("/beta/formulario") ? styles.formNavigation : ""} ${
-    isScrolled && !menuOpen ? styles.headerScrolled : ""
-  }`;
+  const headerClasses = `${styles.headerContainer} ${isScrolled && !menuOpen ? styles.headerScrolled : ""}`;
 
   return (
     <header className={headerClasses}>

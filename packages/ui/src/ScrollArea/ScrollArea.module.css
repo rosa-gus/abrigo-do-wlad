@@ -69,14 +69,14 @@
 }
 
 .ScrollShadowVertical {
-  right: var(--scroll-shadow-inline-end, 10px);
+  right: var(--scroll-shadow-inline-end, 0);
   left: var(--scroll-shadow-inline-start, 0);
   height: 24px;
 }
 
 .ScrollShadowHorizontal {
   top: var(--scroll-shadow-block-start, 0);
-  bottom: var(--scroll-shadow-block-end, 10px);
+  bottom: var(--scroll-shadow-block-end, 0);
   width: 24px;
 }
 

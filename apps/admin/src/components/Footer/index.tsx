@@ -1,4 +1,4 @@
-import { ExternalLink, Github } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { PUBLIC_APP_URL } from "../../config";
 import styles from "./Footer.module.css";
 
@@ -20,7 +20,7 @@ export function Footer() {
         </div>
 
         <div className={styles.creditsGroup}>
-          <span>Desenvolvido por</span>
+          <span>Por</span>
 
           <a
             href="https://alanclimaco.github.io/Portfolio/"
@@ -28,18 +28,18 @@ export function Footer() {
             rel="noopener noreferrer"
             className={styles.devLink}
           >
-            Alan <Github size={14} />
+            Alan
           </a>
 
-          <span>e</span>
+          <span>&amp;</span>
 
           <a
-            href="https://github.com/spantalho"
+            href="https://rosa-gus.github.io/portfolio/"
             target="_blank"
             rel="noopener noreferrer"
             className={styles.devLink}
           >
-            Luis <Github size={14} />
+            Luis
           </a>
         </div>
       </div>

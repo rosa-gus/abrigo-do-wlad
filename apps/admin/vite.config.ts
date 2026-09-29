@@ -13,6 +13,10 @@ export function createAdminViteConfig({ command, isPreview, mode }: ConfigEnv): 
   }
 
   return {
+    server: {
+      port: 5174,
+      strictPort: true,
+    },
     define: {
       "import.meta.env.ADMIN_MOCK_MODE": JSON.stringify(enableMockAdmin),
     },
