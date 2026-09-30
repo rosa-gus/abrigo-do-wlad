@@ -67,11 +67,8 @@ async function sendAdoptionApplicationEmail(
       env,
     );
 
-    const recipient = getEnvValue(env, "ADOPTION_EMAIL_RECIPIENT");
-
     await sendEmail(
       {
-        to: recipient as string,
         subject: `Nova Candidatura de Adoção: ${applicationData.animal_especifico || "Geral"}`,
         html,
         text,

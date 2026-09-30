@@ -175,7 +175,7 @@ export default function BetaForm() {
             </CardBody>
           </Card>
 
-          {import.meta.env.DEV && (
+          {import.meta.env.PUBLIC_DEV_TOOLS && (
             <div className={styles.betaTestAction}>
               <Button
                 size="sm"

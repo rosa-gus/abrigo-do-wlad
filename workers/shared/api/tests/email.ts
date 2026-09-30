@@ -15,7 +15,7 @@ export async function onRequest({
     });
   }
 
-  if (getEnvValue(env, "NODE_ENV") === "production") {
+  if (getEnvValue(env, "NODE_ENV") !== "development") {
     return jsonResponse(HTTP_STATUS.FORBIDDEN, {
       message: "Not available in production",
     });
@@ -35,28 +35,18 @@ export async function onRequest({
       env,
     );
 
-    const debugRecipient =
-      getEnvValue(env, "DEBUG_EMAIL_RECIPIENT") ||
-      getEnvValue(env, "ADOPTION_EMAIL_RECIPIENT") ||
-      getEnvValue(env, "GMAIL_USER");
-
-    if (!debugRecipient) {
-      throw new Error("No recipient email configured for debug");
-    }
-
     await sendEmail(
       {
-        to: debugRecipient,
         subject: `[TESTE DEBUG] Nova Candidatura de Adoção: ${mockApplicationData.animal_especifico}`,
         html,
         text,
+        debug: true,
       },
       env,
     );
 
     return jsonResponse(HTTP_STATUS.OK, {
       message: "Debug email sent successfully",
-      data: { sentTo: debugRecipient },
     });
   } catch (err) {
     console.error("Error sending debug email:", err);

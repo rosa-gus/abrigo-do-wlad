@@ -40,3 +40,6 @@ test-results
 
 .agents
 .codex
+
+# Google Apps Script is maintained outside this repository
+/scripts/apps-script/
