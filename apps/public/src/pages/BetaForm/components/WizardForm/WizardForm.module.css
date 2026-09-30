@@ -214,6 +214,30 @@
   flex: 1;
 }
 
+.sampleDataAction {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+.sampleDataAction p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+@media (max-width: 600px) {
+  .sampleDataAction {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
 /* ========== Captcha ========== */
 .captchaContainer {
   display: flex;

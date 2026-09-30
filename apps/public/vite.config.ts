@@ -4,8 +4,9 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 import path from "path";
 
 // https://vite.dev/config/
-export default defineConfig(({ command, mode }) => {
+export default defineConfig(({ command, isPreview, mode }) => {
   const repositoryRoot = path.resolve(__dirname, "../..");
+  const enableDevelopmentTools = command === "serve" && !isPreview;
 
   if (command === "build") {
     const env = loadEnv(mode, repositoryRoot, "");
@@ -28,6 +29,9 @@ export default defineConfig(({ command, mode }) => {
   }
 
   return {
+    define: {
+      "import.meta.env.PUBLIC_DEV_TOOLS": JSON.stringify(enableDevelopmentTools),
+    },
     envDir: repositoryRoot,
     plugins: [
       react(),
