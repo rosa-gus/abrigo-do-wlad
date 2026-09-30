@@ -8,6 +8,7 @@ import {
   getResponsiveImageSrcSet,
 } from "@abrigo/media/cloudinary";
 import type { DogProps } from "../../types/dogs";
+import { resolveMockMediaUrl } from "../../mocks/media";
 import styles from "./DogCard.module.css";
 
 interface DogCardProps {
@@ -23,13 +24,13 @@ const CARD_IMAGE_WIDTHS = [320, 480, 640] as const;
 export function DogCard({ dog, onArchive, priority = false }: DogCardProps) {
   const navigate = useNavigate();
   const originalImageUrl = dog.fotos?.[0];
-  const imageUrl = getOptimizedImageUrl(originalImageUrl, {
+  const imageUrl = resolveMockMediaUrl(getOptimizedImageUrl(originalImageUrl, {
     width: 480,
     height: 525,
     quality: "auto",
     crop: "fill",
     gravity: "auto",
-  });
+  }));
   const imageSrcSet = getResponsiveImageSrcSet(
     originalImageUrl,
     CARD_IMAGE_WIDTHS,

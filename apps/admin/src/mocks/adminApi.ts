@@ -13,6 +13,7 @@ import {
   recyclePointUpdateSchema,
 } from "../../shared/entities";
 import { dogArchiveDates, isDogArchived } from "../../../../workers/shared/api/dogs/archive";
+import { createMockMediaUrl, deleteMockMediaUrl, resetMockMedia } from "./media";
 
 type AdoptionStatus = "pending" | "approved" | "rejected";
 
@@ -124,7 +125,7 @@ function createInitialState(): MockState {
     adoptions: [
       {
         id: "adoption-livia",
-        nome_adotante: "Lívia Martins",
+        nome_adotante: "Fulana de Tal",
         telefone: "(11) 99999-1001",
         animal_especifico: "Simba",
         status: "pending",
@@ -264,6 +265,7 @@ function createInitialState(): MockState {
 let state = createInitialState();
 
 export function resetMockAdminState(): void {
+  resetMockMedia();
   state = createInitialState();
 }
 
@@ -503,7 +505,7 @@ async function handleMedia(request: Request, operation: string): Promise<Respons
     const formData = await request.formData();
     const file = formData.get("file");
     if (!(file instanceof File)) return jsonResponse({ error: "Invalid image file" }, 400);
-    return jsonResponse({ url: URL.createObjectURL(file) }, 201);
+    return jsonResponse({ url: createMockMediaUrl(file) }, 201);
   }
 
   if (operation === "delete") {
@@ -514,9 +516,7 @@ async function handleMedia(request: Request, operation: string): Promise<Respons
     )) {
       return jsonResponse({ error: "Image is linked to a dog." }, 409);
     }
-    if (typeof imageUrl === "string" && imageUrl.startsWith("blob:")) {
-      URL.revokeObjectURL(imageUrl);
-    }
+    if (typeof imageUrl === "string") deleteMockMediaUrl(imageUrl);
     return jsonResponse({ ok: true });
   }
 

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test } from "vitest";
 
 import { handleMockAdminRequest, resetMockAdminState } from "./adminApi";
+import { resolveMockMediaUrl } from "./media";
 
 function request(path: string, init?: RequestInit): Request {
   return new Request(`http://localhost${path}`, init);
@@ -44,6 +45,38 @@ describe("mock admin API", () => {
     const dashboardResponse = await handleMockAdminRequest(request("/api/admin/dashboard"));
     const dashboard = await dashboardResponse.json() as { metrics: { dogs: number } };
     expect(dashboard.metrics.dogs).toBe(4);
+  });
+
+  test("mock uploads return a valid HTTPS dog photo URL with a local preview", async () => {
+    const formData = new FormData();
+    formData.append("file", new File(["fictitious image"], "dog.png", { type: "image/png" }));
+    const upload = await handleMockAdminRequest(request("/api/admin/media/upload", {
+      method: "POST", body: formData,
+    }));
+    expect(upload.status).toBe(201);
+    const { url } = await upload.json() as { url: string };
+    expect(url).toMatch(/^https:\/\/mock-media\.invalid\//);
+    expect(resolveMockMediaUrl(url)).toMatch(/^blob:/);
+
+    const create = await handleMockAdminRequest(request("/api/admin/dogs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nome: "Nina",
+        idade: "2 anos",
+        cateIdade: "adulto",
+        sexo: "Fêmea",
+        temperamento: "Dócil",
+        tags: ["Dócil"],
+        status: "Vacinado e Castrado",
+        fotos: [url],
+        cor: "caramelo",
+      }),
+    }));
+    expect(create.status).toBe(201);
+    const { id } = await create.json() as { id: number };
+    const dog = await handleMockAdminRequest(request(`/api/admin/dogs/${id}`));
+    await expect(dog.json()).resolves.toMatchObject({ fotos: [url] });
   });
 
   test("archives and restores a dog without deleting its record or duplicating adoption count", async () => {
@@ -156,7 +189,7 @@ describe("mock admin API", () => {
 
     expect(summaries[0]).toMatchObject({
       id: "adoption-livia",
-      nome_adotante: "Lívia Martins",
+      nome_adotante: "Fulana de Tal",
       animal_especifico: "Simba",
     });
     expect(summaries[0]).not.toHaveProperty("email");
