@@ -38,6 +38,7 @@ import { ErrorModal } from "../ErrorModal"; // <-- Importação do ErrorModal
 import { ConfirmModal } from "../ConfirmModal";
 import { FormSection, FormShell } from "../FormShell";
 import { areFormValuesEqual } from "../FormShell/changes";
+import { resolveMockMediaUrl } from "../../mocks/media";
 import styles from "./DogForm.module.css";
 
 type DogPhoto =
@@ -443,7 +444,9 @@ export function DogForm({ initialData, onSubmit, title, buttonLabel }: DogFormPr
               </label>
               <div className={styles.previewGrid}>
                 {photos.map((photo, index) => {
-                  const imageUrl = photo.kind === "existing" ? photo.url : photo.previewUrl;
+                  const imageUrl = photo.kind === "existing"
+                    ? resolveMockMediaUrl(photo.url)
+                    : photo.previewUrl;
                   return (
                   <div key={photo.id} className={styles.previewCard}>
                     <button

@@ -2,6 +2,7 @@ export type CloudflareStringEnvKey = string;
 
 type KvBinding = {
   get(key: string): Promise<string | null>;
+  delete?(key: string): Promise<void>;
   put(
     key: string,
     value: string | ArrayBuffer | ArrayBufferView | ReadableStream,
@@ -12,6 +13,7 @@ type AssetsBinding = Pick<Fetcher, "fetch">;
 
 export type CloudflareEnv = Partial<Omit<Env, "KV" | "ASSETS">> & {
   ADOPTION_CLEANUP_MODE?: string;
+  DOG_PURGE_MODE?: string;
   DEBUG_EMAIL_RECIPIENT?: string;
   KV?: KvBinding;
   NODE_ENV?: string;

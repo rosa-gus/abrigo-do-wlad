@@ -837,6 +837,37 @@ export class FirestoreRestClient {
     return this.deleteDocuments([documentName]);
   }
 
+  async deleteDocumentsIfUnchanged(
+    documents: Array<{ name: string; updateTime: string }>,
+  ): Promise<DeleteDocumentsResult> {
+    if (documents.length === 0) return { deleted: 0 };
+    if (documents.length > MAX_COMMIT_WRITES) {
+      throw new RangeError(`Firestore commit cannot contain more than ${MAX_COMMIT_WRITES} deletes.`);
+    }
+    if (new Set(documents.map((document) => document.name)).size !== documents.length) {
+      throw new TypeError("Firestore delete list contains duplicate documents.");
+    }
+    for (const document of documents) {
+      assertDocumentName(document.name, this.documentsRoot);
+      if (!Number.isFinite(Date.parse(document.updateTime))) {
+        throw new TypeError("Expected update time must be a valid timestamp.");
+      }
+    }
+    const result = await this.request<{ commitTime?: string }>(
+      `${this.databaseRoot}/documents:commit`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          writes: documents.map((document) => ({
+            delete: document.name,
+            currentDocument: { updateTime: document.updateTime },
+          })),
+        }),
+      },
+    );
+    return { deleted: documents.length, commitTime: result.commitTime };
+  }
+
   async deleteDocumentAndIncrementField(
     documentName: string,
     counterDocumentPath: string,
@@ -933,6 +964,65 @@ export class FirestoreRestClient {
       {
         method: "POST",
         body: JSON.stringify({ writes: [write] }),
+      },
+    );
+  }
+
+  async updateDocumentAndIncrementField(
+    documentName: string,
+    data: Record<string, unknown>,
+    counterDocumentPath: string,
+    fieldPath: string,
+    amount: number,
+    options: UpdateDocumentOptions = {},
+  ): Promise<{ commitTime?: string }> {
+    assertDocumentName(documentName, this.documentsRoot);
+    assertFieldPath(fieldPath);
+    const fieldPaths = Object.keys(data);
+    if (fieldPaths.length === 0 || !Number.isFinite(amount)) {
+      throw new TypeError("Invalid update and increment.");
+    }
+    fieldPaths.forEach(assertFieldPath);
+    const [collectionId, documentId, ...rest] = counterDocumentPath.split("/");
+    if (!collectionId || !documentId || rest.length > 0) {
+      throw new TypeError("Firestore counter path must target a root document.");
+    }
+    const counterName = `${this.documentsRoot}/${collectionId}/${documentId}`;
+    if (counterName === documentName) {
+      throw new TypeError("Firestore counter and updated document must differ.");
+    }
+    const existingCounter = await this.getDocument<Record<string, unknown>>(counterDocumentPath);
+    const counterWrite = existingCounter
+      ? {
+          transform: {
+            document: existingCounter.name,
+            fieldTransforms: [{ fieldPath, increment: encodeFirestoreValue(amount) }],
+          },
+          currentDocument: { exists: true },
+        }
+      : {
+          update: {
+            name: counterName,
+            fields: { [fieldPath]: encodeFirestoreValue(amount) },
+          },
+          currentDocument: { exists: false },
+        };
+    return this.request<{ commitTime?: string }>(
+      `${this.databaseRoot}/documents:commit`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          writes: [
+            {
+              update: { name: documentName, fields: encodeDocumentFields(data) },
+              updateMask: { fieldPaths },
+              currentDocument: options.expectedUpdateTime
+                ? { updateTime: options.expectedUpdateTime }
+                : { exists: true },
+            },
+            counterWrite,
+          ],
+        }),
       },
     );
   }

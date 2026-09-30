@@ -8,11 +8,12 @@ import {
   getResponsiveImageSrcSet,
 } from "@abrigo/media/cloudinary";
 import type { DogProps } from "../../types/dogs";
+import { resolveMockMediaUrl } from "../../mocks/media";
 import styles from "./DogCard.module.css";
 
 interface DogCardProps {
   dog: DogProps;
-  onDelete: (id: number, nome: string) => void;
+  onArchive: (id: number, nome: string) => void;
   priority?: boolean;
 }
 
@@ -20,16 +21,16 @@ const CARD_IMAGE_WIDTH = 320;
 const CARD_IMAGE_HEIGHT = 350;
 const CARD_IMAGE_WIDTHS = [320, 480, 640] as const;
 
-export function DogCard({ dog, onDelete, priority = false }: DogCardProps) {
+export function DogCard({ dog, onArchive, priority = false }: DogCardProps) {
   const navigate = useNavigate();
   const originalImageUrl = dog.fotos?.[0];
-  const imageUrl = getOptimizedImageUrl(originalImageUrl, {
+  const imageUrl = resolveMockMediaUrl(getOptimizedImageUrl(originalImageUrl, {
     width: 480,
     height: 525,
     quality: "auto",
     crop: "fill",
     gravity: "auto",
-  });
+  }));
   const imageSrcSet = getResponsiveImageSrcSet(
     originalImageUrl,
     CARD_IMAGE_WIDTHS,
@@ -98,9 +99,9 @@ export function DogCard({ dog, onDelete, priority = false }: DogCardProps) {
             variant="danger"
             size="icon-sm"
             aria-label={`Finalizar jornada de ${dog.nome}`}
-            onClick={() => onDelete(dog.id, dog.nome)}
+            onClick={() => onArchive(dog.id, dog.nome)}
             className={`${styles.actionBtn} ${styles.deleteBtn}`}
-            title="Excluir"
+            title="Arquivar"
           >
             <HeartHandshake size={18} />
           </Button>

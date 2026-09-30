@@ -126,6 +126,20 @@ test("admin API rejects state changes without a same-origin Origin header", asyn
   assert.equal(response.status, 403);
 });
 
+test("admin API has no permanent dog deletion endpoint", async () => {
+  const response = await handleAdminApi(
+    new Request("https://admin.example.test/api/admin/dogs/123", {
+      method: "DELETE",
+      headers: { Origin: "https://admin.example.test" },
+    }),
+    env,
+    identity,
+    keyDependencies(),
+  );
+  assert.equal(response.status, 405);
+  assert.equal(response.headers.get("Allow"), "GET, PATCH");
+});
+
 test("admin API proxies uploads only after same-origin validation", async () => {
   const response = await handleAdminApi(
     new Request("https://admin.example.test/api/admin/media/upload", {

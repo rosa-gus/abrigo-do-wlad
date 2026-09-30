@@ -47,4 +47,19 @@ describe("AdminMobileDock", () => {
     fireEvent.click(screen.getByRole("button", { name: "Mostrar mais opções de navegação" }));
     expect(screen.getByRole("link", { name: "Dev" })).toHaveAttribute("aria-current", "page");
   });
+
+  it("mostra Arquivado como destino ativo sem ativar Cães", () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { email: "admin@example.com", role: "administrator" },
+      loading: false,
+      error: null,
+      logout: vi.fn(),
+    });
+
+    render(<MemoryRouter initialEntries={["/admin/archived"]}><AdminMobileDock /></MemoryRouter>);
+
+    fireEvent.click(screen.getByRole("button", { name: "Mostrar mais opções de navegação" }));
+    expect(screen.getByRole("link", { name: "Arquivado" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Cães" })).not.toHaveAttribute("aria-current");
+  });
 });

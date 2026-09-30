@@ -75,3 +75,7 @@ export async function getDogTombstone(
   const tombstone = await getKvStore(env).get<unknown>(dogTombstoneKey(id));
   return isDogTombstone(tombstone) && tombstone.id === id ? tombstone : null;
 }
+
+export async function deleteDogTombstone(env: CloudflareEnv, id: string): Promise<void> {
+  await getKvStore(env).delete(dogTombstoneKey(id));
+}

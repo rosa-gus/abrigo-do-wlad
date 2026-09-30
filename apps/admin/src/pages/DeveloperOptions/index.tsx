@@ -1,9 +1,11 @@
 import { Badge } from "@jaci/ui/Badge";
 import { Button } from "@jaci/ui/Button";
 import { Card, CardBody, CardContent, CardHeader, CardIcon, CardTitle } from "@jaci/ui/Card";
-import { NativeSelect, Textarea } from "@jaci/ui/Field";
+import { EmptyState } from "@jaci/ui/EmptyState";
+import { Textarea } from "@jaci/ui/Field";
 import { Label } from "@jaci/ui/Label";
 import { RadioGroup, RadioGroupItem } from "@jaci/ui/RadioGroup";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@jaci/ui/Select";
 import { KeyRound, RefreshCw, Save, ShieldCheck, Trash2 } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 
@@ -46,6 +48,11 @@ function isNotificationExpiration(value: string): value is NotificationExpiratio
     value === "6h" ||
     value === "12h" ||
     value === "until_deleted";
+}
+
+function isNotificationType(value: string): value is NotificationType {
+  return value === "trivial" || value === "urgent" ||
+    value === "success" || value === "info";
 }
 
 export default function DeveloperOptions() {
@@ -233,17 +240,23 @@ export default function DeveloperOptions() {
 
               <div className={styles.notificationTypeField}>
                 <Label htmlFor="notification-type">Tipo</Label>
-                <NativeSelect
-                  id="notification-type"
+                <Select
                   value={notificationType}
                   disabled={notificationLoading || notificationSaving}
-                  onChange={(event) => setNotificationType(event.target.value as NotificationType)}
+                  onValueChange={(value) => {
+                    if (isNotificationType(value)) setNotificationType(value);
+                  }}
                 >
-                  <option value="trivial">Trivial</option>
-                  <option value="urgent">Urgente</option>
-                  <option value="success">Sucesso</option>
-                  <option value="info">Informação</option>
-                </NativeSelect>
+                  <SelectTrigger id="notification-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="trivial">Trivial</SelectItem>
+                    <SelectItem value="urgent">Urgente</SelectItem>
+                    <SelectItem value="success">Sucesso</SelectItem>
+                    <SelectItem value="info">Informação</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <fieldset className={styles.expirationField}>
@@ -336,9 +349,9 @@ export default function DeveloperOptions() {
         <div className={styles.listSection} aria-busy={loading}>
           <h3>Histórico de chaves</h3>
           {loading ? (
-            <p className={styles.empty}>Carregando metadados...</p>
+            <p className={styles.loadingState}>Carregando metadados...</p>
           ) : keys.length === 0 ? (
-            <p className={styles.empty}>Nenhuma chave foi encontrada.</p>
+            <EmptyState size="md" icon={<KeyRound />} title="Nenhuma chave foi encontrada." />
           ) : (
             <div className={styles.list}>
               {keys.map((key) => (

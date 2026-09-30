@@ -6,11 +6,13 @@ import {
 } from "../_lib/firestore";
 import { HTTP_STATUS } from "../_lib/constants";
 import type { CloudflareEnv } from "../_lib/env";
+import { isDogArchived } from "../dogs/archive";
 
 const DOGS_COLLECTION = "dogs";
 
 type HeroDog = {
   id: string;
+  archivedAt?: unknown;
   [key: string]: unknown;
 };
 
@@ -18,12 +20,12 @@ async function getRandomDogFromServer(
   firestore: FirestoreRestClient,
 ): Promise<HeroDog | null> {
   const randomKey = createFirestoreDocumentId();
-  const randomDocument =
-    (await firestore.findFirstDocument<HeroDog>(DOGS_COLLECTION, randomKey)) ??
-    (await firestore.findFirstDocument<HeroDog>(DOGS_COLLECTION));
+  const documents = await firestore.listDocuments<HeroDog>(DOGS_COLLECTION);
+  const available = documents.filter((document) => !isDogArchived(document.data));
+  const selected = available.find((document) => document.id >= randomKey) ?? available[0];
 
-  return randomDocument
-    ? { ...randomDocument.data, id: randomDocument.id }
+  return selected
+    ? { ...selected.data, id: selected.id }
     : null;
 }
 
@@ -51,10 +53,12 @@ export async function updateHeroDog(env?: CloudflareEnv) {
       };
     }
 
+    await kvStore.delete("hero-dog");
+
     return {
-      status: HTTP_STATUS.NOT_FOUND,
+      status: HTTP_STATUS.OK,
       body: {
-        message: "No dog found",
+        message: "No dog available for the highlight",
       },
     };
   } catch (err) {

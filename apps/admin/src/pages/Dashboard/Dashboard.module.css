@@ -170,13 +170,6 @@
   text-decoration: underline;
 }
 
-.emptyRecent {
-  color: var(--text-muted);
-  margin: 0;
-  padding: 2rem 0;
-  font-weight: 500;
-}
-
 @media (max-width: 600px) {
   .container {
     padding: 1.5rem 1rem 4rem;
