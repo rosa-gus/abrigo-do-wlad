@@ -11,7 +11,7 @@ permissions:
 jobs:
   secret-history:
     name: Secret history
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v6
         with:
@@ -22,7 +22,7 @@ jobs:
 
   verify:
     name: Build and test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     env:
       VITE_FIREBASE_API_KEY: ci-public-value
       VITE_FIREBASE_AUTH_DOMAIN: ci.example.test
