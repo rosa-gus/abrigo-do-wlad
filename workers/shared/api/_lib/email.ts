@@ -1,55 +1,45 @@
-import nodemailer from "nodemailer";
 import { getEnvValue, type CloudflareEnv } from "./env";
 
 interface EmailOptions {
-  to: string;
   subject: string;
   html: string;
-  text?: string;
-}
-
-function getTransporter(env?: CloudflareEnv) {
-  const gmailUser = getEnvValue(env, "GMAIL_USER");
-  const gmailPass = getEnvValue(env, "GMAIL_PASS")
-
-  if (!gmailUser || !gmailPass) {
-    throw new Error("GMAIL credentials are not configured in the Cloudflare environment.");
-  }
-
-  return nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: gmailUser,
-      pass: gmailPass,
-    },
-  });
+  text: string;
+  debug?: boolean;
 }
 
 export async function sendEmail(
   options: EmailOptions,
   env?: CloudflareEnv,
 ): Promise<void> {
-  try {
-      const gmailUser = getEnvValue(env, "GMAIL_USER") || process.env.GMAIL_USER;
-    const transporter = getTransporter(env);
+  const url = getEnvValue(env, "EMAIL_WEBHOOK_URL");
+  const secret = getEnvValue(env, "EMAIL_WEBHOOK_SECRET");
 
-    await transporter.sendMail({
-      from: `"Abrigo do Wlad" <${gmailUser}>`,
-      to: options.to,
+  if (!url || !secret) {
+    throw new Error("Email webhook is not configured.");
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      secret,
       subject: options.subject,
       text: options.text,
       html: options.html,
-    });
+      debug:
+        options.debug === true ||
+        getEnvValue(env, "NODE_ENV") !== "production",
+    }),
+    signal: AbortSignal.timeout(15_000),
+  });
 
-    if (getEnvValue(env, "NODE_ENV") === "development" || process.env.NODE_ENV === "development") {
-      console.log("[DEBUG] to:", options.to);
-      console.log("[DEBUG] from:", gmailUser);
-    }
+  if (!response.ok) {
+    throw new Error(`Email webhook returned HTTP ${response.status}.`);
+  }
 
-    console.log(`Email enviado para ${options.to}`);
-  } catch (error) {
-    console.error("Erro ao enviar email:", error);
-    throw new Error("Falha ao enviar email");
+  const result: unknown = await response.json();
+  if (typeof result !== "object" || result === null || !("ok" in result) || result.ok !== true) {
+    throw new Error("Email webhook did not confirm delivery.");
   }
 }
 

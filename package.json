@@ -49,7 +49,6 @@
   },
   "dependencies": {
     "jose": "^6.2.9",
-    "nodemailer": "^9.0.5",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -59,7 +58,6 @@
     "@firebase/rules-unit-testing": "^5.0.2",
     "@playwright/test": "^1.62.1",
     "@types/node": "^24.12.2",
-    "@types/nodemailer": "^8.0.0",
     "@vitejs/plugin-react": "^5.1.1",
     "@vitest/coverage-istanbul": "^4.1.11",
     "eslint": "^9.39.1",

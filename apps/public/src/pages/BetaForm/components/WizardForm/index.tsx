@@ -13,6 +13,7 @@ import * as Lucide from "lucide-react";
 
 import { ExternalLink } from "@/components/common/ExternalLink";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
+import { SAMPLE_ADOPTION_FORM_DATA } from "@/mocks/adoption";
 import {
   clearIdempotencyKey,
   getAdoptionApplicationId,
@@ -162,6 +163,7 @@ export function WizardForm({ onSubmitSuccess }: WizardFormProps) {
     validateCurrentStep,
     highestCompletedStep,
     resetForm,
+    fillFormWithSampleData,
   } = useWizardForm();
 
   React.useEffect(() => {
@@ -214,7 +216,7 @@ export function WizardForm({ onSubmitSuccess }: WizardFormProps) {
     }
   }, [petName, formData.animal_especifico, updateField]);
 
-  const onSubmit = async (e: React.FormEvent) => {
+  const onSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
 
     if (!validateCurrentStep()) return;
@@ -440,6 +442,29 @@ export function WizardForm({ onSubmitSuccess }: WizardFormProps) {
 
   return (
     <div className={styles.wizardContainer}>
+      {import.meta.env.PUBLIC_DEV_TOOLS && (
+        <div className={styles.sampleDataAction}>
+          <p id="sample-data-description">
+            Atalho local para percorrer as etapas com respostas fictícias.
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            leftIcon={<Lucide.TestTube size={16} />}
+            aria-describedby="sample-data-description"
+            onClick={() => {
+              clearIdempotencyKey(sessionStorage);
+              submissionKeyRef.current = null;
+              setSubmitError(null);
+              fillFormWithSampleData(SAMPLE_ADOPTION_FORM_DATA);
+            }}
+          >
+            Preencher com dados fictícios
+          </Button>
+        </div>
+      )}
+
       <Stepper
         steps={STEP_TITLES.map(({ label, icon: Icon }, index) => ({
           label,

@@ -42,7 +42,7 @@ export async function fetchWithCache<T = DocumentData>(
   const lastFetchStr = localStorage.getItem(storageKey);
   const lastFetch = lastFetchStr ? parseInt(lastFetchStr, 10) : 0;
 
-  const isDevelopment = import.meta.env.DEV;
+  const isDevelopment = import.meta.env.PUBLIC_DEV_TOOLS;
   const isCacheValid = !isDevelopment && (now - lastFetch) < ttlMs;
 
   if (isCacheValid) {
@@ -88,7 +88,7 @@ export async function fetchDocWithCache<T = DocumentData>(
   const lastFetchStr = localStorage.getItem(storageKey);
   const lastFetch = lastFetchStr ? parseInt(lastFetchStr, 10) : 0;
 
-  const isDevelopment = import.meta.env.DEV;
+  const isDevelopment = import.meta.env.PUBLIC_DEV_TOOLS;
   const isCacheValid = !isDevelopment && (now - lastFetch) < ttlMs;
 
   if (isCacheValid) {

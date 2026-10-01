@@ -77,27 +77,42 @@ valores aceitos.
 - `FIREBASE_PROJECT_ID`
 - `FIREBASE_CLIENT_EMAIL`
 - `FIREBASE_PRIVATE_KEY`
-- `GMAIL_USER`
-- `GMAIL_PASS`
-- `ADOPTION_EMAIL_RECIPIENT`
-- `DEBUG_EMAIL_RECIPIENT`
+- `EMAIL_WEBHOOK_URL`
+- `EMAIL_WEBHOOK_SECRET`
 - `ADMIN_PANEL_URL`
 
 Credenciais privadas pertencem ao runtime do Worker e não devem utilizar o
 prefixo `VITE_` nem ser versionadas.
+
+### Notificações por e-mail
+
+O Worker envia uma requisição `POST` ao Apps Script implantado com `secret`,
+`subject`, `text`, `html` e `debug`. O código do Apps Script é mantido fora deste
+repositório.
+O destinatário é fixado no script: `debug: true` envia para a conta `.dev` e
+qualquer outro valor envia para o abrigo. A rota de teste é a única que envia
+`debug: true` e só funciona em desenvolvimento. O Worker só considera o envio
+concluído quando recebe uma resposta JSON com `ok: true`.
+
+Configure `EMAIL_WEBHOOK_URL` e `EMAIL_WEBHOOK_SECRET` como **Secrets** do Worker
+público na Dashboard da Cloudflare. O segundo valor deve ser o mesmo da
+propriedade `EMAIL_WEBHOOK_SECRET` no Apps Script. Não coloque a URL de produção
+em `wrangler.jsonc` ou em arquivos locais de desenvolvimento. Para testar
+localmente, use valores locais em `.dev.vars`; a rota de teste usa a conta `.dev`
+mesmo quando aponta para o script de produção.
 
 ## API pública
 
 O Worker definido em [`workers/app/index.ts`](../../workers/app/index.ts) serve
 os Static Assets da SPA e processa as rotas `/api/*`.
 
-| Método | Rota | Função |
-| --- | --- | --- |
-| `GET` | `/api/hero-dog` | Retorna o animal em destaque. |
-| `GET` | `/api/dogs` | Retorna uma página filtrada do catálogo rotativo armazenado no KV. |
-| `GET` | `/api/dogs/by-slug/:publicSlug` | Retorna o perfil público de um cão pelo slug canônico. |
-| `POST` | `/api/adoption/create` | Valida e registra uma candidatura de adoção. |
-| `GET` | `/api/tests/email` | Testa o envio de e-mail apenas em desenvolvimento. |
+| Método | Rota                            | Função                                                             |
+| ------ | ------------------------------- | ------------------------------------------------------------------ |
+| `GET`  | `/api/hero-dog`                 | Retorna o animal em destaque.                                      |
+| `GET`  | `/api/dogs`                     | Retorna uma página filtrada do catálogo rotativo armazenado no KV. |
+| `GET`  | `/api/dogs/by-slug/:publicSlug` | Retorna o perfil público de um cão pelo slug canônico.             |
+| `POST` | `/api/adoption/create`          | Valida e registra uma candidatura de adoção.                       |
+| `GET`  | `/api/tests/email`              | Testa o envio para e-mail de debug apenas em desenvolvimento.      |
 
 Cada cão publicado no feed possui um `publicSlug` gerado automaticamente a
 partir de `nome` (por exemplo, `Paçoca` torna-se `pacoca`). O slug é reservado
@@ -171,11 +186,11 @@ anteriores permanecem disponíveis temporariamente para sessões em andamento.
 
 O comportamento da limpeza é definido por `ADOPTION_CLEANUP_MODE`:
 
-| Valor | Comportamento |
-| --- | --- |
-| `disabled` | Não consulta nem remove candidaturas. |
-| `dry-run` | Registra nos logs os documentos elegíveis sem removê-los. |
-| `delete` | Remove os documentos elegíveis. |
+| Valor      | Comportamento                                             |
+| ---------- | --------------------------------------------------------- |
+| `disabled` | Não consulta nem remove candidaturas.                     |
+| `dry-run`  | Registra nos logs os documentos elegíveis sem removê-los. |
+| `delete`   | Remove os documentos elegíveis.                           |
 
 ## Build, verificação e publicação
 

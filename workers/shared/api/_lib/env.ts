@@ -12,7 +12,6 @@ type AssetsBinding = Pick<Fetcher, "fetch">;
 
 export type CloudflareEnv = Partial<Omit<Env, "KV" | "ASSETS">> & {
   ADOPTION_CLEANUP_MODE?: string;
-  DEBUG_EMAIL_RECIPIENT?: string;
   KV?: KvBinding;
   NODE_ENV?: string;
   ASSETS?: AssetsBinding;

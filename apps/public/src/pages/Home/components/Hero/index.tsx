@@ -21,8 +21,10 @@ interface HeroProps {
 }
 
 export function Hero({ dog }: HeroProps) {
-  const mainImage = import.meta.env.DEV ? mockHeroImage : dog?.fotos?.[0] ?? null;
-  const secondaryImage = import.meta.env.DEV
+  const mainImage = import.meta.env.PUBLIC_DEV_TOOLS
+    ? mockHeroImage
+    : dog?.fotos?.[0] ?? null;
+  const secondaryImage = import.meta.env.PUBLIC_DEV_TOOLS
     ? mockThumbnailImage
     : dog?.fotos?.[1] ?? null;
 
@@ -73,7 +75,7 @@ export function Hero({ dog }: HeroProps) {
             className={styles.heroImage}
             src={heroImageUrl}
             alt={
-              import.meta.env.DEV
+              import.meta.env.PUBLIC_DEV_TOOLS
                 ? "Cães do Abrigo do Wlad"
                 : dog
                   ? `Foto de ${dog.nome}`
@@ -89,7 +91,7 @@ export function Hero({ dog }: HeroProps) {
             className={styles.heroThumbnail}
             src={thumbnailImageUrl}
             alt={
-              import.meta.env.DEV
+              import.meta.env.PUBLIC_DEV_TOOLS
                 ? "Cão do Abrigo do Wlad"
                 : dog
                   ? `Foto de ${dog.nome}`
@@ -97,7 +99,7 @@ export function Hero({ dog }: HeroProps) {
             }
           />
         )}
-        {!import.meta.env.DEV && dog && dog.nome && (
+        {!import.meta.env.PUBLIC_DEV_TOOLS && dog && dog.nome && (
           <Badge
             variant="primary"
             size="md"
