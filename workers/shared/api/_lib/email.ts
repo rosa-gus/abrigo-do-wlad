@@ -26,7 +26,9 @@ export async function sendEmail(
       subject: options.subject,
       text: options.text,
       html: options.html,
-      debug: options.debug === true,
+      debug:
+        options.debug === true ||
+        getEnvValue(env, "NODE_ENV") !== "production",
     }),
     signal: AbortSignal.timeout(15_000),
   });

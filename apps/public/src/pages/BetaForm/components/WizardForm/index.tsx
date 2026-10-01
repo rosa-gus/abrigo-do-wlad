@@ -216,7 +216,7 @@ export function WizardForm({ onSubmitSuccess }: WizardFormProps) {
     }
   }, [petName, formData.animal_especifico, updateField]);
 
-  const onSubmit = async (e: React.FormEvent) => {
+  const onSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
 
     if (!validateCurrentStep()) return;
