@@ -22,16 +22,13 @@ import {
   DialogTitle,
 } from "@jaci/ui/Dialog";
 import { getThirdPartyImage } from "@/utils/common";
-import { SHELTER_INSTAGRAM_URL } from "@/utils/links";
+import { SHELTER_FALLBACK_FORM_URL, SHELTER_INSTAGRAM_URL } from "@/utils/links";
 import { WizardForm } from "./components/WizardForm";
 import { ExternalLink } from "@/components/common/ExternalLink";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
 import { Skeleton } from "@jaci/ui/Skeleton";
 
 import styles from "./Form.module.css";
-
-const FALLBACK_FORM =
-  "https://docs.google.com/forms/d/e/1FAIpQLSdA_l2KNzT5NflkGgCCOik0wCoCxlVuLRsEStacvWDaV4_hMA/viewform";
 
 export default function BetaForm() {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
@@ -166,7 +163,7 @@ export default function BetaForm() {
               <CardContent>
                 <p>
                   Se encontrar algum problema, você pode usar o{" "}
-                  <ExternalLink href={FALLBACK_FORM} className={styles.betaFallbackLink}>
+                  <ExternalLink href={SHELTER_FALLBACK_FORM_URL} className={styles.betaFallbackLink}>
                     formulário alternativo
                     <Lucide.ArrowUpRight size={15} aria-hidden="true" />
                   </ExternalLink>
