@@ -27,6 +27,7 @@ export default defineConfig(({ command, isPreview, mode }) => {
   return {
     define: {
       "import.meta.env.PUBLIC_DEV_TOOLS": JSON.stringify(enableDevelopmentTools),
+      __ADOPTION_RECAPTCHA_BYPASS__: JSON.stringify(enableDevelopmentTools),
     },
     envDir: repositoryRoot,
     plugins: [

@@ -20,7 +20,11 @@ import {
   getOrCreateIdempotencyKey,
   type AdoptionSubmissionResult,
 } from "./submission";
-import { ADOPTION_RECAPTCHA_ACTION, loadRecaptcha } from "./recaptcha";
+import {
+  ADOPTION_RECAPTCHA_ACTION,
+  isAdoptionRecaptchaBypassed,
+  loadRecaptcha,
+} from "./recaptcha";
 import { WIZARD_STORAGE_KEYS } from "./wizardStorage";
 
 import styles from "./WizardForm.module.css";
@@ -167,6 +171,7 @@ export function WizardForm({ onSubmitSuccess }: WizardFormProps) {
   } = useWizardForm();
 
   React.useEffect(() => {
+    if (isAdoptionRecaptchaBypassed()) return;
     const siteKey = import.meta.env.VITE_RECAPTCHA_PUBLIC_KEY as string;
     return loadRecaptcha(siteKey);
   }, []);
@@ -228,22 +233,24 @@ export function WizardForm({ onSubmitSuccess }: WizardFormProps) {
       const siteKey = import.meta.env.VITE_RECAPTCHA_PUBLIC_KEY;
 
       // Captura do token do reCAPTCHA v3
-      const token = await new Promise<string>((resolve, reject) => {
-        // @ts-expect-error - grecaptcha não está tipado no global
-        if (!window.grecaptcha) {
-          reject(new Error("reCAPTCHA não carregou corretamente."));
-          return;
-        }
+      const token = isAdoptionRecaptchaBypassed()
+        ? ""
+        : await new Promise<string>((resolve, reject) => {
+            // @ts-expect-error - grecaptcha não está tipado no global
+            if (!window.grecaptcha) {
+              reject(new Error("reCAPTCHA não carregou corretamente."));
+              return;
+            }
 
-        // @ts-expect-error - grecaptcha não está tipado no global
-        grecaptcha.ready(() => {
-          // @ts-expect-error - grecaptcha não está tipado no global
-          grecaptcha
-            .execute(siteKey, { action: ADOPTION_RECAPTCHA_ACTION })
-            .then((token: string) => resolve(token))
-            .catch(reject);
-        });
-      });
+            // @ts-expect-error - grecaptcha não está tipado no global
+            grecaptcha.ready(() => {
+              // @ts-expect-error - grecaptcha não está tipado no global
+              grecaptcha
+                .execute(siteKey, { action: ADOPTION_RECAPTCHA_ACTION })
+                .then((token: string) => resolve(token))
+                .catch(reject);
+            });
+          });
 
       const idempotencyKey =
         submissionKeyRef.current ?? getOrCreateIdempotencyKey(sessionStorage);
