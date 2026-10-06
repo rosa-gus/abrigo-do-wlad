@@ -3,7 +3,7 @@ import { FlaskConical, LogOut, ShieldCheck } from "lucide-react";
 import { Badge } from "@jaci/ui/Badge";
 import { Button } from "@jaci/ui/Button";
 import { useAuth } from "../../contexts/AuthContext";
-import { ADMIN_MOCK_MODE } from "../../services/api";
+import { ADMIN_LOCAL_MODE, ADMIN_MOCK_MODE } from "../../services/api";
 import styles from "./Header.module.css";
 import logoImg from "../../assets/logo1.png";
 
@@ -40,6 +40,17 @@ export function Header() {
               title="Ambiente com dados simulados"
             >
               Dados simulados
+            </Badge>
+          )}
+          {ADMIN_LOCAL_MODE && (
+            <Badge
+              className={styles.mockTag}
+              leftIcon={<FlaskConical size={16} />}
+              variant="danger"
+              size="sm"
+              title="Dados reais do Firebase abrigo-do-wlad-dev"
+            >
+              DB de desenvolvimento
             </Badge>
           )}
         </Link>

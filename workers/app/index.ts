@@ -164,7 +164,7 @@ async function handleApiRequest(request: Request, env: AppEnv): Promise<Response
 
   if (
     pathname === "/api/tests/email" &&
-    getEnvValue(env, "NODE_ENV") === "development"
+    getEnvValue(env, "APP_ENV") === "local"
   ) {
     return sendDebugEmail({ request, env });
   }

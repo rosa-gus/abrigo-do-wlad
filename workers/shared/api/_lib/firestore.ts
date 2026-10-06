@@ -145,7 +145,9 @@ export function encodeFirestoreValue(value: unknown): FirestoreValue {
 
   if (value instanceof Date) {
     if (Number.isNaN(value.getTime())) {
-      throw new TypeError("Cannot encode an invalid Date as a Firestore value.");
+      throw new TypeError(
+        "Cannot encode an invalid Date as a Firestore value.",
+      );
     }
 
     return { timestampValue: value.toISOString() };
@@ -191,7 +193,9 @@ export function encodeFirestoreValue(value: unknown): FirestoreValue {
 
       const prototype = Object.getPrototypeOf(value);
       if (prototype !== Object.prototype && prototype !== null) {
-        throw new TypeError("Only plain objects can be encoded as Firestore maps.");
+        throw new TypeError(
+          "Only plain objects can be encoded as Firestore maps.",
+        );
       }
 
       const fields = Object.fromEntries(
@@ -253,10 +257,12 @@ export function decodeFirestoreValue(value: FirestoreValue): unknown {
   }
 
   return Object.fromEntries(
-    Object.entries(value.mapValue.fields ?? {}).map(([fieldName, fieldValue]) => [
-      fieldName,
-      decodeFirestoreValue(fieldValue),
-    ]),
+    Object.entries(value.mapValue.fields ?? {}).map(
+      ([fieldName, fieldValue]) => [
+        fieldName,
+        decodeFirestoreValue(fieldValue),
+      ],
+    ),
   );
 }
 
@@ -276,7 +282,9 @@ function decodeDocument<T extends Record<string, unknown>>(
   const id = document.name.split("/").at(-1);
 
   if (!id) {
-    throw new Error(`Firestore returned an invalid document name: ${document.name}`);
+    throw new Error(
+      `Firestore returned an invalid document name: ${document.name}`,
+    );
   }
 
   return {
@@ -381,7 +389,9 @@ async function requestGoogleAccessToken(
   if (!response.ok || !payload.access_token) {
     const reason =
       payload.error_description ?? payload.error ?? `HTTP ${response.status}`;
-    throw new Error(`Unable to authenticate the Firestore service account: ${reason}`);
+    throw new Error(
+      `Unable to authenticate the Firestore service account: ${reason}`,
+    );
   }
 
   const expiresIn = payload.expires_in ?? TOKEN_EXPIRATION_SECONDS;
@@ -398,11 +408,7 @@ export class FirestoreRestError extends Error {
   readonly status: number;
   readonly details?: unknown;
 
-  constructor(
-    message: string,
-    status: number,
-    details?: unknown,
-  ) {
+  constructor(message: string, status: number, details?: unknown) {
     super(message);
     this.name = "FirestoreRestError";
     this.status = status;
@@ -427,7 +433,8 @@ export class FirestoreRestClient {
     const fetcher = options.fetcher ?? fetch;
     this.fetcher = (input, init) => fetcher(input, init);
     this.tokenProvider =
-      options.tokenProvider ?? (() => requestGoogleAccessToken(env, this.fetcher));
+      options.tokenProvider ??
+      (() => requestGoogleAccessToken(env, this.fetcher));
     this.documentIdGenerator =
       options.documentIdGenerator ?? createFirestoreDocumentId;
   }
@@ -493,9 +500,10 @@ export class FirestoreRestClient {
     let cursorValues: FirestoreValue[] | undefined;
 
     while (totalLimit === undefined || documents.length < totalLimit) {
-      const remaining = totalLimit === undefined
-        ? MAX_QUERY_LIMIT
-        : Math.min(MAX_QUERY_LIMIT, totalLimit - documents.length);
+      const remaining =
+        totalLimit === undefined
+          ? MAX_QUERY_LIMIT
+          : Math.min(MAX_QUERY_LIMIT, totalLimit - documents.length);
       const results = await this.request<RunQueryResult[]>(
         `${this.documentsRoot}:runQuery`,
         {
@@ -512,7 +520,7 @@ export class FirestoreRestClient {
         },
       );
       const page = results.flatMap((result) =>
-        result.document ? [result.document] : []
+        result.document ? [result.document] : [],
       );
 
       documents.push(...page.map((document) => decodeDocument<T>(document)));
@@ -614,19 +622,13 @@ export class FirestoreRestClient {
     const orderBy = options.orderBy ?? "__name__";
     assertFieldPath(orderBy);
 
-    if (
-      limit !== undefined &&
-      (!Number.isInteger(limit) || limit < 1)
-    ) {
-      throw new RangeError(
-        "Firestore query limit must be a positive integer.",
-      );
+    if (limit !== undefined && (!Number.isInteger(limit) || limit < 1)) {
+      throw new RangeError("Firestore query limit must be a positive integer.");
     }
 
     const direction = options.direction ?? "ASCENDING";
-    const cursorFieldPaths = orderBy === "__name__"
-      ? ["__name__"]
-      : [orderBy, "__name__"];
+    const cursorFieldPaths =
+      orderBy === "__name__" ? ["__name__"] : [orderBy, "__name__"];
     return this.runPaginatedQuery<T>(
       {
         from: [{ collectionId }],
@@ -659,7 +661,11 @@ export class FirestoreRestClient {
     )?.result?.aggregateFields?.count;
     const count = encodedCount ? decodeFirestoreValue(encodedCount) : undefined;
 
-    if (typeof count !== "number" || !Number.isSafeInteger(count) || count < 0) {
+    if (
+      typeof count !== "number" ||
+      !Number.isSafeInteger(count) ||
+      count < 0
+    ) {
       throw new Error("Firestore returned an invalid document count.");
     }
     return count;
@@ -800,7 +806,9 @@ export class FirestoreRestClient {
     );
   }
 
-  async deleteDocuments(documentNames: string[]): Promise<DeleteDocumentsResult> {
+  async deleteDocuments(
+    documentNames: string[],
+  ): Promise<DeleteDocumentsResult> {
     if (documentNames.length === 0) {
       return { deleted: 0 };
     }
@@ -813,7 +821,9 @@ export class FirestoreRestClient {
 
     const uniqueNames = new Set(documentNames);
     if (uniqueNames.size !== documentNames.length) {
-      throw new TypeError("Firestore delete list contains duplicate documents.");
+      throw new TypeError(
+        "Firestore delete list contains duplicate documents.",
+      );
     }
 
     for (const name of documentNames) {
@@ -851,23 +861,28 @@ export class FirestoreRestClient {
 
     const [collectionId, documentId, ...rest] = counterDocumentPath.split("/");
     if (!collectionId || !documentId || rest.length > 0) {
-      throw new TypeError("Firestore counter path must target a root document.");
+      throw new TypeError(
+        "Firestore counter path must target a root document.",
+      );
     }
-    const existingCounter = await this.getDocument<Record<string, unknown>>(
-      counterDocumentPath,
-    );
+    const existingCounter =
+      await this.getDocument<Record<string, unknown>>(counterDocumentPath);
     const counterName = `${this.documentsRoot}/${collectionId}/${documentId}`;
     if (counterName === documentName) {
-      throw new TypeError("Firestore counter and deleted document must differ.");
+      throw new TypeError(
+        "Firestore counter and deleted document must differ.",
+      );
     }
     const counterWrite = existingCounter
       ? {
           transform: {
             document: existingCounter.name,
-            fieldTransforms: [{
-              fieldPath,
-              increment: encodeFirestoreValue(amount),
-            }],
+            fieldTransforms: [
+              {
+                fieldPath,
+                increment: encodeFirestoreValue(amount),
+              },
+            ],
           },
           currentDocument: { exists: true },
         }
@@ -947,11 +962,14 @@ export class FirestoreRestClient {
       throw new TypeError("Firestore increment amount must be finite.");
     }
 
-    const existing = await this.getDocument<Record<string, unknown>>(documentPath);
+    const existing =
+      await this.getDocument<Record<string, unknown>>(documentPath);
     if (!existing) {
       const [collectionId, documentId, ...rest] = documentPath.split("/");
       if (!collectionId || !documentId || rest.length > 0) {
-        throw new TypeError("Firestore counter path must target a root document.");
+        throw new TypeError(
+          "Firestore counter path must target a root document.",
+        );
       }
 
       return this.request<{ commitTime?: string }>(

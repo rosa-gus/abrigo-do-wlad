@@ -12,7 +12,7 @@ import {
 function createKvEnv() {
   const values = new Map<string, string>();
   const env: CloudflareEnv = {
-    NODE_ENV: "production",
+    APP_ENV: "production",
     KV: {
       async get(key) {
         return values.get(key) ?? null;

@@ -2,7 +2,7 @@ import { afterEach, expect, test, vi } from "vitest";
 import { sendEmail } from "./email";
 
 const env = {
-  NODE_ENV: "production",
+  APP_ENV: "production",
   EMAIL_WEBHOOK_URL: "https://script.google.com/macros/s/test/exec",
   EMAIL_WEBHOOK_SECRET: "test-secret",
 };
@@ -46,15 +46,15 @@ test.each([undefined, false])("sends production notifications without debug when
   expect(JSON.parse(options.body).debug).toBe(false);
 });
 
-test.each(["development", "test", "staging", "", undefined])(
-  "forces debug outside production when NODE_ENV is %s",
-  async (nodeEnv) => {
-    vi.stubEnv("NODE_ENV", undefined);
+test.each(["local", "test", "staging", "", undefined])(
+  "forces debug outside production when APP_ENV is %s",
+  async (appEnv) => {
+    vi.stubEnv("APP_ENV", undefined);
     const fetchMock = vi.fn(async () => Response.json({ ok: true }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await sendEmail(message, { ...env, NODE_ENV: nodeEnv });
-    await sendEmail({ ...message, debug: false }, { ...env, NODE_ENV: nodeEnv });
+    await sendEmail(message, { ...env, APP_ENV: appEnv });
+    await sendEmail({ ...message, debug: false }, { ...env, APP_ENV: appEnv });
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     for (const [, options] of fetchMock.mock.calls) {

@@ -1,0 +1,20 @@
+# Runtime local do Worker público (wrangler.jsonc da raiz).
+# Copie para .dev.vars.local na raiz e preencha os valores de desenvolvimento.
+# No ambiente local, ele substitui .dev.vars por completo.
+# APP_ENV=local é definido no wrangler.jsonc, assim como no admin.
+ALLOWED_ORIGIN=http://localhost:5173
+RECAPTCHA_SECRET_KEY=
+
+# Firestore REST via conta de serviço do projeto de desenvolvimento.
+FIREBASE_PROJECT_ID=abrigo-do-wlad-dev
+FIREBASE_CLIENT_EMAIL=service-account@abrigo-do-wlad-dev.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY=replace-with-json-escaped-private-key
+
+# Deve corresponder à chave usada em system/keys neste banco.
+# Público e admin precisam usar a mesma MASTER_KEY ao acessar o mesmo banco.
+MASTER_KEY=replace-me
+
+# Webhook de e-mail de desenvolvimento e link do painel nas notificações.
+EMAIL_WEBHOOK_URL=
+EMAIL_WEBHOOK_SECRET=
+ADMIN_PANEL_URL=http://127.0.0.1:5174/admin

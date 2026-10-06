@@ -15,7 +15,7 @@ export async function onRequest({
     });
   }
 
-  if (getEnvValue(env, "NODE_ENV") !== "development") {
+  if (getEnvValue(env, "APP_ENV") !== "local") {
     return jsonResponse(HTTP_STATUS.FORBIDDEN, {
       message: "Not available in production",
     });

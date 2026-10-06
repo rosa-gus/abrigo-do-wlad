@@ -16,7 +16,7 @@ function createEnv(): AppEnv {
       },
       async put(): Promise<void> {},
     },
-    NODE_ENV: "production",
+    APP_ENV: "production",
   };
 }
 

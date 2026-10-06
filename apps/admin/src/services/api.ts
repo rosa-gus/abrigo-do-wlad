@@ -11,6 +11,9 @@ export class ApiError extends Error {
 export const ADMIN_MOCK_MODE: boolean =
   import.meta.env.MODE === "mock" && Boolean(import.meta.env.ADMIN_MOCK_MODE);
 
+export const ADMIN_LOCAL_MODE: boolean =
+  import.meta.env.MODE === "local-admin" && Boolean(import.meta.env.ADMIN_LOCAL_MODE);
+
 let mockApiPromise: Promise<typeof import("../mocks/adminApi")> | undefined;
 
 export async function adminFetch(

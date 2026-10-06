@@ -3,6 +3,9 @@
   "name": "abrigo-do-wlad-worker",
   "main": "./index.ts",
   "keep_vars": true,
+  "vars": {
+    "APP_ENV": "production"
+  },
   "compatibility_date": "2026-08-21",
   "compatibility_flags": ["nodejs_compat"],
   "secrets": {
@@ -20,6 +23,27 @@
   ],
   "triggers": {
     "crons": ["0 3 * * *"],
+  },
+  "env": {
+    "local": {
+      "name": "abrigo-do-wlad-cron-local",
+      "vars": {
+        "APP_ENV": "local"
+      },
+      "secrets": {
+        "required": [
+          "FIREBASE_PROJECT_ID",
+          "FIREBASE_CLIENT_EMAIL",
+          "FIREBASE_PRIVATE_KEY"
+        ]
+      },
+      "kv_namespaces": [
+        {
+          "binding": "KV",
+          "id": "8b61d3ad6ba44973a54a94eb5590da5f"
+        }
+      ]
+    }
   },
   "observability": {
     "enabled": true,

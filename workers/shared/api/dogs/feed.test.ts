@@ -3,8 +3,10 @@ import { test, vi } from "vitest";
 
 import type { CloudflareEnv } from "../_lib/env";
 import type { FirestoreDocument } from "../_lib/firestore";
+import { FirestoreRestClient } from "../_lib/firestore";
 import {
   getDogFeedResponse,
+  getCurrentDogFeed,
   paginateDogFeed,
   seededShuffle,
   updateDogFeed,
@@ -29,6 +31,32 @@ function dog(id: string, overrides: Partial<PublicDog> = {}): PublicDog {
   };
 }
 
+test("development rebuilds the feed from Firestore instead of reusing an old unscoped catalog", async () => {
+  const oldFeed: DogFeed = {
+    schemaVersion: 2,
+    version: "2026-08-28",
+    generatedAt: "2026-08-29T00:51:56.926Z",
+    dogs: [dog("production")],
+  };
+  const { env, values } = kvEnv({ "dogs-feed:current": oldFeed });
+  env.APP_ENV = "local";
+  env.FIREBASE_PROJECT_ID = "abrigo-do-wlad-dev";
+  const read = vi.spyOn(FirestoreRestClient.prototype, "listDocuments")
+    .mockResolvedValue([document(dog("development"))]);
+  try {
+    const feed = await getCurrentDogFeed(env);
+    assert.equal(read.mock.calls.length, 1);
+    assert.deepEqual(feed.dogs.map(item => item.id), ["development"]);
+    assert.equal(values.get("dogs-feed:current"), JSON.stringify(oldFeed));
+    assert.equal(
+      values.get("local:abrigo-do-wlad-dev:dogs-feed:current"),
+      JSON.stringify(feed),
+    );
+  } finally {
+    read.mockRestore();
+  }
+});
+
 function document(item: PublicDog): FirestoreDocument<Record<string, unknown>> {
   const { id, ...data } = item;
   return {
@@ -49,7 +77,7 @@ function kvEnv(initial: Record<string, unknown> = {}): {
   const writes: Array<{ key: string; expirationTtl?: number }> = [];
   return {
     env: {
-      NODE_ENV: "production",
+      APP_ENV: "production",
       KV: {
         async get(key) {
           return values.get(key) ?? null;
@@ -311,7 +339,7 @@ test("GET dog feed returns a structured unavailable response when KV fails", asy
     const response = await getDogFeedResponse(
       new Request("https://abrigo.test/api/dogs"),
       {
-        NODE_ENV: "production",
+        APP_ENV: "production",
         KV: {
           async get() {
             throw new Error("KV unavailable");

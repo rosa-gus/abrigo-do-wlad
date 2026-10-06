@@ -645,7 +645,7 @@ async function routeAdminApi(
       );
     }
     if (segments[2] === "recycle-points" && segments.length <= 4) {
-      return handleRecycle(request, env, segments[3]);
+      return await handleRecycle(request, env, segments[3]);
     }
     if (url.pathname === "/api/admin/media/upload") {
       if (request.method !== "POST") return methodNotAllowed(["POST"]);
