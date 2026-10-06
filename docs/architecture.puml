@@ -27,6 +27,7 @@ package "Cloudflare" as cloudflare {
     component "Roteador /api/*" as router
     component "Candidaturas\nvalidação · sanitização · criptografia" as adoption
     component "Consulta do\ncão em destaque" as hero_api
+    component "Leituras públicas\nreciclagem · configurações" as public_data
   }
 
   component "Worker de cron\nabrigo-do-wlad-worker" as cron
@@ -60,6 +61,9 @@ admin_worker --> images : upload assinado · exclusão validada
 spa --> router : GET /api/hero-dog
 router --> hero_api
 hero_api --> kv : lê hero-dog
+spa --> router : GET /api/recycle-points\nGET /api/system/settings
+router --> public_data
+public_data --> firestore : REST · conta de serviço\nsomente campos públicos
 
 spa --> router : POST /api/adoption/create\nIdempotency-Key: UUID v4
 router --> adoption

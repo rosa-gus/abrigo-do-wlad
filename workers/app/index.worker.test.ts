@@ -1,3 +1,4 @@
+import { generateKeyPairSync } from "node:crypto";
 import { env } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -328,4 +329,52 @@ describe("Worker app runtime", () => {
       message: "Request entity too large",
     });
   });
+
+  it("serves public data through REST without exposing private fields", async () => {
+    const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+    const appEnv: AppEnv = {
+      ...createEnv(),
+      FIREBASE_PROJECT_ID: "public-data-runtime",
+      FIREBASE_CLIENT_EMAIL: "runtime@example.test",
+      FIREBASE_PRIVATE_KEY: privateKey.export({ format: "pem", type: "pkcs8" }).toString(),
+    };
+    const requests: string[] = [];
+    vi.stubGlobal("fetch", vi.fn<typeof fetch>(async (input, init) => {
+      const url = String(input);
+      requests.push(url);
+      if (url === "https://oauth2.googleapis.com/token") {
+        return Response.json({ access_token: "synthetic-token", expires_in: 3600 });
+      }
+      expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer synthetic-token");
+      if (url.endsWith("/documents/system/settings")) {
+        return Response.json({
+          name: "projects/public-data-runtime/databases/(default)/documents/system/settings",
+          fields: { acceptingApplications: { booleanValue: false }, privateNote: { stringValue: "secret" } },
+        });
+      }
+      expect(url).toContain("/documents:runQuery");
+      return Response.json([{ document: {
+        name: "projects/public-data-runtime/databases/(default)/documents/recycle_points/point-1",
+        fields: {
+          zone: { stringValue: "Centro" }, neighborhood: { stringValue: "Vila" },
+          address: { stringValue: "Rua 1" }, privateNote: { stringValue: "secret" },
+        },
+      } }]);
+    }));
+    const settings = await worker.fetch(new Request("https://abrigo.test/api/system/settings"), appEnv);
+    expect(settings.status).toBe(200);
+    expect(await settings.json()).toEqual({ acceptingApplications: false });
+    const points = await worker.fetch(new Request("https://abrigo.test/api/recycle-points"), appEnv);
+    expect(points.status).toBe(200);
+    expect(await points.json()).toEqual([{ id: "point-1", zone: "Centro", neighborhood: "Vila", address: "Rua 1" }]);
+    expect(requests.some(url => url.includes("/documents:runQuery"))).toBe(true);
+  });
+
+  it("rejects writes to public data routes before making external requests", async () => {
+    for (const path of ["/api/recycle-points", "/api/system/settings"]) {
+      const response = await worker.fetch(new Request(`https://abrigo.test${path}`, { method: "POST" }), createEnv());
+      expect(response.status).toBe(405);
+    }
+  });
+
 });

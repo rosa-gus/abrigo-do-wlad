@@ -1,29 +1,21 @@
-import { doc } from "firebase/firestore";
-import { db } from "./_lib/firebase";
-import { fetchDocWithCache } from "@/lib/cache";
+import { fetchJsonWithCache } from '@/lib/cache';
 
 export interface SystemSettings {
   acceptingApplications: boolean;
 }
 
+function isSystemSettings(value: unknown): value is SystemSettings {
+  return typeof value === 'object' && value !== null &&
+    'acceptingApplications' in value && typeof value.acceptingApplications === 'boolean';
+}
+
 export async function getSystemSettings(): Promise<SystemSettings> {
-  const defaultSettings: SystemSettings = {
-    acceptingApplications: true, // Default if not found in db
-  };
-
   try {
-    const docRef = doc(db, "system", "settings");
-    const docSnap = await fetchDocWithCache(docRef, "system_settings", 1000 * 60 * 60);
-
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      return {
-        acceptingApplications: data.acceptingApplications ?? true,
-      };
-    }
+    return await fetchJsonWithCache(
+      '/api/system/settings', 'system_settings', isSystemSettings, 60 * 60 * 1000,
+    );
   } catch (error) {
-    console.error("Error fetching system settings:", error);
+    console.error('Error fetching system settings:', error);
+    return { acceptingApplications: true };
   }
-
-  return defaultSettings;
 }

@@ -11,10 +11,6 @@ export default defineConfig(({ command, isPreview, mode }) => {
   if (command === "build") {
     const env = loadEnv(mode, repositoryRoot, "");
     const requiredBuildVars = [
-      "VITE_FIREBASE_API_KEY",
-      "VITE_FIREBASE_AUTH_DOMAIN",
-      "VITE_FIREBASE_PROJECT_ID",
-      "VITE_FIREBASE_APP_ID",
       "VITE_RECAPTCHA_PUBLIC_KEY",
     ];
     const missingBuildVars = requiredBuildVars.filter(

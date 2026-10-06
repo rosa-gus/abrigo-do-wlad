@@ -39,6 +39,19 @@ workers/
 Componentes genéricos compartilhados com o painel administrativo ficam no
 workspace `@jaci/ui`, em [`packages/ui`](../../packages/ui).
 
+O frontend lê pontos de reciclagem e configurações públicas pela API do Worker.
+O Worker acessa o Firestore via REST com conta de serviço e retorna somente os
+campos públicos. O frontend mantém um cache JSON no localStorage por três horas
+para reciclagem e uma hora para configurações, com fallback para dados antigos
+em caso de falha na rede. A autenticação do
+[painel administrativo](../admin/README.md) é feita pelo Cloudflare Access.
+
+Na inicialização, o site remove chaves de versões antigas do cache no seu
+namespace de localStorage. As versões são definidas por domínio em
+`src/lib/storage.ts`; preferências e votos são preservados e precisam de uma
+migração explícita caso seu formato seja alterado. Chaves de versões futuras
+e de outros namespaces também são preservadas.
+
 ## Desenvolvimento local
 
 Na raiz do monorepo:
@@ -50,7 +63,11 @@ npm run dev:public
 ```
 
 O servidor Vite utiliza o plugin do Cloudflare para executar o frontend e o
-Worker da aplicação durante o desenvolvimento.
+Worker da aplicação durante o desenvolvimento. As leituras públicas também
+passam pelo Worker e precisam das credenciais Firestore de runtime locais.
+
+O SDK Firebase é uma dependência de desenvolvimento da raiz, usado somente
+pelos testes das Firestore Rules. Ele não faz parte da aplicação de produção.
 
 ## Variáveis de ambiente
 
@@ -60,12 +77,6 @@ valores aceitos.
 
 ### Build do frontend
 
-- `VITE_FIREBASE_API_KEY`
-- `VITE_FIREBASE_AUTH_DOMAIN`
-- `VITE_FIREBASE_PROJECT_ID`
-- `VITE_FIREBASE_STORAGE_BUCKET`
-- `VITE_FIREBASE_MESSAGING_SENDER_ID`
-- `VITE_FIREBASE_APP_ID`
 - `VITE_RECAPTCHA_PUBLIC_KEY`
 - `VITE_PUBLIC_APP_URL`
 
@@ -108,6 +119,8 @@ os Static Assets da SPA e processa as rotas `/api/*`.
 
 | Método | Rota                            | Função                                                             |
 | ------ | ------------------------------- | ------------------------------------------------------------------ |
+| `GET`  | `/api/recycle-points`           | Retorna os campos públicos dos pontos de reciclagem.              |
+| `GET`  | `/api/system/settings`         | Retorna se o formulário de adoção está aberto.                    |
 | `GET`  | `/api/hero-dog`                 | Retorna o animal em destaque.                                      |
 | `GET`  | `/api/dogs`                     | Retorna uma página filtrada do catálogo rotativo armazenado no KV. |
 | `GET`  | `/api/dogs/by-slug/:publicSlug` | Retorna o perfil público de um cão pelo slug canônico.             |

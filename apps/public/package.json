@@ -15,7 +15,6 @@
     "@cloudinary/react": "^1.14.3",
     "@cloudinary/url-gen": "^1.22.0",
     "@uidotdev/usehooks": "^2.4.1",
-    "firebase": "^12.8.0",
     "lucide-react": "^0.562.0",
     "motion": "^12.34.0",
     "react": "^19.2.0",
