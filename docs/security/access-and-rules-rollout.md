@@ -47,9 +47,11 @@ secrets em `wrangler.jsonc` nem em variáveis `VITE_*`.
    CRUDs com uma identidade de cada papel. Confirme também a negação para uma
    identidade externa.
 4. Com o Worker operacional, publique as Firestore Rules finais. Elas devem
-   permitir ao cliente apenas a leitura de `dogs`, `recycle_points` e
-   `system/settings`; todo o restante permanece negado. A conta de serviço dos
-   Workers é autorizada por IAM, não pelas Rules.
+   permitir leituras diretas apenas de `dogs`, `recycle_points` e
+   `system/settings`; todo o restante permanece negado. O frontend atual usa
+   exclusivamente a API do Worker, sem SDK Firebase. As rotas públicas retornam
+   somente os campos permitidos de reciclagem e configurações. A conta de serviço
+   dos Workers é autorizada por IAM, não pelas Rules.
 5. Inicie o cron com `ADOPTION_CLEANUP_MODE=dry-run`. Revise `matched`, `deleted`
    e `hasMore` nos logs e faça o backup necessário; o dry-run não exclui dados.
 6. Após conferir as candidaturas vencidas, altere o modo para `delete`. Ausência

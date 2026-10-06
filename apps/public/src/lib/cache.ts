@@ -1,122 +1,61 @@
-import { getDocs, getDocsFromCache, getDoc, getDocFromCache } from 'firebase/firestore';
-import type { Query, QuerySnapshot, DocumentReference, DocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { STORAGE_KEYS } from './storage';
 
-const DEFAULT_TTL_MS = 3 * 60 * 60 * 1000; // 3 horas
+const DEFAULT_TTL_MS = 3 * 60 * 60 * 1000;
 
-type CacheKey = string;
+type Validator<T> = (value: unknown) => value is T;
 
-function clearExpiredCacheKeys(ttlThreshold: number = DEFAULT_TTL_MS) {
-  try {
-    const now = Date.now();
-    const prefix = STORAGE_KEYS.CACHE.TTL('');
-    const keysToRemove: string[] = [];
-
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key?.startsWith(prefix)) {
-        const timestampStr = localStorage.getItem(key);
-        const timestamp = timestampStr ? parseInt(timestampStr, 10) : 0;
-
-        if (now - timestamp > ttlThreshold) {
-          keysToRemove.push(key);
-        }
-      }
-    }
-
-    keysToRemove.forEach(key => localStorage.removeItem(key));
-  } catch (e) {
-    console.warn('Falha ao limpar chaves do cache no localStorage:', e);
-  }
+interface CacheEntry<T> {
+  updatedAt: number;
+  data: T;
 }
 
-export async function fetchWithCache<T = DocumentData>(
-  query: Query<T, DocumentData>,
-  cacheKey: CacheKey,
-  ttlMs: number = DEFAULT_TTL_MS
-): Promise<QuerySnapshot<T, DocumentData>> {
-  setTimeout(() => clearExpiredCacheKeys(ttlMs), 0);
-
-  const now = Date.now();
-  const storageKey = STORAGE_KEYS.CACHE.TTL(cacheKey);
-  const lastFetchStr = localStorage.getItem(storageKey);
-  const lastFetch = lastFetchStr ? parseInt(lastFetchStr, 10) : 0;
-
-  const isDevelopment = import.meta.env.PUBLIC_DEV_TOOLS;
-  const isCacheValid = !isDevelopment && (now - lastFetch) < ttlMs;
-
-  if (isCacheValid) {
-    try {
-      // Try retrieving the cached data from Firebase IndexedDB
-      const snapshot = await getDocsFromCache(query);
-      if (!snapshot.empty) {
-        return snapshot;
-      }
-    } catch (e) {
-      console.warn('Falha ao obter do cache local, realizando fetch remoto:', e);
-    }
-  }
-
-  // Failed to read the cache, or it has expired/is empty. Searching the network.
+function readCache<T>(key: string, validate: Validator<T>): CacheEntry<T> | null {
   try {
-    const snapshot = await getDocs(query);
-    localStorage.setItem(storageKey, now.toString());
-    return snapshot;
-  } catch (error: unknown) {
-    console.warn(`[Cache] Fallback ativado para ${cacheKey} devido a erro na rede.`, error);
-    try {
-      const staleSnapshot = await getDocsFromCache(query);
-      if (!staleSnapshot.empty) {
-        return staleSnapshot;
-      }
-    } catch (cacheError) {
-      console.warn(`[Cache] Falha ao recuperar fallback do cache para ${cacheKey}`, cacheError);
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const entry: unknown = JSON.parse(raw);
+    if (
+      typeof entry === 'object' && entry !== null &&
+      'updatedAt' in entry && typeof entry.updatedAt === 'number' &&
+      Number.isFinite(entry.updatedAt) && entry.updatedAt <= Date.now() &&
+      'data' in entry && validate(entry.data)
+    ) {
+      return { updatedAt: entry.updatedAt, data: entry.data };
     }
-    throw error;
+  } catch {
+    // Storage may be unavailable or contain data from an interrupted write.
   }
+  return null;
 }
 
-export async function fetchDocWithCache<T = DocumentData>(
-  docRef: DocumentReference<T, DocumentData>,
-  cacheKey: CacheKey,
-  ttlMs: number = DEFAULT_TTL_MS
-): Promise<DocumentSnapshot<T, DocumentData>> {
-  setTimeout(() => clearExpiredCacheKeys(ttlMs), 0);
-
-  const now = Date.now();
-  const storageKey = STORAGE_KEYS.CACHE.TTL(cacheKey);
-  const lastFetchStr = localStorage.getItem(storageKey);
-  const lastFetch = lastFetchStr ? parseInt(lastFetchStr, 10) : 0;
-
-  const isDevelopment = import.meta.env.PUBLIC_DEV_TOOLS;
-  const isCacheValid = !isDevelopment && (now - lastFetch) < ttlMs;
-
-  if (isCacheValid) {
-    try {
-      const snapshot = await getDocFromCache(docRef);
-      // getDocFromCache throws if it misses, but to be sure:
-      if (snapshot.exists()) {
-        return snapshot;
-      }
-    } catch (e) {
-      console.warn('Falha ao obter documento do cache local, realizando fetch remoto:', e);
-    }
+export async function fetchJsonWithCache<T>(
+  url: string,
+  cacheKey: string,
+  validate: Validator<T>,
+  ttlMs: number = DEFAULT_TTL_MS,
+): Promise<T> {
+  const key = STORAGE_KEYS.CACHE.DATA(cacheKey);
+  const cached = readCache(key, validate);
+  if (
+    cached && !import.meta.env.PUBLIC_DEV_TOOLS &&
+    Date.now() - cached.updatedAt < ttlMs
+  ) {
+    return cached.data;
   }
 
   try {
-    const snapshot = await getDoc(docRef);
-    localStorage.setItem(storageKey, now.toString());
-    return snapshot;
-  } catch (error: unknown) {
-    console.warn(`[Cache] Fallback ativado para documento ${cacheKey} devido a erro na rede.`, error);
+    const response = await fetch(url, { headers: { Accept: 'application/json' } });
+    if (!response.ok) throw new Error(`Falha ao carregar dados (HTTP ${response.status}).`);
+    const data: unknown = await response.json();
+    if (!validate(data)) throw new Error('A API retornou dados públicos inválidos.');
     try {
-      const staleSnapshot = await getDocFromCache(docRef);
-      if (staleSnapshot.exists()) {
-        return staleSnapshot;
-      }
-    } catch (cacheError) {
-      console.warn(`[Cache] Falha ao recuperar fallback do cache do doc para ${cacheKey}`, cacheError);
+      localStorage.setItem(key, JSON.stringify({ updatedAt: Date.now(), data }));
+    } catch {
+      // A storage failure must not discard a successful network response.
     }
+    return data;
+  } catch (error) {
+    if (cached) return cached.data;
     throw error;
   }
 }

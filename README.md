@@ -63,7 +63,7 @@ com uma infraestrutura equivalente.
 - React, TypeScript e Vite
 - CSS Modules, Motion e Lucide React
 - Cloudflare Workers, Static Assets, Cron Triggers, Access e KV
-- Google Cloud Firestore e Firebase Web SDK
+- Google Cloud Firestore via API REST
 - Cloudinary
 
 ## Identidade visual
