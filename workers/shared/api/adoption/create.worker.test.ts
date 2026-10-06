@@ -94,6 +94,7 @@ describe("adoption application runtime", () => {
 
   afterEach(() => {
     expect(blockedFetch).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
 
@@ -168,6 +169,75 @@ describe("adoption application runtime", () => {
     expect(harness.sendNotification).not.toHaveBeenCalled();
   });
 
+  it("rejects an unauthorized origin before processing the application", async () => {
+    const harness = createHarness();
+    const response = await harness.handler({
+      request: createRequest(undefined, { Origin: "https://unauthorized.test" }),
+      env: createEnv(),
+    });
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      message: "Forbidden: Invalid origin",
+    });
+    expect(harness.verifyRecaptcha).not.toHaveBeenCalled();
+    expect(harness.encryptData).not.toHaveBeenCalled();
+    expect(harness.createDocument).not.toHaveBeenCalled();
+    expect(harness.sendNotification).not.toHaveBeenCalled();
+  });
+
+  it.each([401, 403])("handles Firestore HTTP %s without exposing internal details", async (status) => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const createDocument = vi.fn(async () => {
+      throw new FirestoreRestError("Service account permission denied", status);
+    });
+    const harness = createHarness({
+      createFirestoreClient: () => ({ createDocument }),
+    });
+    const response = await harness.handler({
+      request: createRequest(),
+      env: createEnv(),
+    });
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      message: "Error creating adoption application",
+    });
+    expect(harness.sendNotification).not.toHaveBeenCalled();
+  });
+
+  it.each([401, 403, 200])("preserves the application when the webhook refuses authorization with HTTP %s", async (status) => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const webhookFetch = vi.fn(async () =>
+      Response.json({ ok: false, error: "Unauthorized" }, { status }),
+    );
+    vi.stubGlobal("fetch", webhookFetch);
+    const harness = createHarness();
+    // Use the real notification implementation, with mocked persistence and HTTP.
+    const handler = createAdoptionApplicationHandler({
+      createFirestoreClient: () => ({ createDocument: harness.createDocument }),
+      encryptData: harness.encryptData,
+      verifyRecaptcha: harness.verifyRecaptcha,
+      now: () => NOW,
+    });
+    const response = await handler({
+      request: createRequest(),
+      env: createEnv({
+        EMAIL_WEBHOOK_URL: "https://webhook.example.test/email",
+        EMAIL_WEBHOOK_SECRET: "synthetic-invalid-secret",
+      }),
+    });
+
+    expect(response.status).toBe(201);
+    await expect(response.json()).resolves.toEqual({
+      message: "Application submitted successfully",
+      data: { id: IDEMPOTENCY_KEY, notificationEmailSent: false },
+      warning: "A candidatura foi salva, mas a notificação automática falhou. Guarde o ID e entre em contato com o abrigo.",
+    });
+    expect(harness.createDocument).toHaveBeenCalledOnce();
+    expect(webhookFetch).toHaveBeenCalledOnce();
+  });
+
   it("keeps the successful submission when notification fails", async () => {
     const harness = createHarness({
       sendNotification: vi.fn(async () => false),
@@ -204,6 +274,38 @@ describe("adoption application runtime", () => {
       message: "reCAPTCHA validation failed",
     });
     expect(harness.encryptData).not.toHaveBeenCalled();
+    expect(harness.createDocument).not.toHaveBeenCalled();
+  });
+
+  it("allows local development without a CAPTCHA token or secret", async () => {
+    vi.stubGlobal("__ADOPTION_RECAPTCHA_BYPASS__", true);
+    const harness = createHarness();
+    const response = await harness.handler({
+      request: createRequest(JSON.stringify(buildValidAdoptionApplication({
+        captchaToken: "",
+      }))),
+      env: createEnv({ RECAPTCHA_SECRET_KEY: "" }),
+    });
+
+    expect(response.status).toBe(201);
+    expect(harness.verifyRecaptcha).not.toHaveBeenCalled();
+    expect(harness.createDocument).toHaveBeenCalledOnce();
+    expect(harness.sendNotification).toHaveBeenCalledOnce();
+  });
+
+  it("requires CAPTCHA in production even with development NODE_ENV", async () => {
+    vi.stubGlobal("__ADOPTION_RECAPTCHA_BYPASS__", false);
+    const verifyRecaptcha = vi.fn(async () => false);
+    const harness = createHarness({ verifyRecaptcha });
+    const response = await harness.handler({
+      request: createRequest(JSON.stringify(buildValidAdoptionApplication({
+        captchaToken: "",
+      }))),
+      env: createEnv({ NODE_ENV: "development" }),
+    });
+
+    expect(response.status).toBe(400);
+    expect(verifyRecaptcha).toHaveBeenCalledOnce();
     expect(harness.createDocument).not.toHaveBeenCalled();
   });
 

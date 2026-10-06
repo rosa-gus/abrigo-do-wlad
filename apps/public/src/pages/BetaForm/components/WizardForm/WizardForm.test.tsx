@@ -231,6 +231,28 @@ describe("WizardForm", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("envia em desenvolvimento sem carregar ou executar reCAPTCHA", async () => {
+    vi.stubGlobal("__ADOPTION_RECAPTCHA_BYPASS__", true);
+    prepareLastStep();
+    vi.stubGlobal("grecaptcha", undefined);
+    const fetchMock = vi.fn().mockResolvedValue(
+      Response.json({ data: { id: "local-application" } }, { status: 201 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    const { onSubmitSuccess } = renderWizard("/beta/formulario/step/10");
+
+    expect(document.getElementById(RECAPTCHA_SCRIPT_ID)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Enviar Respostas/ }));
+
+    await waitFor(() =>
+      expect(onSubmitSuccess).toHaveBeenCalledWith({
+        applicationId: "local-application",
+      }),
+    );
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).captchaToken).toBe("");
+  });
+
   it("envia o payload validado com CAPTCHA e chave de idempotência", async () => {
     prepareLastStep();
     const { execute } = installRecaptcha("captcha-final");

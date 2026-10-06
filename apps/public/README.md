@@ -66,6 +66,14 @@ O servidor Vite utiliza o plugin do Cloudflare para executar o frontend e o
 Worker da aplicação durante o desenvolvimento. As leituras públicas também
 passam pelo Worker e precisam das credenciais Firestore de runtime locais.
 
+Ao executar `npm run dev:public`, o wizard não carrega o reCAPTCHA e a API pula
+sua verificação. Essa exceção é definida pela configuração do Vite apenas no
+servidor de desenvolvimento: builds, preview e execução direta pelo Wrangler
+continuam exigindo reCAPTCHA, independentemente de `NODE_ENV`. O envio local
+continua validando e salvando a candidatura no Firestore e chama o webhook com
+`debug: true`, para usar o destinatário de testes do Apps Script. Configure as
+credenciais locais de Firestore, criptografia e webhook para testar todo o fluxo.
+
 O SDK Firebase é uma dependência de desenvolvimento da raiz, usado somente
 pelos testes das Firestore Rules. Ele não faz parte da aplicação de produção.
 
@@ -101,8 +109,10 @@ O Worker envia uma requisição `POST` ao Apps Script implantado com `secret`,
 `subject`, `text`, `html` e `debug`. O código do Apps Script é mantido fora deste
 repositório.
 O destinatário é fixado no script: `debug: true` envia para a conta `.dev` e
-qualquer outro valor envia para o abrigo. A rota de teste é a única que envia
-`debug: true` e só funciona em desenvolvimento. O Worker só considera o envio
+qualquer outro valor envia para o abrigo. O wizard no servidor Vite de
+desenvolvimento e a rota de teste enviam `debug: true`; o envio também usa debug
+quando `NODE_ENV` não é `production`. A rota de teste só funciona com
+`NODE_ENV=development`. O Worker só considera o envio
 concluído quando recebe uma resposta JSON com `ok: true`.
 
 Configure `EMAIL_WEBHOOK_URL` e `EMAIL_WEBHOOK_SECRET` como **Secrets** do Worker
