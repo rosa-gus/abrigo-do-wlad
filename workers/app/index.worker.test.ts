@@ -11,7 +11,7 @@ const blockedFetch = vi.fn<typeof fetch>(async () => {
 function createEnv(): AppEnv {
   return {
     KV: env.KV,
-    NODE_ENV: "production",
+    APP_ENV: "production",
     ALLOWED_ORIGIN: "https://abrigo.test",
     RECAPTCHA_SECRET_KEY: "synthetic-recaptcha-secret",
     ASSETS: {

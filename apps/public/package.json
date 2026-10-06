@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "CLOUDFLARE_ENV=local CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV=false vite",
     "build": "tsc -b && CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV=false vite build",
     "lint": "eslint src vite.config.ts",
     "preview": "vite preview"

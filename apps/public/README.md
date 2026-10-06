@@ -59,17 +59,33 @@ Na raiz do monorepo:
 ```bash
 npm install
 cp .env.example .env
+cp .dev.vars.example .dev.vars.local
 npm run dev:public
 ```
 
 O servidor Vite utiliza o plugin do Cloudflare para executar o frontend e o
 Worker da aplicação durante o desenvolvimento. As leituras públicas também
 passam pelo Worker e precisam das credenciais Firestore de runtime locais.
+Os comandos de cópia são para a configuração inicial. Preencha `.env` somente
+com valores públicos de build e `.dev.vars.local` com os valores de runtime de
+desenvolvimento antes de iniciar o servidor.
+
+`dev:public` seleciona o ambiente Cloudflare `local` e desativa a leitura de
+segredos do `.env`. O Worker carrega `.dev.vars.local` da raiz quando ele existe;
+caso contrário, usa `.dev.vars` da raiz. Não há mesclagem entre esses arquivos:
+`.dev.vars.local` precisa conter todos os segredos necessários. Essa seleção
+segue a [precedência de arquivos do Cloudflare](https://developers.cloudflare.com/workers/local-development/environment-variables/).
+O Vite continua lendo `.env` para as variáveis públicas `VITE_*`.
+
+O KV local persiste entre reinicializações. Suas chaves de desenvolvimento são
+separadas por projeto Firebase, para que trocar as credenciais não reutilize
+catálogos de outro banco. Ao iniciar com um projeto sem catálogo nesse espaço,
+a API lê o Firestore e cria o cache correspondente.
 
 Ao executar `npm run dev:public`, o wizard não carrega o reCAPTCHA e a API pula
 sua verificação. Essa exceção é definida pela configuração do Vite apenas no
 servidor de desenvolvimento: builds, preview e execução direta pelo Wrangler
-continuam exigindo reCAPTCHA, independentemente de `NODE_ENV`. O envio local
+continuam exigindo reCAPTCHA, independentemente de `APP_ENV`. O envio local
 continua validando e salvando a candidatura no Firestore e chama o webhook com
 `debug: true`, para usar o destinatário de testes do Apps Script. Configure as
 credenciais locais de Firestore, criptografia e webhook para testar todo o fluxo.
@@ -79,14 +95,17 @@ pelos testes das Firestore Rules. Ele não faz parte da aplicação de produçã
 
 ## Variáveis de ambiente
 
-As variáveis `VITE_*` são incorporadas ao bundle e, portanto, são públicas. O
-arquivo [`.env.example`](../../.env.example) contém a relação completa de
-valores aceitos.
+As variáveis `VITE_*` são incorporadas ao bundle e, portanto, são públicas.
+[`.env.example`](../../.env.example) documenta o build dos frontends;
+[`.dev.vars.example`](../../.dev.vars.example) documenta o runtime do Worker
+público. Ambos ficam na raiz, junto ao `wrangler.jsonc` público. As variáveis
+exclusivas do admin estão em
+[`apps/admin/.dev.vars.example`](../admin/.dev.vars.example).
 
 ### Build do frontend
 
 - `VITE_RECAPTCHA_PUBLIC_KEY`
-- `VITE_PUBLIC_APP_URL`
+- `VITE_PUBLIC_APP_URL` (usada pelo admin para abrir o site público)
 
 ### Runtime do Worker público
 
@@ -103,6 +122,16 @@ valores aceitos.
 Credenciais privadas pertencem ao runtime do Worker e não devem utilizar o
 prefixo `VITE_` nem ser versionadas.
 
+Quando público e admin acessam o mesmo Firestore, configure em ambos a
+`MASTER_KEY` que protege as chaves de `system/keys`. Ter credenciais Firestore
+válidas não garante que a chave de criptografia corresponda ao banco.
+
+`PUBLIC_DEV_TOOLS` é definido pelo Vite e não precisa de variável local.
+`APP_ENV` é configurado no runtime pelo `wrangler.jsonc`: `local` no
+ambiente `local` e `production` no Worker padrão. A opção
+`ADOPTION_CLEANUP_MODE` pertence ao Worker cron: configure-a no runtime dele
+como `disabled` (padrão), `dry-run` ou `delete`.
+
 ### Notificações por e-mail
 
 O Worker envia uma requisição `POST` ao Apps Script implantado com `secret`,
@@ -111,15 +140,15 @@ repositório.
 O destinatário é fixado no script: `debug: true` envia para a conta `.dev` e
 qualquer outro valor envia para o abrigo. O wizard no servidor Vite de
 desenvolvimento e a rota de teste enviam `debug: true`; o envio também usa debug
-quando `NODE_ENV` não é `production`. A rota de teste só funciona com
-`NODE_ENV=development`. O Worker só considera o envio
+quando `APP_ENV` não é `production`. A rota de teste só funciona com
+`APP_ENV=local`. O Worker só considera o envio
 concluído quando recebe uma resposta JSON com `ok: true`.
 
 Configure `EMAIL_WEBHOOK_URL` e `EMAIL_WEBHOOK_SECRET` como **Secrets** do Worker
 público na Dashboard da Cloudflare. O segundo valor deve ser o mesmo da
 propriedade `EMAIL_WEBHOOK_SECRET` no Apps Script. Não coloque a URL de produção
 em `wrangler.jsonc` ou em arquivos locais de desenvolvimento. Para testar
-localmente, use valores locais em `.dev.vars`; a rota de teste usa a conta `.dev`
+localmente, use valores locais em `.dev.vars.local`; a rota de teste usa a conta `.dev`
 mesmo quando aponta para o script de produção.
 
 ## API pública

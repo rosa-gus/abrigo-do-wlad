@@ -4,7 +4,7 @@
   "main": "./workers/app/index.ts",
   "keep_vars": true,
   "vars": {
-    "NODE_ENV": "production"
+    "APP_ENV": "production"
   },
   "compatibility_date": "2026-08-19",
   "compatibility_flags": ["nodejs_compat"],
@@ -33,6 +33,33 @@
       "id": "8b61d3ad6ba44973a54a94eb5590da5f",
     },
   ],
+  "env": {
+    "local": {
+      "name": "abrigo-do-wlad-local",
+      "vars": {
+        "APP_ENV": "local"
+      },
+      "secrets": {
+        "required": [
+          "ALLOWED_ORIGIN",
+          "RECAPTCHA_SECRET_KEY",
+          "MASTER_KEY",
+          "FIREBASE_PROJECT_ID",
+          "FIREBASE_CLIENT_EMAIL",
+          "FIREBASE_PRIVATE_KEY",
+          "EMAIL_WEBHOOK_URL",
+          "EMAIL_WEBHOOK_SECRET",
+          "ADMIN_PANEL_URL"
+        ]
+      },
+      "kv_namespaces": [
+        {
+          "binding": "KV",
+          "id": "8b61d3ad6ba44973a54a94eb5590da5f"
+        }
+      ]
+    }
+  },
   "observability": {
     "enabled": false,
     "head_sampling_rate": 1,

@@ -14,7 +14,7 @@ export default defineConfig({
       },
       miniflare: {
         bindings: {
-          NODE_ENV: "test",
+          APP_ENV: "test",
           ALLOWED_ORIGIN: "https://abrigo.test",
           RECAPTCHA_SECRET_KEY: "synthetic-recaptcha-secret",
           MASTER_KEY: "synthetic-master-key",

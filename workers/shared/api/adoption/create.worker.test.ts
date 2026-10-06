@@ -18,7 +18,7 @@ const blockedFetch = vi.fn<typeof fetch>(async () => {
 function createEnv(overrides: Partial<CloudflareEnv> = {}): CloudflareEnv {
   return {
     KV: env.KV,
-    NODE_ENV: "test",
+    APP_ENV: "test",
     ALLOWED_ORIGIN: "https://abrigo.test",
     RECAPTCHA_SECRET_KEY: "synthetic-recaptcha-secret",
     ...overrides,
@@ -293,7 +293,7 @@ describe("adoption application runtime", () => {
     expect(harness.sendNotification).toHaveBeenCalledOnce();
   });
 
-  it("requires CAPTCHA in production even with development NODE_ENV", async () => {
+  it("requires CAPTCHA in production even with local APP_ENV", async () => {
     vi.stubGlobal("__ADOPTION_RECAPTCHA_BYPASS__", false);
     const verifyRecaptcha = vi.fn(async () => false);
     const harness = createHarness({ verifyRecaptcha });
@@ -301,7 +301,7 @@ describe("adoption application runtime", () => {
       request: createRequest(JSON.stringify(buildValidAdoptionApplication({
         captchaToken: "",
       }))),
-      env: createEnv({ NODE_ENV: "development" }),
+      env: createEnv({ APP_ENV: "local" }),
     });
 
     expect(response.status).toBe(400);

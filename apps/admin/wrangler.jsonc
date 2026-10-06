@@ -3,6 +3,9 @@
   "name": "abrigo-do-wlad-admin",
   "main": "./worker/index.ts",
   "keep_vars": true,
+  "vars": {
+    "APP_ENV": "production"
+  },
   "compatibility_date": "2026-08-21",
   "compatibility_flags": ["nodejs_compat"],
   "secrets": {
@@ -71,7 +74,14 @@
       ],
       "secrets": {
         "required": []
-      }
+      },
+      "ratelimits": [
+        {
+          "name": "UPLOAD_RATE_LIMITER",
+          "namespace_id": "741903",
+          "simple": { "limit": 12, "period": 60 }
+        }
+      ]
     }
   }
 }

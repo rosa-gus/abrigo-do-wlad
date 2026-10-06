@@ -64,6 +64,7 @@ export async function handleAdminApi(
   request: Request,
   env: Env,
   executionContext?: Pick<ExecutionContext, "waitUntil">,
+  authenticate: AssetAuthenticator = authenticateAccessRequest,
 ): Promise<Response> {
   const url = new URL(request.url);
 
@@ -79,7 +80,7 @@ export async function handleAdminApi(
   }
 
   try {
-    const identity = await authenticateAccessRequest(request, env);
+    const identity = await authenticate(request, env);
     if (url.pathname === "/api/session") {
       return jsonResponse(200, {
         email: identity.email,
@@ -99,7 +100,7 @@ export async function handleAdminApi(
 }
 
 export default {
-  async fetch(request, env, ctx): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: Pick<ExecutionContext, "waitUntil">): Promise<Response> {
     const url = new URL(request.url);
 
     if (url.pathname.startsWith("/api/")) {
