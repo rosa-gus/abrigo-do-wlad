@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Archive, ArchiveRestore, CircleAlert, Search } from "lucide-react";
+import { Archive, ArchiveRestore, CircleAlert, RefreshCw, Search } from "lucide-react";
 import { Badge } from "@jaci/ui/Badge";
 import { Button } from "@jaci/ui/Button";
 import { Input } from "@jaci/ui/Field";
@@ -84,13 +84,19 @@ export default function DogArchive() {
         <EmptyState
           role="alert"
           size="lg"
-          icon={<CircleAlert color="var(--error)" />}
+          icon={<CircleAlert />}
           title={loadError}
-          actions={<Button variant="secondary" onClick={() => {
-            setLoading(true);
-            setLoadError(null);
-            setReloadToken((value) => value + 1);
-          }}>Tentar novamente</Button>}
+          actions={<Button
+            type="button"
+            variant="outline"
+            size="sm"
+            leftIcon={<RefreshCw size={16} aria-hidden="true" />}
+            onClick={() => {
+              setLoading(true);
+              setLoadError(null);
+              setReloadToken((value) => value + 1);
+            }}
+          >Tentar novamente</Button>}
         />
       )}
       {!loading && !loadError && filteredDogs.length === 0 && (

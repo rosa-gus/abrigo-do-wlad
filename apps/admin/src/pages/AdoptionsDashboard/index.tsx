@@ -420,11 +420,13 @@ export default function AdoptionsDashboard() {
         <EmptyState
           role="alert"
           size="lg"
-          icon={<Lucide.CircleAlert color="var(--error)" />}
+          icon={<Lucide.CircleAlert />}
           title={listError}
           actions={<Button
             type="button"
-            variant="secondary"
+            variant="outline"
+            size="sm"
+            leftIcon={<Lucide.RefreshCw size={16} aria-hidden="true" />}
             onClick={() => {
               setLoading(true);
               setListError(null);
@@ -680,7 +682,10 @@ export default function AdoptionsDashboard() {
                   </CardBody>
                 </Card>
                 <Button
-                  variant="secondary"
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<Lucide.RefreshCw size={16} aria-hidden="true" />}
                   onClick={() => void openReview(selectedSummary)}
                 >
                   Tentar novamente

@@ -14,7 +14,9 @@ const MAX_BATCH_SIZE = 500;
 type ExpiredApplication = FirestoreDocument<Record<string, unknown>>;
 
 export interface AdoptionCleanupRepository {
-  deleteDocuments(documentNames: string[]): Promise<DeleteDocumentsResult>;
+  deleteDocumentsIfUnchanged(
+    documents: Array<{ name: string; updateTime: string }>,
+  ): Promise<DeleteDocumentsResult>;
   findExpiredApplications(
     cutoff: Date,
     limit: number,
@@ -45,8 +47,8 @@ const productionDependencies: AdoptionCleanupDependencies = {
     const firestore = createFirestoreClient(env);
 
     return {
-      deleteDocuments: (documentNames) =>
-        firestore.deleteDocuments(documentNames),
+      deleteDocumentsIfUnchanged: (documents) =>
+        firestore.deleteDocumentsIfUnchanged(documents),
       findExpiredApplications: (cutoff, limit) =>
         firestore.findDocumentsByTimestampBefore<Record<string, unknown>>(
           ADOPTION_APPLICATIONS_COLLECTION,
@@ -114,8 +116,13 @@ export async function cleanupExpiredAdoptionApplications(
       };
     }
 
-    const deletion = await firestore.deleteDocuments(
-      documents.map((document: ExpiredApplication) => document.name),
+    const deletion = await firestore.deleteDocumentsIfUnchanged(
+      documents.map((document) => {
+        if (typeof document.updateTime !== "string" || !Number.isFinite(Date.parse(document.updateTime))) {
+          throw new Error(`Expired application ${document.id} is missing a valid update time.`);
+        }
+        return { name: document.name, updateTime: document.updateTime };
+      }),
     );
     matched += documents.length;
     deleted += deletion.deleted;

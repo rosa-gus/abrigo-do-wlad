@@ -11,14 +11,14 @@ export interface AdoptionRequestSummary {
 }
 
 export interface AdoptionRequest extends AdoptionRequestSummary {
-  idade?: string;
+  idade?: number | string;
   estado_civil?: string;
   profissao?: string;
   empresa?: string;
   endereco?: string;
   email?: string;
   redes_sociais?: string;
-  qtd_adultos?: string;
+  qtd_adultos?: number | string;
   criancas?: string;
   renda_mensal?: string;
   acordo?: string;

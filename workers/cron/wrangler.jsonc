@@ -28,7 +28,9 @@
     "local": {
       "name": "abrigo-do-wlad-cron-local",
       "vars": {
-        "APP_ENV": "local"
+        "APP_ENV": "local",
+        "DOG_PURGE_MODE": "dry-run",
+        "ADOPTION_CLEANUP_MODE": "dry-run"
       },
       "secrets": {
         "required": [

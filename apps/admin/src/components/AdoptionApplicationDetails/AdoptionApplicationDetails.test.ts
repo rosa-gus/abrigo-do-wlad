@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test } from "vitest";
-import { stepSchemas } from "../../../../public/src/pages/BetaForm/components/WizardForm/schema";
+import { step1Schema, step2Schema, stepSchemas } from "../../../../public/src/pages/BetaForm/components/WizardForm/schema";
 import { ADOPTION_REVIEW_STEPS, AdoptionDetailsSection } from ".";
 
 describe("adoption application review metadata", () => {
@@ -33,5 +33,34 @@ describe("adoption application review metadata", () => {
     expect(html).toContain(">Nome do adotante</span>");
     expect(html).toContain(">Lívia Martins</dd>");
     expect(html).toContain(">Não informado</dd>");
+  });
+
+  test("renders numeric answers produced by the public form", () => {
+    const application = {
+      id: "application-numeric",
+      idade: step1Schema.shape.idade.parse("28"),
+      qtd_adultos: step2Schema.shape.qtd_adultos.parse("2"),
+    };
+
+    const html = ADOPTION_REVIEW_STEPS.slice(0, 2).map((step) =>
+      renderToStaticMarkup(createElement(AdoptionDetailsSection, { application, step })),
+    ).join("");
+
+    expect(html).toContain(">28</dd>");
+    expect(html).toContain(">2</dd>");
+  });
+
+  test.each([
+    [0, "0"],
+    ["28", "28"],
+    ["   ", "Não informado"],
+    [undefined, "Não informado"],
+  ])("renders age %j without treating zero as missing", (idade, expected) => {
+    const html = renderToStaticMarkup(createElement(AdoptionDetailsSection, {
+      application: { id: "application-age", idade },
+      step: { ...ADOPTION_REVIEW_STEPS[0], fields: [{ key: "idade", label: "Idade" }] },
+    }));
+
+    expect(html).toContain(`>${expected}</dd>`);
   });
 });

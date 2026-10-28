@@ -169,8 +169,9 @@ function splitFieldLabel(label: string): { number: string | null; question: stri
   };
 }
 
-function DataItem({ label, value }: { label: string; value?: string }) {
-  const hasValue = Boolean(value?.trim());
+function DataItem({ label, value }: { label: string; value?: string | number }) {
+  const displayValue = value == null ? "" : String(value);
+  const hasValue = Boolean(displayValue.trim());
   const { number, question } = splitFieldLabel(label);
 
   return (
@@ -180,7 +181,7 @@ function DataItem({ label, value }: { label: string; value?: string }) {
         <span className={styles.fieldQuestion}>{question}</span>
       </dt>
       <dd className={`${styles.dataValue} ${!hasValue ? styles.missingValue : ""}`}>
-        {hasValue ? value : "Não informado"}
+        {hasValue ? displayValue : "Não informado"}
       </dd>
     </div>
   );
