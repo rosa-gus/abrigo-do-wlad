@@ -15,6 +15,9 @@ function collectFiles(directory) {
       return excludedDirectories.has(entry.name) ? [] : collectFiles(path);
     }
     if (!entry.isFile() || excludedFiles.has(entry.name)) return [];
+    // Wrangler's per-environment runtime files are ignored by git, like .dev.vars.
+    // Keep scanning the versioned example so it cannot accidentally hold secrets.
+    if (entry.name.startsWith(".dev.vars.") && entry.name !== ".dev.vars.example") return [];
     return [relative(process.cwd(), path)];
   });
 }

@@ -18,3 +18,7 @@ MASTER_KEY=replace-me
 EMAIL_WEBHOOK_URL=
 EMAIL_WEBHOOK_SECRET=
 ADMIN_PANEL_URL=http://127.0.0.1:5174/admin
+
+# Limpezas do cron: disabled (padrão), dry-run ou delete.
+ADOPTION_CLEANUP_MODE=disabled
+DOG_PURGE_MODE=disabled
