@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
+import { FirestoreRestClient, FirestoreRestError } from "../_lib/firestore";
 
 import {
   cleanupExpiredAdoptionApplications,
@@ -15,6 +16,7 @@ function application(id: string) {
   return {
     id,
     name: `${DOCUMENT_ROOT}/${id}`,
+    updateTime: "2026-08-20T00:00:01.000Z",
     data: { expiresAt: "2026-08-20T00:00:00.000Z" },
   };
 }
@@ -29,9 +31,12 @@ function createDependencies(
   const deletedNames: string[] = [];
   const requestedLimits: number[] = [];
   const repository: AdoptionCleanupRepository = {
-    async deleteDocuments(documentNames) {
-      deletedNames.push(...documentNames);
-      return { deleted: documentNames.length };
+    async deleteDocumentsIfUnchanged(documents) {
+      for (const document of documents) {
+        assert.equal(document.updateTime, "2026-08-20T00:00:01.000Z");
+      }
+      deletedNames.push(...documents.map((document) => document.name));
+      return { deleted: documents.length };
     },
     async findExpiredApplications(cutoff, limit) {
       assert.equal(cutoff.toISOString(), CUTOFF.toISOString());
@@ -135,4 +140,49 @@ test("cleanup validates bounds before creating the Firestore client", async () =
     /batchSize must be between 1 and 500/,
   );
   assert.equal(clientCreated, false);
+});
+
+test("cleanup rejects documents without a valid read version before deleting the batch", async () => {
+  const document = application("missing-version");
+  document.updateTime = "";
+  const fixture = createDependencies([[application("valid"), document]]);
+
+  await assert.rejects(
+    () => cleanupExpiredAdoptionApplications(undefined, { cutoff: CUTOFF }, fixture.dependencies),
+    /missing a valid update time/,
+  );
+  assert.deepEqual(fixture.deletedNames, []);
+});
+
+test("cleanup sends read-version preconditions and propagates concurrent-change failures", async () => {
+  const document = application("reopened");
+  let commits = 0;
+  const client = new FirestoreRestClient("test-project", {
+    tokenProvider: async () => "test-token",
+    fetcher: async (_input, init) => {
+      commits += 1;
+      assert.deepEqual(JSON.parse(String(init?.body)), {
+        writes: [{
+          delete: document.name,
+          currentDocument: { updateTime: document.updateTime },
+        }],
+      });
+      return Response.json(
+        { error: { status: "FAILED_PRECONDITION", message: "Document changed since read" } },
+        { status: 400 },
+      );
+    },
+  });
+  const dependencies: AdoptionCleanupDependencies = {
+    createFirestoreClient: () => ({
+      findExpiredApplications: async () => [document],
+      deleteDocumentsIfUnchanged: (documents) => client.deleteDocumentsIfUnchanged(documents),
+    }),
+  };
+
+  await assert.rejects(
+    () => cleanupExpiredAdoptionApplications(undefined, { cutoff: CUTOFF }, dependencies),
+    (error: unknown) => error instanceof FirestoreRestError && /Document changed/.test(error.message),
+  );
+  assert.equal(commits, 1);
 });

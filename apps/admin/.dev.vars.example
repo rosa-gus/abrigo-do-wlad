@@ -1,4 +1,10 @@
+# Runtime local do Worker admin (apps/admin/wrangler.jsonc).
+# Copie para .dev.vars.local nesta pasta.
+# Build dos frontends: veja ../../.env.example.
+# APP_ENV=local é definido no wrangler.jsonc, assim como no público.
+
 # Valores não secretos fornecidos pela aplicação Access no Zero Trust.
+# Necessários em dev:admin; dispensados em dev:admin:local.
 CF_ACCESS_TEAM_DOMAIN=your-team.cloudflareaccess.com
 CF_ACCESS_AUD=your-access-application-audience
 
@@ -7,9 +13,11 @@ ADMIN_DEVELOPER_EMAILS=developer-one@example.test,developer-two@example.test
 ADMIN_ADMINISTRATOR_EMAILS=administrator@example.test
 
 # Firestore REST (segredos locais; em produção use wrangler secret/dashboard)
-FIREBASE_PROJECT_ID=your-project-id
-FIREBASE_CLIENT_EMAIL=service-account@example.test
+# dev:admin:local aceita somente este projeto e uma conta de serviço dele.
+FIREBASE_PROJECT_ID=abrigo-do-wlad-dev
+FIREBASE_CLIENT_EMAIL=service-account@abrigo-do-wlad-dev.iam.gserviceaccount.com
 FIREBASE_PRIVATE_KEY=replace-with-json-escaped-private-key
+# Deve corresponder à chave usada em system/keys neste banco e pelo Worker público.
 MASTER_KEY=replace-me
 
 # Cloudinary assinado no Worker

@@ -65,6 +65,14 @@ function getKvBinding(env?: CloudflareEnv): KvStore | null {
 
 export function getKvStore(env?: CloudflareEnv): KvCacheStore {
   const kv = getKvBinding(env);
+  const isLocal = getEnvValue(env, "APP_ENV") === "local";
+  const localProject = getEnvValue(env, "FIREBASE_PROJECT_ID")?.trim();
+  // Local KV persists across restarts and changes of Firestore credentials.
+  // Keep development projects away from old, unscoped production snapshots.
+  const keyPrefix = isLocal
+    ? `local:${localProject || "unconfigured"}:`
+    : "";
+  const storageKey = (key: string): string => `${keyPrefix}${key}`;
 
   const mockStore = new Map<string, string>();
   const mockExpirations = new Map<string, number>();
@@ -153,14 +161,14 @@ export function getKvStore(env?: CloudflareEnv): KvCacheStore {
     delete: async (key) => {
       if (!kv) throw new Error("Cloudflare KV binding is not configured.");
       if (!kv.delete) throw new Error("Cloudflare KV delete is not available.");
-      await kv.delete(key);
+      await kv.delete(storageKey(key));
     },
     get: async <T>(key: string): Promise<T | null> => {
       if (!kv) {
         throw new Error("Cloudflare KV binding is not configured.");
       }
 
-      const value = await kv.get(key);
+      const value = await kv.get(storageKey(key));
       return fromKvPayload<T>(value);
     },
     set: async (
@@ -172,7 +180,7 @@ export function getKvStore(env?: CloudflareEnv): KvCacheStore {
         throw new Error("Cloudflare KV binding is not configured.");
       }
 
-      await kv.put(key, toKvPayload(value), options);
+      await kv.put(storageKey(key), toKvPayload(value), options);
       return "OK";
     },
     incr: async (key: string): Promise<number> => {
@@ -180,10 +188,10 @@ export function getKvStore(env?: CloudflareEnv): KvCacheStore {
         throw new Error("Cloudflare KV binding is not configured.");
       }
 
-      const current = Number(await kv.get(key)) || 0;
+      const current = Number(await kv.get(storageKey(key))) || 0;
       const next = current + 1;
 
-      await kv.put(key, String(next));
+      await kv.put(storageKey(key), String(next));
       return next;
     },
     expire: async (key: string, seconds: number): Promise<number> => {
@@ -191,23 +199,23 @@ export function getKvStore(env?: CloudflareEnv): KvCacheStore {
         throw new Error("Cloudflare KV binding is not configured.");
       }
 
-      const current = await kv.get(key);
+      const current = await kv.get(storageKey(key));
 
       if (current === null) {
         return 0;
       }
 
-      await kv.put(key, current, { expirationTtl: seconds });
+      await kv.put(storageKey(key), current, { expirationTtl: seconds });
       return 1;
     },
   };
 
   if (!kv) {
-    if (env && getEnvValue(env, "NODE_ENV") === "production") {
+    if (env && getEnvValue(env, "APP_ENV") === "production") {
       throw new Error("Cloudflare KV binding not found in production environment.");
     }
 
-    if (getEnvValue(env, "NODE_ENV") !== "production") {
+    if (getEnvValue(env, "APP_ENV") !== "production") {
       console.warn(
         "Cloudflare KV binding not found. Falling back to in-memory mock store.",
       );

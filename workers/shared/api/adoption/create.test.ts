@@ -36,7 +36,7 @@ test("rejects an invalid idempotency key before processing", async () => {
     }),
     env: {
       ALLOWED_ORIGIN: "https://abrigo.test",
-      NODE_ENV: "production",
+      APP_ENV: "production",
       KV: {
         async get(): Promise<null> {
           return null;
@@ -65,7 +65,7 @@ test("applies the shared rate limit before processing an application", async () 
     }),
     env: {
       ALLOWED_ORIGIN: "https://abrigo.test",
-      NODE_ENV: "production",
+      APP_ENV: "production",
       KV: {
         async get(): Promise<string> {
           return "5";

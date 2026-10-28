@@ -4,7 +4,7 @@ import { getEnvValue } from "./env";
 export const MAX_REQUEST_SIZE = 50 * 1024; // 50KB
 export const RATE_LIMIT_WINDOW = 60; // segundos
 export const MAX_REQUESTS_PER_WINDOW = 5;
-export const ADOPTION_EXPIRATION_DAYS = 30;
+export { ADOPTION_EXPIRATION_DAYS } from "../adoption/retention";
 
 export function getAllowedOrigins(env?: CloudflareEnv): string[] {
   const origin = getEnvValue(env, "ALLOWED_ORIGIN", "http://localhost:5173");

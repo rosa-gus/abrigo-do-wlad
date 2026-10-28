@@ -206,7 +206,7 @@ export async function verifyRecaptcha(
       "error-codes"?: string[];
     };
 
-    if (getEnvValue(env, "NODE_ENV") === "development") {
+    if (getEnvValue(env, "APP_ENV") === "local") {
       console.log("reCAPTCHA Google Response:", data);
     }
 

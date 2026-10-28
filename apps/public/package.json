@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "CLOUDFLARE_ENV=local CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV=false vite",
     "build": "tsc -b && CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV=false vite build",
     "lint": "eslint src vite.config.ts",
     "preview": "vite preview"
@@ -15,7 +15,6 @@
     "@cloudinary/react": "^1.14.3",
     "@cloudinary/url-gen": "^1.22.0",
     "@uidotdev/usehooks": "^2.4.1",
-    "firebase": "^12.8.0",
     "lucide-react": "^0.562.0",
     "motion": "^12.34.0",
     "react": "^19.2.0",

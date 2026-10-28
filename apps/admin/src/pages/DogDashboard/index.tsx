@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router";
-import { CircleAlert, Plus, Dog, Search } from "lucide-react";
+import { CircleAlert, Plus, Dog, RefreshCw, Search } from "lucide-react";
 import { Badge } from "@jaci/ui/Badge";
 import { Button } from "@jaci/ui/Button";
 import { Input } from "@jaci/ui/Field";
@@ -147,11 +147,13 @@ export default function DogDashboard() {
         <EmptyState
           role="alert"
           size="lg"
-          icon={<CircleAlert color="var(--error)" />}
+          icon={<CircleAlert />}
           title={loadError}
           actions={<Button
             type="button"
-            variant="secondary"
+            variant="outline"
+            size="sm"
+            leftIcon={<RefreshCw size={16} aria-hidden="true" />}
             onClick={() => {
               setLoading(true);
               setLoadError(null);

@@ -11,6 +11,7 @@ import {
   HeartHandshake,
   Info,
   Recycle,
+  RefreshCw,
   AlertTriangle,
   type LucideIcon,
 } from "lucide-react";
@@ -100,24 +101,27 @@ export default function Dashboard() {
       {loading ? (
         <p style={{ color: "var(--text-muted)" }}>Carregando dados...</p>
       ) : loadError ? (
-        <Card variant="callout" tone="danger" size="sm" role="alert">
-          <CardBody>
-            <CardContent>
-              <p>{loadError}</p>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => {
-                  setLoading(true);
-                  setLoadError(null);
-                  setReloadToken(token => token + 1);
-                }}
-              >
-                Tentar novamente
-              </Button>
-            </CardContent>
-          </CardBody>
-        </Card>
+        <EmptyState
+          role="alert"
+          size="lg"
+          icon={<CircleAlert />}
+          title={loadError}
+          actions={
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              leftIcon={<RefreshCw size={16} aria-hidden="true" />}
+              onClick={() => {
+                setLoading(true);
+                setLoadError(null);
+                setReloadToken(token => token + 1);
+              }}
+            >
+              Tentar novamente
+            </Button>
+          }
+        />
       ) : (
         <div className={styles.metricsGrid}>
           <Card variant="default" size="sm" className={styles.metricCard}>

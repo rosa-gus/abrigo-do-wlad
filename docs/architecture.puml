@@ -27,6 +27,8 @@ package "Cloudflare" as cloudflare {
     component "Roteador /api/*" as router
     component "Candidaturas\nvalidação · sanitização · criptografia" as adoption
     component "Consulta do\ncão em destaque" as hero_api
+    component "Catálogo e perfis\npúblicos de cães" as dogs_api
+    component "Leituras públicas\nreciclagem · configurações" as public_data
   }
 
   component "Worker de cron\nabrigo-do-wlad-worker" as cron
@@ -35,12 +37,13 @@ package "Cloudflare" as cloudflare {
     component "SPA administrativa" as admin_spa
     component "Worker admin\nRBAC · CRUD · mídia" as admin_worker
   }
-  database "Cloudflare KV\nrate limit · hero-dog" as kv
+  database "Cloudflare KV\nrate limit · destaque · catálogo\nslugs · tombstones" as kv
 }
 
 package "Google" as google {
   component "reCAPTCHA v3" as recaptcha
   database "Firestore\ndogs · adoption_application" as firestore
+  component "Apps Script\nwebhook de e-mail" as email_webhook
 }
 
 package "Cloudinary" as cloudinary {
@@ -55,21 +58,30 @@ candidate --> spa : navega e preenche o formulário
 staff --> access : autentica
 access --> admin_spa : identidade autorizada
 admin_spa --> admin_worker : /api/session · /api/admin/*
-admin_worker --> firestore : conta de serviço\nCRUD + descriptografia
+admin_worker --> firestore : REST · conta de serviço\nCRUD · arquivo · retenção
 admin_worker --> images : upload assinado · exclusão validada
+admin_worker --> kv : atualiza catálogo e tombstones
 spa --> router : GET /api/hero-dog
 router --> hero_api
 hero_api --> kv : lê hero-dog
+spa --> router : GET /api/dogs\nGET /api/dogs/by-slug/:slug
+router --> dogs_api
+dogs_api --> kv : consulta catálogo e perfis
+dogs_api --> firestore : REST · reconstrução do catálogo
+spa --> router : GET /api/recycle-points\nGET /api/system/settings
+router --> public_data
+public_data --> firestore : REST · conta de serviço\nsomente campos públicos
 
 spa --> router : POST /api/adoption/create\nIdempotency-Key: UUID v4
 router --> adoption
 adoption --> kv : rate limit
 adoption --> recaptcha : valida reCAPTCHA
 adoption --> firestore : CREATE candidatura\nID = Idempotency-Key\nprecondição exists: false
-adoption --> email : notifica
+adoption --> email_webhook : POST · secret · conteúdo · debug
+email_webhook --> email : envia notificação
 
-cron --> firestore : seleciona cão\ncleanup LGPD com kill switch
-cron --> kv : atualiza hero-dog
+cron --> firestore : seleciona destaque · lê cães\nlimpa candidaturas e cães vencidos
+cron --> kv : atualiza destaque e catálogo
 
 note right of adoption
   Uma repetição com a mesma chave recebe

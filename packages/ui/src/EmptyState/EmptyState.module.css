@@ -34,7 +34,7 @@
   height: 3.5rem;
   border-radius: var(--radius);
   background: var(--surface-water);
-  color: var(--primary);
+  color: var(--text-primary);
 }
 
 .icon svg {

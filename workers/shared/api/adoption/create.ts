@@ -21,7 +21,10 @@ import {
   RequestBodyTooLargeError,
   validateRequest,
 } from "../_lib/validation";
-import { ADOPTION_RECAPTCHA_ACTION } from "../../../../apps/public/src/pages/BetaForm/components/WizardForm/recaptcha";
+import {
+  ADOPTION_RECAPTCHA_ACTION,
+  isAdoptionRecaptchaBypassed,
+} from "../../../../apps/public/src/pages/BetaForm/components/WizardForm/recaptcha";
 
 type AdoptionApplicationData = z.infer<typeof fullFormSchema>;
 
@@ -67,14 +70,12 @@ async function sendAdoptionApplicationEmail(
       env,
     );
 
-    const recipient = getEnvValue(env, "ADOPTION_EMAIL_RECIPIENT");
-
     await sendEmail(
       {
-        to: recipient as string,
         subject: `Nova Candidatura de Adoção: ${applicationData.animal_especifico || "Geral"}`,
         html,
         text,
+        debug: isAdoptionRecaptchaBypassed(),
       },
       env,
     );
@@ -149,25 +150,27 @@ export function createAdoptionApplicationHandler(
       }
 
       const data: AdoptionApplicationData = validationResult.data;
-      const recaptchaSecret = getEnvValue(env, "RECAPTCHA_SECRET_KEY");
-      if (!recaptchaSecret) {
-        return jsonResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, {
-          message: "reCAPTCHA secret is not configured.",
-        });
-      }
+      if (!isAdoptionRecaptchaBypassed()) {
+        const recaptchaSecret = getEnvValue(env, "RECAPTCHA_SECRET_KEY");
+        if (!recaptchaSecret) {
+          return jsonResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, {
+            message: "reCAPTCHA secret is not configured.",
+          });
+        }
 
-      const captchaValid = await dependencies.verifyRecaptcha(
-        data.captchaToken,
-        env,
-        {
-          expectedAction: ADOPTION_RECAPTCHA_ACTION,
-          expectedHostname: new URL(request.url).hostname,
-        },
-      );
-      if (!captchaValid) {
-        return jsonResponse(HTTP_STATUS.BAD_REQUEST, {
-          message: "reCAPTCHA validation failed",
-        });
+        const captchaValid = await dependencies.verifyRecaptcha(
+          data.captchaToken,
+          env,
+          {
+            expectedAction: ADOPTION_RECAPTCHA_ACTION,
+            expectedHostname: new URL(request.url).hostname,
+          },
+        );
+        if (!captchaValid) {
+          return jsonResponse(HTTP_STATUS.BAD_REQUEST, {
+            message: "reCAPTCHA validation failed",
+          });
+        }
       }
 
       const rawApplicationData = Object.fromEntries(

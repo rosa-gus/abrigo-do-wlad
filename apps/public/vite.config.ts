@@ -4,16 +4,13 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 import path from "path";
 
 // https://vite.dev/config/
-export default defineConfig(({ command, mode }) => {
+export default defineConfig(({ command, isPreview, mode }) => {
   const repositoryRoot = path.resolve(__dirname, "../..");
+  const enableDevelopmentTools = command === "serve" && !isPreview;
 
   if (command === "build") {
     const env = loadEnv(mode, repositoryRoot, "");
     const requiredBuildVars = [
-      "VITE_FIREBASE_API_KEY",
-      "VITE_FIREBASE_AUTH_DOMAIN",
-      "VITE_FIREBASE_PROJECT_ID",
-      "VITE_FIREBASE_APP_ID",
       "VITE_RECAPTCHA_PUBLIC_KEY",
     ];
     const missingBuildVars = requiredBuildVars.filter(
@@ -28,6 +25,10 @@ export default defineConfig(({ command, mode }) => {
   }
 
   return {
+    define: {
+      "import.meta.env.PUBLIC_DEV_TOOLS": JSON.stringify(enableDevelopmentTools),
+      __ADOPTION_RECAPTCHA_BYPASS__: JSON.stringify(enableDevelopmentTools),
+    },
     envDir: repositoryRoot,
     plugins: [
       react(),

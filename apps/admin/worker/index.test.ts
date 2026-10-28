@@ -8,6 +8,7 @@ import {
 } from "./index";
 
 const env = {
+  APP_ENV: "production",
   KV: {} as KVNamespace,
   ASSETS: {
     async fetch() {

@@ -184,6 +184,17 @@ export function useWizardForm() {
     navigate(`/beta/formulario/step/1`, { replace: true });
   }, [navigate]);
 
+  const fillFormWithSampleData = React.useCallback(
+    (sampleData: Omit<FormData, "captchaToken">) => {
+      setFormData(sampleData);
+      setErrors({});
+      setHighestCompletedStep(0);
+      navigate("/beta/formulario/step/1", { replace: true });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    },
+    [navigate],
+  );
+
   return {
     currentStep,
     totalSteps,
@@ -200,5 +211,6 @@ export function useWizardForm() {
     setErrors,
     highestCompletedStep,
     resetForm,
+    fillFormWithSampleData,
   };
 }

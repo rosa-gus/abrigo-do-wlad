@@ -14,6 +14,10 @@ chaves e listas de e-mails autorizados ficam apenas no runtime. O roteiro de
 configuração e publicação está em
 [`docs/security/access-and-rules-rollout.md`](../../docs/security/access-and-rules-rollout.md).
 
+O ambiente da aplicação é definido por `APP_ENV` no `wrangler.jsonc`:
+`local` no desenvolvimento e `production` no Worker padrão, seguindo o mesmo
+valor usado pelos Workers público e cron.
+
 ```text
 apps/admin/
 ├── public/       # Arquivos estáticos
@@ -62,8 +66,67 @@ válida do Access, `/api/session` responde `401`; não há identidade simulada
 nesse modo.
 
 Use [`.dev.vars.example`](.dev.vars.example) como referência para a configuração
-local. Valores reais devem permanecer em secrets de runtime e nunca ser
-versionados.
+local em `apps/admin/.dev.vars.local`. O ambiente `local` escolhe esse arquivo
+quando ele existe; caso contrário, usa `apps/admin/.dev.vars`. Não há mesclagem:
+`.dev.vars.local` precisa conter todos os valores necessários.
+Esse comportamento segue a
+[precedência de arquivos do Cloudflare](https://developers.cloudflare.com/workers/local-development/environment-variables/).
+Valores reais devem permanecer em secrets de runtime e nunca ser versionados.
+Os arquivos `.dev.vars.local` e `.dev.vars` da raiz pertencem ao Worker público. O
+[`.env.example` da raiz](../../.env.example) contém apenas valores públicos de
+build, incluindo `VITE_PUBLIC_APP_URL`, usado pelo painel para abrir o site.
+
+### CRUD real no Firebase de desenvolvimento
+
+```bash
+npm run dev:admin:local
+```
+
+Abra `http://127.0.0.1:5174`. Esse comando usa uma entrada separada do Worker,
+com identidade `local-administrator@example.test` e papel `administrator`, sem
+exigir Cloudflare Access. O cabeçalho identifica **DB de desenvolvimento**.
+As alterações são reais e ficam no Firestore; não são dados simulados.
+
+Configure `apps/admin/.dev.vars.local` (ou `.dev.vars`, como fallback) com
+`FIREBASE_PROJECT_ID=abrigo-do-wlad-dev`, uma conta de serviço cujo e-mail termine
+em `@abrigo-do-wlad-dev.iam.gserviceaccount.com`, sua `FIREBASE_PRIVATE_KEY` e
+`MASTER_KEY`. Configure também Cloudinary para testar operações de mídia. As
+variáveis de Access não são necessárias nesse modo. A conta local deve ter
+permissões IAM somente no projeto de desenvolvimento.
+
+Para uma configuração inicial, copie o exemplo sem substituir arquivos já
+configurados:
+
+```bash
+cp apps/admin/.dev.vars.example apps/admin/.dev.vars.local
+```
+
+Se o público acessa o mesmo banco, a `MASTER_KEY` dos dois Workers deve ser a
+mesma que protege `system/keys` nesse Firestore.
+
+Para testar funções exclusivas de desenvolvedores:
+
+```bash
+ADMIN_LOCAL_ROLE=developer npm run dev:admin:local
+```
+
+A identidade é escolhida no início do servidor; cabeçalhos e payloads não
+selecionam o papel. Origem das mutações, validação dos dados, autorização por
+papel e auditoria continuam ativas.
+
+O servidor escuta exclusivamente em `127.0.0.1:5174`, recusa alterações de host
+ou porta. No modo local, o Vite serve páginas e arquivos diretamente, e somente
+as rotas `/api/*` passam pelo Worker e pela identidade local. O servidor
+desativa túnel, inspector e bindings remotos, e rejeita requisições
+com origem externa ou cabeçalhos de encaminhamento. Antes de autenticar cada
+requisição, o Worker confere o projeto e a conta de serviço. Sem a constante
+injetada apenas pelo Vite nesse modo, a entrada local recusa autenticação.
+
+O modo `local-admin` é proibido em build e preview. Builds do painel exigem modo
+`production` e recusam `CLOUDFLARE_ENV` de desenvolvimento. O Wrangler de produção
+continua apontando para `worker/index.ts`, que não importa a entrada local e
+continua exigindo o JWT do Access. Não exponha o servidor local por proxies
+ou ferramentas externas de túnel.
 
 ## API administrativa
 
@@ -89,6 +152,24 @@ quando necessário e aplica o limite de 12 uploads por minuto por identidade.
 Avisos têm `message` (1–240 caracteres), `type` (`trivial`, `urgent`, `success`
 ou `info`) e `expiration` (`1h`, `6h`, `12h` ou `until_deleted`). O Worker
 calcula `expiresAt`; avisos vencidos deixam de aparecer automaticamente.
+
+Ao aprovar ou reprovar uma solicitação, o Worker antecipa `expiresAt` para a
+última execução diária do cron (03h UTC) dentro dos próximos 7 dias, respeitando
+o vencimento original de 30 dias desde o envio. `originalExpiresAt` preserva o
+prazo original e `decisionExpiresAt` preserva a janela da primeira decisão.
+O botão **Reconsiderar**, na lista e na ficha, devolve a solicitação para
+`pending` antes do vencimento, mantendo o prazo de exclusão da primeira decisão.
+A nova análise deve ser concluída dentro dessa mesma janela; reconsiderações e
+decisões posteriores não prorrogam a retenção nem restauram o prazo de 30 dias.
+Decisões antigas sem `decisionExpiresAt` preservam seu vencimento armazenado ao
+serem reconsideradas. Alterações de status e
+exclusões pelo cron exigem que a versão do documento continue igual à consultada.
+Essa programação depende do cron diário; mudanças no horário precisam ser
+refletidas em `shared/adoption-retention.ts`.
+
+O cron usa `ADOPTION_CLEANUP_MODE=delete` em produção e `dry-run` no ambiente
+local. A nova programação é aplicada ao alterar o status; decisões anteriores
+sem esses campos mantêm o vencimento já armazenado até uma nova ação da equipe.
 
 As principais mutações geram eventos em `admin_audit_log` sem copiar payloads,
 candidaturas ou URLs de mídia. Mudanças em animais também agendam a reconstrução

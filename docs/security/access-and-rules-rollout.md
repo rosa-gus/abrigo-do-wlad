@@ -46,14 +46,22 @@ secrets em `wrangler.jsonc` nem em variáveis `VITE_*`.
 3. Publique o painel com `npm run deploy:admin` e valide `/api/session` e os
    CRUDs com uma identidade de cada papel. Confirme também a negação para uma
    identidade externa.
-4. Com o Worker operacional, publique as Firestore Rules finais. Elas devem
-   permitir ao cliente apenas a leitura de `dogs`, `recycle_points` e
-   `system/settings`; todo o restante permanece negado. A conta de serviço dos
-   Workers é autorizada por IAM, não pelas Rules.
-5. Inicie o cron com `ADOPTION_CLEANUP_MODE=dry-run`. Revise `matched`, `deleted`
-   e `hasMore` nos logs e faça o backup necessário; o dry-run não exclui dados.
-6. Após conferir as candidaturas vencidas, altere o modo para `delete`. Ausência
-   ou valor inválido mantém o cron em `disabled`.
+4. Com os Workers público e administrativo operacionais, publique as Firestore
+   Rules finais. Elas devem permitir leituras diretas apenas de `recycle_points`
+   e `system/settings`; todo o restante permanece negado. A coleção `dogs`
+   deve negar consultas e leituras diretas, inclusive para clientes autenticados:
+   seus documentos contêm metadados administrativos como `archivedBy` e fotos
+   retidas. O frontend atual usa exclusivamente a API do Worker, sem SDK Firebase.
+   O catálogo público usa o feed no KV; os Workers acessam o Firestore por conta
+   de serviço autorizada por IAM, não pelas Rules. Após publicar, confirme que
+   `/api/dogs` e os perfis por slug continuam funcionando e que um cliente
+   Firestore sem conta de serviço não consegue ler nem listar `dogs`.
+5. No primeiro deploy do cron, defina `ADOPTION_CLEANUP_MODE=dry-run` em
+   `workers/cron/wrangler.jsonc` antes de publicar: a configuração atual usa
+   `delete` em produção. Revise `matched`, `deleted` e `hasMore` nos logs e faça
+   o backup necessário; o dry-run não exclui dados.
+6. Após conferir as candidaturas vencidas, altere o modo para `delete` e
+   publique o cron novamente. Ausência ou valor inválido desativa a tarefa.
 7. Para limpar cães arquivados após 30 dias, configure `DOG_PURGE_MODE=dry-run`,
    confira `matched`, `deleted` e `hasMore` e, após revisar o resultado, altere
    para `delete`. O padrão também é `disabled`. A tarefa remove documentos do
@@ -66,7 +74,7 @@ Os comandos de verificação e o CI não fazem deploy automaticamente.
 ```bash
 npm ci
 npm run check:secrets
-npm audit --omit=dev --audit-level=high
+npm audit --audit-level=high
 npm run lint
 npm run build
 npm run typecheck:worker

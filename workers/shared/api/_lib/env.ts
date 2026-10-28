@@ -11,12 +11,11 @@ type KvBinding = {
 };
 type AssetsBinding = Pick<Fetcher, "fetch">;
 
-export type CloudflareEnv = Partial<Omit<Env, "KV" | "ASSETS">> & {
+export type CloudflareEnv = Partial<Omit<Env, "KV" | "ASSETS" | "APP_ENV">> & {
+  APP_ENV?: string;
   ADOPTION_CLEANUP_MODE?: string;
   DOG_PURGE_MODE?: string;
-  DEBUG_EMAIL_RECIPIENT?: string;
   KV?: KvBinding;
-  NODE_ENV?: string;
   ASSETS?: AssetsBinding;
 };
 

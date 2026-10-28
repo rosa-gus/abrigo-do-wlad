@@ -54,7 +54,7 @@ function envWith(values: Record<string, unknown>): CloudflareEnv {
     ...values,
   };
   return {
-    NODE_ENV: "production",
+    APP_ENV: "production",
     KV: {
       async get(key) {
         const value = allValues[key];
@@ -136,7 +136,7 @@ test("returns a tombstone even when the current feed cannot be read", async () =
   const removedDog = tombstone();
   const errorLog = vi.spyOn(console, "error").mockImplementation(() => undefined);
   const env: CloudflareEnv = {
-    NODE_ENV: "production",
+    APP_ENV: "production",
     KV: {
       async get(key) {
         if (key === "dogs-public-slug:slug:pacoca") {

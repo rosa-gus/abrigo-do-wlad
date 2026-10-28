@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router";
-import { CircleAlert, Plus, Search, MapPin, Pencil, Trash2, Map } from "lucide-react";
+import { CircleAlert, Plus, Search, MapPin, Pencil, Trash2, Map, RefreshCw } from "lucide-react";
 import { Badge } from "@jaci/ui/Badge";
 import { Button } from "@jaci/ui/Button";
 import { Card, CardBody, CardContent, CardFooter } from "@jaci/ui/Card";
@@ -132,11 +132,13 @@ export default function RecycleDashboard() {
         <EmptyState
           role="alert"
           size="lg"
-          icon={<CircleAlert color="var(--error)" />}
+          icon={<CircleAlert />}
           title={loadError}
           actions={<Button
             type="button"
-            variant="secondary"
+            variant="outline"
+            size="sm"
+            leftIcon={<RefreshCw size={16} aria-hidden="true" />}
             onClick={() => {
               setLoading(true);
               setLoadError(null);

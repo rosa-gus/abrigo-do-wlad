@@ -5,7 +5,7 @@ export function useDailyDog() {
   const [dog, setDog] = React.useState<Dog | null>(null);
 
   React.useEffect(() => {
-    if (import.meta.env.DEV) return;
+    if (import.meta.env.PUBLIC_DEV_TOOLS) return;
 
     async function fetchDailyDog() {
       try {

@@ -18,6 +18,7 @@ import {
   isValidDogPublicSlug,
 } from "../shared/api/dogs/public-slug";
 import { onRequest as getHeroDog } from "../shared/api/hero-dog/get";
+import { getPublicDataResponse } from "../shared/api/public-data";
 import { onRequest as sendDebugEmail } from "../shared/api/tests/email";
 
 export type AppEnv = CloudflareEnv & {
@@ -136,6 +137,10 @@ async function handleDogPageRequest(
 async function handleApiRequest(request: Request, env: AppEnv): Promise<Response> {
   const pathname = new URL(request.url).pathname;
 
+  if (pathname === "/api/recycle-points" || pathname === "/api/system/settings") {
+    return getPublicDataResponse(request, env);
+  }
+
   if (pathname === "/api/hero-dog") {
     return getHeroDog({ request, env });
   }
@@ -159,7 +164,7 @@ async function handleApiRequest(request: Request, env: AppEnv): Promise<Response
 
   if (
     pathname === "/api/tests/email" &&
-    getEnvValue(env, "NODE_ENV") === "development"
+    getEnvValue(env, "APP_ENV") === "local"
   ) {
     return sendDebugEmail({ request, env });
   }

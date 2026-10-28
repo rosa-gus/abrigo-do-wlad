@@ -39,6 +39,19 @@ workers/
 Componentes genéricos compartilhados com o painel administrativo ficam no
 workspace `@jaci/ui`, em [`packages/ui`](../../packages/ui).
 
+O frontend lê pontos de reciclagem e configurações públicas pela API do Worker.
+O Worker acessa o Firestore via REST com conta de serviço e retorna somente os
+campos públicos. O frontend mantém um cache JSON no localStorage por três horas
+para reciclagem e uma hora para configurações, com fallback para dados antigos
+em caso de falha na rede. A autenticação do
+[painel administrativo](../admin/README.md) é feita pelo Cloudflare Access.
+
+Na inicialização, o site remove chaves de versões antigas do cache no seu
+namespace de localStorage. As versões são definidas por domínio em
+`src/lib/storage.ts`; preferências e votos são preservados e precisam de uma
+migração explícita caso seu formato seja alterado. Chaves de versões futuras
+e de outros namespaces também são preservadas.
+
 ## Desenvolvimento local
 
 Na raiz do monorepo:
@@ -46,28 +59,53 @@ Na raiz do monorepo:
 ```bash
 npm install
 cp .env.example .env
+cp .dev.vars.example .dev.vars.local
 npm run dev:public
 ```
 
 O servidor Vite utiliza o plugin do Cloudflare para executar o frontend e o
-Worker da aplicação durante o desenvolvimento.
+Worker da aplicação durante o desenvolvimento. As leituras públicas também
+passam pelo Worker e precisam das credenciais Firestore de runtime locais.
+Os comandos de cópia são para a configuração inicial. Preencha `.env` somente
+com valores públicos de build e `.dev.vars.local` com os valores de runtime de
+desenvolvimento antes de iniciar o servidor.
+
+`dev:public` seleciona o ambiente Cloudflare `local` e desativa a leitura de
+segredos do `.env`. O Worker carrega `.dev.vars.local` da raiz quando ele existe;
+caso contrário, usa `.dev.vars` da raiz. Não há mesclagem entre esses arquivos:
+`.dev.vars.local` precisa conter todos os segredos necessários. Essa seleção
+segue a [precedência de arquivos do Cloudflare](https://developers.cloudflare.com/workers/local-development/environment-variables/).
+O Vite continua lendo `.env` para as variáveis públicas `VITE_*`.
+
+O KV local persiste entre reinicializações. Suas chaves de desenvolvimento são
+separadas por projeto Firebase, para que trocar as credenciais não reutilize
+catálogos de outro banco. Ao iniciar com um projeto sem catálogo nesse espaço,
+a API lê o Firestore e cria o cache correspondente.
+
+Ao executar `npm run dev:public`, o wizard não carrega o reCAPTCHA e a API pula
+sua verificação. Essa exceção é definida pela configuração do Vite apenas no
+servidor de desenvolvimento: builds, preview e execução direta pelo Wrangler
+continuam exigindo reCAPTCHA, independentemente de `APP_ENV`. O envio local
+continua validando e salvando a candidatura no Firestore e chama o webhook com
+`debug: true`, para usar o destinatário de testes do Apps Script. Configure as
+credenciais locais de Firestore, criptografia e webhook para testar todo o fluxo.
+
+O SDK Firebase é uma dependência de desenvolvimento da raiz, usado somente
+pelos testes das Firestore Rules. Ele não faz parte da aplicação de produção.
 
 ## Variáveis de ambiente
 
-As variáveis `VITE_*` são incorporadas ao bundle e, portanto, são públicas. O
-arquivo [`.env.example`](../../.env.example) contém a relação completa de
-valores aceitos.
+As variáveis `VITE_*` são incorporadas ao bundle e, portanto, são públicas.
+[`.env.example`](../../.env.example) documenta o build dos frontends;
+[`.dev.vars.example`](../../.dev.vars.example) documenta o runtime do Worker
+público. Ambos ficam na raiz, junto ao `wrangler.jsonc` público. As variáveis
+exclusivas do admin estão em
+[`apps/admin/.dev.vars.example`](../admin/.dev.vars.example).
 
 ### Build do frontend
 
-- `VITE_FIREBASE_API_KEY`
-- `VITE_FIREBASE_AUTH_DOMAIN`
-- `VITE_FIREBASE_PROJECT_ID`
-- `VITE_FIREBASE_STORAGE_BUCKET`
-- `VITE_FIREBASE_MESSAGING_SENDER_ID`
-- `VITE_FIREBASE_APP_ID`
 - `VITE_RECAPTCHA_PUBLIC_KEY`
-- `VITE_PUBLIC_APP_URL`
+- `VITE_PUBLIC_APP_URL` (usada pelo admin para abrir o site público)
 
 ### Runtime do Worker público
 
@@ -77,27 +115,56 @@ valores aceitos.
 - `FIREBASE_PROJECT_ID`
 - `FIREBASE_CLIENT_EMAIL`
 - `FIREBASE_PRIVATE_KEY`
-- `GMAIL_USER`
-- `GMAIL_PASS`
-- `ADOPTION_EMAIL_RECIPIENT`
-- `DEBUG_EMAIL_RECIPIENT`
+- `EMAIL_WEBHOOK_URL`
+- `EMAIL_WEBHOOK_SECRET`
 - `ADMIN_PANEL_URL`
 
 Credenciais privadas pertencem ao runtime do Worker e não devem utilizar o
 prefixo `VITE_` nem ser versionadas.
+
+Quando público e admin acessam o mesmo Firestore, configure em ambos a
+`MASTER_KEY` que protege as chaves de `system/keys`. Ter credenciais Firestore
+válidas não garante que a chave de criptografia corresponda ao banco.
+
+`PUBLIC_DEV_TOOLS` é definido pelo Vite e não precisa de variável local.
+`APP_ENV` é configurado no runtime pelo `wrangler.jsonc`: `local` no
+ambiente `local` e `production` no Worker padrão. As opções
+`ADOPTION_CLEANUP_MODE` e `DOG_PURGE_MODE` pertencem ao Worker cron; seus modos
+estão descritos abaixo.
+
+### Notificações por e-mail
+
+O Worker envia uma requisição `POST` ao Apps Script implantado com `secret`,
+`subject`, `text`, `html` e `debug`. O código do Apps Script é mantido fora deste
+repositório.
+O destinatário é fixado no script: `debug: true` envia para a conta `.dev` e
+qualquer outro valor envia para o abrigo. O wizard no servidor Vite de
+desenvolvimento e a rota de teste enviam `debug: true`; o envio também usa debug
+quando `APP_ENV` não é `production`. A rota de teste só funciona com
+`APP_ENV=local`. O Worker só considera o envio
+concluído quando recebe uma resposta JSON com `ok: true`.
+
+Configure `EMAIL_WEBHOOK_URL` e `EMAIL_WEBHOOK_SECRET` como **Secrets** do Worker
+público na Dashboard da Cloudflare. O segundo valor deve ser o mesmo da
+propriedade `EMAIL_WEBHOOK_SECRET` no Apps Script. Não coloque a URL de produção
+em `wrangler.jsonc` ou em arquivos locais de desenvolvimento. Para testar
+localmente, use valores locais em `.dev.vars.local`; a rota de teste usa a conta `.dev`
+mesmo quando aponta para o script de produção.
 
 ## API pública
 
 O Worker definido em [`workers/app/index.ts`](../../workers/app/index.ts) serve
 os Static Assets da SPA e processa as rotas `/api/*`.
 
-| Método | Rota | Função |
-| --- | --- | --- |
-| `GET` | `/api/hero-dog` | Retorna o animal em destaque. |
-| `GET` | `/api/dogs` | Retorna uma página filtrada do catálogo rotativo armazenado no KV. |
-| `GET` | `/api/dogs/by-slug/:publicSlug` | Retorna o perfil público de um cão pelo slug canônico. |
-| `POST` | `/api/adoption/create` | Valida e registra uma candidatura de adoção. |
-| `GET` | `/api/tests/email` | Testa o envio de e-mail apenas em desenvolvimento. |
+| Método | Rota                            | Função                                                             |
+| ------ | ------------------------------- | ------------------------------------------------------------------ |
+| `GET`  | `/api/recycle-points`           | Retorna os campos públicos dos pontos de reciclagem.              |
+| `GET`  | `/api/system/settings`         | Retorna se o formulário de adoção está aberto.                    |
+| `GET`  | `/api/hero-dog`                 | Retorna o animal em destaque.                                      |
+| `GET`  | `/api/dogs`                     | Retorna uma página filtrada do catálogo rotativo armazenado no KV. |
+| `GET`  | `/api/dogs/by-slug/:publicSlug` | Retorna o perfil público de um cão pelo slug canônico.             |
+| `POST` | `/api/adoption/create`          | Valida e registra uma candidatura de adoção.                       |
+| `GET`  | `/api/tests/email`              | Testa o envio para e-mail de debug apenas em desenvolvimento.      |
 
 Cada cão publicado no feed possui um `publicSlug` gerado automaticamente a
 partir de `nome` (por exemplo, `Paçoca` torna-se `pacoca`). O slug é reservado
@@ -158,12 +225,12 @@ account mantidas no runtime.
 ## Worker agendado
 
 O Worker [`workers/cron/index.ts`](../../workers/cron/index.ts) executa
-diariamente quatro tarefas:
+diariamente às 03h UTC (00h em São Paulo) quatro tarefas:
 
 - atualização do animal em destaque armazenado no KV;
 - reconstrução determinística do catálogo rotativo de cães armazenado no KV;
 - identificação e remoção de candidaturas vencidas conforme a política de
-  retenção.
+  retenção;
 - limpeza dos registros de cães arquivados cujo prazo individual venceu.
 
 Cães arquivados ficam fora do catálogo e da seleção de destaque. Cada registro
@@ -176,14 +243,17 @@ anteriores permanecem disponíveis temporariamente para sessões em andamento.
 
 O comportamento da limpeza é definido por `ADOPTION_CLEANUP_MODE`:
 
-| Valor | Comportamento |
-| --- | --- |
-| `disabled` | Não consulta nem remove candidaturas. |
-| `dry-run` | Registra nos logs os documentos elegíveis sem removê-los. |
-| `delete` | Remove os documentos elegíveis. |
+| Valor      | Comportamento                                             |
+| ---------- | --------------------------------------------------------- |
+| `disabled` | Não consulta nem remove candidaturas.                     |
+| `dry-run`  | Registra nos logs os documentos elegíveis sem removê-los. |
+| `delete`   | Remove os documentos elegíveis.                           |
 
 `DOG_PURGE_MODE` aceita os mesmos valores. Configure `dry-run` para conferir os
 campos `matched`, `deleted` e `hasMore` nos logs antes de ativar `delete`.
+O Wrangler define `ADOPTION_CLEANUP_MODE=delete` em produção; `DOG_PURGE_MODE`
+precisa ser configurado explicitamente. O ambiente `local` usa `dry-run` para
+ambas. Ausência ou valor inválido desativa a tarefa correspondente.
 
 ## Build, verificação e publicação
 

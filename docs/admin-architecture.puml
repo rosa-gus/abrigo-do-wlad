@@ -24,7 +24,7 @@ package "Cloudflare" as cloudflare {
   package "Worker abrigo-do-wlad-admin" as admin_worker {
     component "Proteção e roteamento\nJWT · RBAC · mesma origem" as gateway
     component "SPA React\nassets protegidos" as spa
-    component "Serviços do domínio\ndashboard · cães · reciclagem · candidaturas" as domain
+    component "Serviços do domínio\ndashboard · cães · arquivo\nreciclagem · candidaturas" as domain
     component "Serviços transversais\nmídia · chaves · avisos · auditoria" as support
   }
 
@@ -46,10 +46,10 @@ spa --> gateway : /api/session · /api/admin/*
 gateway --> domain : administrator · developer
 gateway --> support : RBAC por operação
 
-domain --> firestore : conta de serviço\nCRUD + descriptografia
+domain --> firestore : REST · conta de serviço\nCRUD · arquivo · retenção · descriptografia
 support --> firestore : chaves · avisos · eventos
 support --> images : upload e exclusão\nvalidados
-domain --> platform : atualiza catálogo no KV
+domain --> platform : atualiza catálogo e tombstones no KV
 support --> platform : rate limit · logs
 gateway ..> platform : acessos negados
 

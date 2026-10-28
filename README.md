@@ -63,7 +63,8 @@ com uma infraestrutura equivalente.
 - React, TypeScript e Vite
 - CSS Modules, Motion e Lucide React
 - Cloudflare Workers, Static Assets, Cron Triggers, Access e KV
-- Google Cloud Firestore e Firebase Web SDK
+- Google Cloud Firestore via API REST
+- Webhook de e-mail via Google Apps Script
 - Cloudinary
 
 ## Identidade visual
@@ -72,7 +73,7 @@ O tema visual foi apelidado de **Jaci** (do tupi _Îasy_ e do guarani _Jasy_),
 em referência à [deusa da Lua](https://pt.wikipedia.org/wiki/Jaci). Suas cores remetem à Terra, com tons inspirados no
 céu, na água, no solo e na vegetação, somando-se à identidade já existente do
 Abrigo do Wlad. A paleta e os estilos globais do site estão em
-[`apps/public/src/index.css`](apps/public/src/index.css).
+[`packages/ui/src/styles`](packages/ui/src/styles).
 
 ## Desenvolvimento
 
@@ -81,8 +82,20 @@ O projeto requer Node.js 22.12 ou superior.
 ```bash
 npm install
 cp .env.example .env
+cp .dev.vars.example .dev.vars.local
 npm run dev
 ```
+
+Em uma configuração inicial, preencha `.env` com valores públicos de build e
+`.dev.vars.local` com as credenciais de desenvolvimento do Worker público. Para o
+admin, use `apps/admin/.dev.vars.example` como referência e siga o
+[guia do painel](apps/admin/README.md#desenvolvimento-local). Cada Worker tem
+seu próprio arquivo de runtime.
+
+O ambiente da aplicação usa `APP_ENV`, definido nas configurações Wrangler:
+`local` nos comandos de desenvolvimento e `production` nos Workers padrão.
+Público, admin e cron usam os mesmos valores. O cron lê seus segredos locais
+de `workers/cron/.dev.vars.local`, com `workers/cron/.dev.vars` como fallback.
 
 Comandos principais:
 

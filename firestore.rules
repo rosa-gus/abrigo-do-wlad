@@ -2,10 +2,10 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // O catálogo público continua legível diretamente pelo site.
+    // Documentos de cães incluem metadados administrativos e fotos retidas.
+    // O catálogo público é servido pelo Worker com conta de serviço e IAM.
     match /dogs/{dogId} {
-      allow read: if true;
-      allow write: if false;
+      allow read, write: if false;
     }
 
     match /recycle_points/{pointId} {
