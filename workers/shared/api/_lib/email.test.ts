@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { sendEmail } from "./email";
+import { generateAdoptionApplicationEmail, sendEmail } from "./email";
 
 const env = {
   APP_ENV: "production",
@@ -87,4 +87,49 @@ test("rejects HTTP errors from the webhook", async () => {
   vi.stubGlobal("fetch", vi.fn(async () => new Response("Unavailable", { status: 503 })));
 
   await expect(sendEmail(message, env)).rejects.toThrow("HTTP 503");
+});
+
+test("renders the adoption summary and panel link in HTML and plain text", () => {
+  const panelUrl = "https://admin.example.test/admin?source=email&view=adoptions";
+  const { html, text } = generateAdoptionApplicationEmail({
+    nome_adotante: "Marina Araújo",
+    animal_especifico: "Amora",
+  }, "application-123", { ADMIN_PANEL_URL: panelUrl });
+
+  for (const content of [html, text]) {
+    expect(content).toContain("Marina Araújo");
+    expect(content).toContain("Amora");
+    expect(content).toContain("application-123");
+  }
+  expect(html).toContain('href="https://admin.example.test/admin?source=email&amp;view=adoptions"');
+  expect(text).toContain(`Analisar candidatura: ${panelUrl}`);
+  expect(html.length).toBeLessThanOrEqual(50_000);
+  expect(text.length).toBeLessThanOrEqual(20_000);
+});
+
+test("keeps candidate content and quoted links from injecting HTML", () => {
+  const { html, text } = generateAdoptionApplicationEmail({
+    nome_adotante: '<img src=x onerror="alert(1)">',
+    animal_especifico: "Rex & 'Amora' <filhote>",
+  }, "id<script>alert(1)</script>", { ADMIN_PANEL_URL: 'https://admin.example.test/?q=" onclick="bad' });
+
+  expect(html).not.toContain("<img");
+  expect(html).not.toContain("<script>");
+  expect(html).toContain("&lt;img src=x onerror=&quot;alert(1)&quot;&gt;");
+  expect(html).toContain("Rex &amp; &#39;Amora&#39; &lt;filhote&gt;");
+  expect(html).toContain('href="https://admin.example.test/?q=&quot; onclick=&quot;bad"');
+  expect(text).toContain("Rex & 'Amora' <filhote>");
+});
+
+test("renders readable fallbacks for an adoption without optional summary values", () => {
+  vi.stubEnv("ADMIN_PANEL_URL", undefined);
+  const { html, text } = generateAdoptionApplicationEmail({
+    nome_adotante: " ", animal_especifico: null,
+  }, "application-123");
+
+  for (const content of [html, text]) {
+    expect(content).toContain("Candidato");
+    expect(content).toContain("Não especificado");
+    expect(content).not.toContain("undefined");
+  }
 });
