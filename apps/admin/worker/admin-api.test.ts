@@ -179,11 +179,11 @@ test.each(["approved", "rejected", "pending"] as const)("adoption status %s save
       body: JSON.stringify({ status }),
     }), env, identity, keyDependencies());
     assert.equal(response.status, 200);
-    const expiresAt = status === "pending" ? "2026-10-31T12:00:00.000Z" : "2026-10-17T03:00:00.000Z";
+    const expiresAt = "2026-10-17T03:00:00.000Z";
     assert.deepEqual(update.mock.calls[0], [name, {
       status, expiresAt: new Date(expiresAt),
       originalExpiresAt: "2026-10-31T12:00:00.000Z",
-      ...(status === "pending" ? {} : { decisionExpiresAt: expiresAt }),
+      decisionExpiresAt: expiresAt,
     }, { expectedUpdateTime: updateTime }]);
     assert.equal((await response.json() as { expiresAt: string }).expiresAt, expiresAt);
   } finally {

@@ -22,16 +22,28 @@ export function adoptionStatusUpdate(
   }
   const originalExpiry = Math.min(savedOriginalExpiry, submittedAt + ADOPTION_EXPIRATION_DAYS * DAY_MS);
   const originalExpiresAt = new Date(originalExpiry).toISOString();
-  if (Math.min(currentExpiry, originalExpiry) <= now.getTime()) {
+  const hasDecision = data.status === "approved" || data.status === "rejected";
+  // Legacy decisions may lack decisionExpiresAt; preserve their stored deadline.
+  const previousDecisionExpiry = typeof data.decisionExpiresAt === "string"
+    ? Date.parse(data.decisionExpiresAt) : hasDecision ? currentExpiry : Infinity;
+  if (Number.isNaN(previousDecisionExpiry)) {
+    throw new AdoptionTransitionError("O prazo da decisão anterior é inválido.");
+  }
+  const effectiveExpiry = Math.min(currentExpiry, originalExpiry, previousDecisionExpiry);
+  if (effectiveExpiry <= now.getTime()) {
     throw new AdoptionTransitionError("O prazo desta solicitação expirou. Não é possível alterar a análise.");
   }
-  if ((data.status ?? "pending") === status) {
-    return { status, expiresAt: new Date(currentExpiry).toISOString(), originalExpiresAt };
+  if ((data.status ?? "pending") === status || status === "pending") {
+    return {
+      status,
+      expiresAt: new Date(effectiveExpiry).toISOString(),
+      originalExpiresAt,
+      ...(Number.isFinite(previousDecisionExpiry)
+        ? { decisionExpiresAt: new Date(Math.min(originalExpiry, previousDecisionExpiry)).toISOString() }
+        : {}),
+    };
   }
-  if (status === "pending") {
-    return { status, expiresAt: originalExpiresAt, originalExpiresAt };
-  }
-  if (data.status === "approved" || data.status === "rejected") {
+  if (hasDecision) {
     throw new AdoptionTransitionError("Reconsidere a decisão antes de aprovar ou reprovar novamente.");
   }
 
@@ -43,12 +55,7 @@ export function adoptionStatusUpdate(
   if (scheduledExpiry.getTime() > deadline.getTime()) {
     scheduledExpiry.setUTCDate(scheduledExpiry.getUTCDate() - 1);
   }
-  const previousDecisionExpiry = typeof data.decisionExpiresAt === "string"
-    ? Date.parse(data.decisionExpiresAt) : Infinity;
-  if (Number.isNaN(previousDecisionExpiry)) {
-    throw new AdoptionTransitionError("O prazo da decisão anterior é inválido.");
-  }
-  const expiresAt = new Date(Math.min(originalExpiry, scheduledExpiry.getTime(), previousDecisionExpiry)).toISOString();
+  const expiresAt = new Date(Math.min(effectiveExpiry, scheduledExpiry.getTime())).toISOString();
   if (Date.parse(expiresAt) <= now.getTime()) {
     throw new AdoptionTransitionError("O prazo para concluir esta análise expirou.");
   }

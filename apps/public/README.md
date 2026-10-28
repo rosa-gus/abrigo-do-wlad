@@ -128,9 +128,9 @@ válidas não garante que a chave de criptografia corresponda ao banco.
 
 `PUBLIC_DEV_TOOLS` é definido pelo Vite e não precisa de variável local.
 `APP_ENV` é configurado no runtime pelo `wrangler.jsonc`: `local` no
-ambiente `local` e `production` no Worker padrão. A opção
-`ADOPTION_CLEANUP_MODE` pertence ao Worker cron: configure-a no runtime dele
-como `disabled` (padrão), `dry-run` ou `delete`.
+ambiente `local` e `production` no Worker padrão. As opções
+`ADOPTION_CLEANUP_MODE` e `DOG_PURGE_MODE` pertencem ao Worker cron; seus modos
+estão descritos abaixo.
 
 ### Notificações por e-mail
 
@@ -225,12 +225,12 @@ account mantidas no runtime.
 ## Worker agendado
 
 O Worker [`workers/cron/index.ts`](../../workers/cron/index.ts) executa
-diariamente quatro tarefas:
+diariamente às 03h UTC (00h em São Paulo) quatro tarefas:
 
 - atualização do animal em destaque armazenado no KV;
 - reconstrução determinística do catálogo rotativo de cães armazenado no KV;
 - identificação e remoção de candidaturas vencidas conforme a política de
-  retenção.
+  retenção;
 - limpeza dos registros de cães arquivados cujo prazo individual venceu.
 
 Cães arquivados ficam fora do catálogo e da seleção de destaque. Cada registro
@@ -251,6 +251,9 @@ O comportamento da limpeza é definido por `ADOPTION_CLEANUP_MODE`:
 
 `DOG_PURGE_MODE` aceita os mesmos valores. Configure `dry-run` para conferir os
 campos `matched`, `deleted` e `hasMore` nos logs antes de ativar `delete`.
+O Wrangler define `ADOPTION_CLEANUP_MODE=delete` em produção; `DOG_PURGE_MODE`
+precisa ser configurado explicitamente. O ambiente `local` usa `dry-run` para
+ambas. Ausência ou valor inválido desativa a tarefa correspondente.
 
 ## Build, verificação e publicação
 

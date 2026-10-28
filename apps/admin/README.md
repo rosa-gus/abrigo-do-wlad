@@ -158,8 +158,11 @@ Ao aprovar ou reprovar uma solicitação, o Worker antecipa `expiresAt` para a
 o vencimento original de 30 dias desde o envio. `originalExpiresAt` preserva o
 prazo original e `decisionExpiresAt` preserva a janela da primeira decisão.
 O botão **Reconsiderar**, na lista e na ficha, devolve a solicitação para
-`pending` antes do vencimento e restaura seu prazo original. Decisões posteriores
-não prorrogam a janela de exclusão da primeira decisão. Alterações de status e
+`pending` antes do vencimento, mantendo o prazo de exclusão da primeira decisão.
+A nova análise deve ser concluída dentro dessa mesma janela; reconsiderações e
+decisões posteriores não prorrogam a retenção nem restauram o prazo de 30 dias.
+Decisões antigas sem `decisionExpiresAt` preservam seu vencimento armazenado ao
+serem reconsideradas. Alterações de status e
 exclusões pelo cron exigem que a versão do documento continue igual à consultada.
 Essa programação depende do cron diário; mudanças no horário precisam ser
 refletidas em `shared/adoption-retention.ts`.

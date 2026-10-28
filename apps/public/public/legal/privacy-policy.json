@@ -27,11 +27,12 @@
     {
       "id": "retencao",
       "title": "Retenção e exclusão de dados",
-      "content": "Tratamos os dados com responsabilidade e conforme o princípio de minimização da LGPD. Realizamos processamento automatizado periódico para revisão da nossa base de dados. Informações relacionadas a processos de adoção que estejam inativas ou expiradas são automaticamente excluídas para garantir que não retemos dados por tempo superior ao necessário. O prazo de até 7 dias após uma decisão respeita o limite original de 30 dias desde o envio e pode, portanto, ser menor. Se a equipe reconsiderar uma decisão, a solicitação volta à análise com o vencimento original, sem reiniciar os 30 dias. Uma nova decisão não prorroga a janela de exclusão definida pela primeira decisão:",
+      "content": "Tratamos os dados com responsabilidade e conforme o princípio de minimização da LGPD. Realizamos processamento automatizado periódico para revisão da nossa base de dados. Informações relacionadas a processos de adoção que estejam inativas ou expiradas são automaticamente excluídas para garantir que não retemos dados por tempo superior ao necessário. O prazo de até 7 dias após a primeira decisão respeita o limite original de 30 dias desde o envio e pode, portanto, ser menor. Se a equipe reconsiderar uma decisão, a solicitação volta à análise mantendo o prazo de exclusão definido pela primeira decisão. A nova análise deve ser concluída dentro dessa mesma janela. Reconsiderações e novas decisões não prorrogam esse prazo nem restauram a janela original de 30 dias:",
       "items": [
         "Formulários aprovados: dados excluídos em até 7 dias após a conclusão da aprovação, período destinado à revisão e eventual reconsideração da decisão pela equipe",
         "Formulários rejeitados: dados excluídos em até 7 dias após a rejeição, período destinado à revisão e eventual reconsideração da decisão pela equipe",
-        "Formulários em análise: excluídos automaticamente da base de dados após 30 dias contados a partir da data de envio, caso não sejam processados até então"
+        "Formulários em análise sem decisão anterior: excluídos automaticamente da base de dados após 30 dias contados a partir da data de envio, caso não sejam processados até então",
+        "Formulários em análise após reconsideração: mantêm o prazo de exclusão definido pela primeira decisão, mesmo que a nova análise ainda esteja pendente"
       ]
     },
     {

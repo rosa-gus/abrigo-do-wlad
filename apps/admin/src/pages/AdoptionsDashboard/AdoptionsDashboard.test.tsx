@@ -18,18 +18,19 @@ beforeEach(() => {
   }]);
 });
 
-test("reconsideration requires confirmation and returns the application to pending", async () => {
-  const expiresAt = new Date(Date.now() + 20 * 86400000).toISOString();
+test("reconsideration requires confirmation and keeps the first decision deadline", async () => {
+  const expiresAt = new Date(Date.now() + 86400000).toISOString();
   vi.mocked(updateAdoptionStatus).mockResolvedValue({ ok: true, status: "pending", expiresAt });
   render(<AdoptionsDashboard />);
   fireEvent.click(await screen.findByRole("button", { name: "Reconsiderar" }));
+  expect(screen.getByText(/mantendo o prazo de exclusão definido pela primeira decisão/)).toBeInTheDocument();
   expect(updateAdoptionStatus).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "Sim, reconsiderar" }));
   await waitFor(() => expect(updateAdoptionStatus).toHaveBeenCalledWith("application-1", "pending"));
   fireEvent.click(await screen.findByRole("button", { name: "Continuar" }));
   await waitFor(() => expect(screen.getByRole("button", { name: "Revisar solicitação de Lívia" })).toBeInTheDocument());
   expect(screen.queryByRole("button", { name: "Reconsiderar" })).not.toBeInTheDocument();
-  expect(screen.getByText("Expira em 20 dias")).toBeInTheDocument();
+  expect(screen.getByText("Expira amanhã")).toBeInTheDocument();
 });
 
 test("an expired completed application cannot be reconsidered", async () => {

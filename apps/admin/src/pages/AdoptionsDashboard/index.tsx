@@ -287,7 +287,7 @@ export default function AdoptionsDashboard() {
           type === "pending" ? "Solicitação reaberta" : type === "approved" ? "Adoção Aprovada!" : "Solicitação Reprovada",
         message:
           type === "pending"
-            ? `A solicitação de ${nome_adotante} voltou para Pendente. O prazo original de análise foi mantido.`
+            ? `A solicitação de ${nome_adotante} voltou para Pendente. O prazo de exclusão foi mantido: ${formatDate(update.expiresAt)}.`
             : type === "approved"
             ? `O status de ${nome_adotante} foi alterado para Aprovado.`
             : `O status de ${nome_adotante} foi alterado para Reprovado.`,
@@ -887,8 +887,8 @@ export default function AdoptionsDashboard() {
             </strong>{" "}
             a solicitação de <strong>{actionModal.req?.nome_adotante}</strong>?
             {actionModal.type === "pending"
-              ? " Ela voltará para Pendente, mantendo o prazo original de 30 dias desde o envio."
-              : " Os dados serão excluídos em até 7 dias, respeitando o prazo original de 30 dias desde o envio."}
+              ? ` Ela voltará para Pendente, mantendo o prazo de exclusão definido pela primeira decisão: ${formatDate(actionModal.req?.expiresAt)}.`
+              : " Os dados serão excluídos em até 7 dias, respeitando o prazo original de 30 dias desde o envio. Se já houve uma decisão, sua janela de exclusão será mantida."}
           </>
         }
       />

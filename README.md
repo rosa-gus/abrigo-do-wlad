@@ -64,6 +64,7 @@ com uma infraestrutura equivalente.
 - CSS Modules, Motion e Lucide React
 - Cloudflare Workers, Static Assets, Cron Triggers, Access e KV
 - Google Cloud Firestore via API REST
+- Webhook de e-mail via Google Apps Script
 - Cloudinary
 
 ## Identidade visual
@@ -72,7 +73,7 @@ O tema visual foi apelidado de **Jaci** (do tupi _Îasy_ e do guarani _Jasy_),
 em referência à [deusa da Lua](https://pt.wikipedia.org/wiki/Jaci). Suas cores remetem à Terra, com tons inspirados no
 céu, na água, no solo e na vegetação, somando-se à identidade já existente do
 Abrigo do Wlad. A paleta e os estilos globais do site estão em
-[`apps/public/src/index.css`](apps/public/src/index.css).
+[`packages/ui/src/styles`](packages/ui/src/styles).
 
 ## Desenvolvimento
 

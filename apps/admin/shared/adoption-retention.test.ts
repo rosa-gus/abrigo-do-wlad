@@ -28,19 +28,38 @@ describe("adoption decision retention", () => {
       .toBe(application.expiresAt);
   });
 
-  test("preserves the exact original expiry when reopening, even if submittedAt was recorded later", () => {
+  test("preserves the exact original expiry metadata when submittedAt was recorded later", () => {
     const original = { ...application, submittedAt: "2026-10-01T12:00:01.000Z" };
     const decided = { ...original, ...adoptionStatusUpdate(original, "approved", now) };
-    expect(adoptionStatusUpdate(decided, "pending", now).expiresAt).toBe(original.expiresAt);
+    expect(adoptionStatusUpdate(decided, "pending", now).originalExpiresAt).toBe(original.expiresAt);
   });
 
-  test("reconsideration restores pending status and the original deadline", () => {
-    const decided = { ...application, ...adoptionStatusUpdate(application, "approved", now) };
+  test.each(["approved", "rejected"] as const)("reconsidering %s preserves the first decision window through subsequent reviews", (status) => {
+    const decided = { ...application, ...adoptionStatusUpdate(application, status, now) };
     const update = adoptionStatusUpdate(decided, "pending", new Date("2026-10-11T12:00:00.000Z"));
-    expect(update).toEqual({ status: "pending", expiresAt: application.expiresAt, originalExpiresAt: application.expiresAt });
+    expect(update).toEqual({ status: "pending", expiresAt: decided.expiresAt, originalExpiresAt: application.expiresAt, decisionExpiresAt: decided.expiresAt });
     const reconsidered = { ...decided, ...update };
-    expect(adoptionStatusUpdate(reconsidered, "rejected", new Date("2026-10-12T12:00:00.000Z")).expiresAt)
-      .toBe(decided.expiresAt);
+    const nextDecision = { ...reconsidered, ...adoptionStatusUpdate(reconsidered, status === "approved" ? "rejected" : "approved", new Date("2026-10-12T12:00:00.000Z")) };
+    expect(nextDecision.expiresAt).toBe(decided.expiresAt);
+    expect(adoptionStatusUpdate(nextDecision, "pending", new Date("2026-10-13T12:00:00.000Z")).expiresAt).toBe(decided.expiresAt);
+  });
+
+  test("preserves a legacy decision deadline when reconsidering", () => {
+    const legacy = { ...application, status: "approved", expiresAt: "2026-10-15T03:00:00.000Z" };
+    const reopened = adoptionStatusUpdate(legacy, "pending", now);
+    expect(reopened.expiresAt).toBe(legacy.expiresAt);
+    expect(reopened.decisionExpiresAt).toBe(legacy.expiresAt);
+  });
+
+  test("normalizes an earlier reopened pending application to its first decision deadline", () => {
+    const reopened = { ...application, decisionExpiresAt: "2026-10-15T03:00:00.000Z" };
+    expect(adoptionStatusUpdate(reopened, "pending", now).expiresAt).toBe(reopened.decisionExpiresAt);
+  });
+
+  test.each(["pending", "approved", "rejected"] as const)("rejects %s after a reconsidered application's first window expires", (status) => {
+    const decided = { ...application, ...adoptionStatusUpdate(application, "approved", now) };
+    const reopened = { ...decided, ...adoptionStatusUpdate(decided, "pending", now) };
+    expect(() => adoptionStatusUpdate(reopened, status, new Date(decided.expiresAt))).toThrow(/expirou/);
   });
 
   test("repeated decisions do not postpone deletion", () => {

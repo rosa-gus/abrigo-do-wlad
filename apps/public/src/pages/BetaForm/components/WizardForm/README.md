@@ -15,8 +15,11 @@ O `WizardForm` é um formulário multi-step (wizard) para o **processo de entrev
 1. O usuário navega por quatro avisos sobre compromisso, processo, responsáveis
    e taxa de adoção e confirma que está ciente para prosseguir.
 2. Avança pelas 10 etapas, podendo navegar para steps anteriores já preenchidos.
-3. No último step, resolve um reCAPTCHA e envia o formulário.
+3. No último step, envia o formulário com verificação automática pelo reCAPTCHA v3.
 4. Recebe uma tela de confirmação de envio.
+
+Em `npm run dev:public`, o reCAPTCHA é dispensado e o webhook usa o destinatário
+de testes. Builds e preview mantêm a verificação. Veja o [guia público](../../../../../README.md).
 
 ---
 
