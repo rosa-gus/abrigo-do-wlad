@@ -4,7 +4,8 @@
   "main": "./index.ts",
   "keep_vars": true,
   "vars": {
-    "APP_ENV": "production"
+    "APP_ENV": "production",
+    "ADOPTION_CLEANUP_MODE": "delete"
   },
   "compatibility_date": "2026-08-21",
   "compatibility_flags": ["nodejs_compat"],

@@ -46,12 +46,16 @@ secrets em `wrangler.jsonc` nem em variáveis `VITE_*`.
 3. Publique o painel com `npm run deploy:admin` e valide `/api/session` e os
    CRUDs com uma identidade de cada papel. Confirme também a negação para uma
    identidade externa.
-4. Com o Worker operacional, publique as Firestore Rules finais. Elas devem
-   permitir leituras diretas apenas de `dogs`, `recycle_points` e
-   `system/settings`; todo o restante permanece negado. O frontend atual usa
-   exclusivamente a API do Worker, sem SDK Firebase. As rotas públicas retornam
-   somente os campos permitidos de reciclagem e configurações. A conta de serviço
-   dos Workers é autorizada por IAM, não pelas Rules.
+4. Com os Workers público e administrativo operacionais, publique as Firestore
+   Rules finais. Elas devem permitir leituras diretas apenas de `recycle_points`
+   e `system/settings`; todo o restante permanece negado. A coleção `dogs`
+   deve negar consultas e leituras diretas, inclusive para clientes autenticados:
+   seus documentos contêm metadados administrativos como `archivedBy` e fotos
+   retidas. O frontend atual usa exclusivamente a API do Worker, sem SDK Firebase.
+   O catálogo público usa o feed no KV; os Workers acessam o Firestore por conta
+   de serviço autorizada por IAM, não pelas Rules. Após publicar, confirme que
+   `/api/dogs` e os perfis por slug continuam funcionando e que um cliente
+   Firestore sem conta de serviço não consegue ler nem listar `dogs`.
 5. Inicie o cron com `ADOPTION_CLEANUP_MODE=dry-run`. Revise `matched`, `deleted`
    e `hasMore` nos logs e faça o backup necessário; o dry-run não exclui dados.
 6. Após conferir as candidaturas vencidas, altere o modo para `delete`. Ausência

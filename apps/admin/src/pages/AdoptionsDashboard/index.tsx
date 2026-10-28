@@ -49,6 +49,7 @@ import type {
 import styles from "./AdoptionsDashboard.module.css";
 
 interface ExpirationPresentation {
+  expired: boolean;
   label: string;
   title: string;
   variant: "danger" | "outline";
@@ -164,6 +165,7 @@ function getExpirationPresentation(
 
   if (expirationTime <= now.getTime()) {
     return {
+      expired: true,
       label: "Prazo expirado",
       title: `Expirou em ${formattedExpiration}`,
       variant: "danger",
@@ -185,6 +187,7 @@ function getExpirationPresentation(
         : `Expira em ${daysLeft} dias`;
 
   return {
+    expired: false,
     label,
     title: `Expira em ${formattedExpiration}`,
     variant: daysLeft <= 2 ? "danger" : "outline",
@@ -207,7 +210,7 @@ export default function AdoptionsDashboard() {
 
   const [actionModal, setActionModal] = useState<{
     isOpen: boolean;
-    type: "approved" | "rejected";
+    type: "pending" | "approved" | "rejected";
     req: AdoptionRequestSummary | null;
   }>({
     isOpen: false,
@@ -262,30 +265,36 @@ export default function AdoptionsDashboard() {
     setIsUpdatingStatus(true);
 
     try {
-      await updateAdoptionStatus(id, type);
+      const update = await updateAdoptionStatus(id, type);
+      const updatedFields = { status: update.status, expiresAt: update.expiresAt };
 
       setRequests((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, status: type } : r)),
+        prev.map((r) => (r.id === id ? { ...r, ...updatedFields } : r)),
       );
       const cached = detailsCache.current.get(id);
-      if (cached) detailsCache.current.set(id, { ...cached, status: type });
+      if (cached) detailsCache.current.set(id, { ...cached, ...updatedFields });
+      setSelectedSummary((current) =>
+        current?.id === id ? { ...current, ...updatedFields } : current,
+      );
       setSelectedReq((current) =>
-        current?.id === id ? { ...current, status: type } : current,
+        current?.id === id ? { ...current, ...updatedFields } : current,
       );
       setActionModal({ isOpen: false, type: "approved", req: null });
 
       setSuccessInfo({
         isOpen: true,
         title:
-          type === "approved" ? "Adoção Aprovada!" : "Solicitação Reprovada",
+          type === "pending" ? "Solicitação reaberta" : type === "approved" ? "Adoção Aprovada!" : "Solicitação Reprovada",
         message:
-          type === "approved"
+          type === "pending"
+            ? `A solicitação de ${nome_adotante} voltou para Pendente. O prazo original de análise foi mantido.`
+            : type === "approved"
             ? `O status de ${nome_adotante} foi alterado para Aprovado.`
             : `O status de ${nome_adotante} foi alterado para Reprovado.`,
       });
-    } catch {
+    } catch (error: unknown) {
       setActionModal({ isOpen: false, type: "approved", req: null });
-      setOperationError("Não foi possível atualizar o status da solicitação.");
+      setOperationError(error instanceof Error ? error.message : "Não foi possível atualizar o status da solicitação.");
     } finally {
       setIsUpdatingStatus(false);
     }
@@ -534,6 +543,18 @@ export default function AdoptionsDashboard() {
                     </Button>
                   </div>
 
+                  {!isPending && expiration && !expiration.expired && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      leftIcon={<Lucide.Undo2 size={16} />}
+                      disabled={isUpdatingStatus}
+                      onClick={() => setActionModal({ isOpen: true, type: "pending", req })}
+                    >
+                      Reconsiderar
+                    </Button>
+                  )}
                   {isPending && (
                     <div className={styles.decisionActions}>
                       <Button
@@ -820,6 +841,18 @@ export default function AdoptionsDashboard() {
                 <div className={styles.workspaceCompletedState}>
                   <span>Análise concluída</span>
                   {getStatusBadge(selectedStatus)}
+                  {selectedExpiration && !selectedExpiration.expired && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      leftIcon={<Lucide.Undo2 size={16} />}
+                      disabled={isUpdatingStatus}
+                      onClick={() => setActionModal({ isOpen: true, type: "pending", req: selectedSummary })}
+                    >
+                      Reconsiderar
+                    </Button>
+                  )}
                 </div>
               )}
             </DialogFooter>
@@ -834,12 +867,14 @@ export default function AdoptionsDashboard() {
         }
         onConfirm={handleConfirmAction}
         title={
-          actionModal.type === "approved"
+          actionModal.type === "pending"
+            ? "Reconsiderar decisão"
+            : actionModal.type === "approved"
             ? "Aprovar Solicitação"
             : "Reprovar Solicitação"
         }
         confirmText={
-          actionModal.type === "approved" ? "Sim, Aprovar" : "Sim, Reprovar"
+          actionModal.type === "pending" ? "Sim, reconsiderar" : actionModal.type === "approved" ? "Sim, Aprovar" : "Sim, Reprovar"
         }
         confirmingText="Atualizando..."
         isConfirming={isUpdatingStatus}
@@ -848,9 +883,12 @@ export default function AdoptionsDashboard() {
           <>
             Tem certeza que deseja{" "}
             <strong>
-              {actionModal.type === "approved" ? "APROVAR" : "REPROVAR"}
+              {actionModal.type === "pending" ? "RECONSIDERAR" : actionModal.type === "approved" ? "APROVAR" : "REPROVAR"}
             </strong>{" "}
             a solicitação de <strong>{actionModal.req?.nome_adotante}</strong>?
+            {actionModal.type === "pending"
+              ? " Ela voltará para Pendente, mantendo o prazo original de 30 dias desde o envio."
+              : " Os dados serão excluídos em até 7 dias, respeitando o prazo original de 30 dias desde o envio."}
           </>
         }
       />

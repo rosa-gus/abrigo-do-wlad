@@ -27,7 +27,7 @@
     {
       "id": "retencao",
       "title": "Retenção e exclusão de dados",
-      "content": "Tratamos os dados com responsabilidade e conforme o princípio de minimização da LGPD. Realizamos processamento automatizado periódico para revisão da nossa base de dados. Informações relacionadas a processos de adoção que estejam inativas ou expiradas são automaticamente excluídas para garantir que não retemos dados por tempo superior ao necessário:",
+      "content": "Tratamos os dados com responsabilidade e conforme o princípio de minimização da LGPD. Realizamos processamento automatizado periódico para revisão da nossa base de dados. Informações relacionadas a processos de adoção que estejam inativas ou expiradas são automaticamente excluídas para garantir que não retemos dados por tempo superior ao necessário. O prazo de até 7 dias após uma decisão respeita o limite original de 30 dias desde o envio e pode, portanto, ser menor. Se a equipe reconsiderar uma decisão, a solicitação volta à análise com o vencimento original, sem reiniciar os 30 dias. Uma nova decisão não prorroga a janela de exclusão definida pela primeira decisão:",
       "items": [
         "Formulários aprovados: dados excluídos em até 7 dias após a conclusão da aprovação, período destinado à revisão e eventual reconsideração da decisão pela equipe",
         "Formulários rejeitados: dados excluídos em até 7 dias após a rejeição, período destinado à revisão e eventual reconsideração da decisão pela equipe",

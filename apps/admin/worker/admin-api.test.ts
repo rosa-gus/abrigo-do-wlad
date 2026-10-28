@@ -158,6 +158,39 @@ test("adoption list returns only the summary contract provided by the repository
   assert.deepEqual(await response.json(), summaries);
 });
 
+test.each(["approved", "rejected", "pending"] as const)("adoption status %s saves its timestamp deadline with a read-version precondition", async (status) => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-10-10T12:00:00.000Z"));
+  const name = "projects/test-project/databases/(default)/documents/adoption_application/application-1";
+  const updateTime = "2026-10-10T11:00:00.000Z";
+  const get = vi.spyOn(FirestoreRestClient.prototype, "getDocument").mockResolvedValue({
+    id: "application-1", name, updateTime,
+    data: {
+      status: status === "pending" ? "approved" : "pending",
+      submittedAt: "2026-10-01T12:00:00.000Z",
+      expiresAt: status === "pending" ? "2026-10-17T03:00:00.000Z" : "2026-10-31T12:00:00.000Z",
+      originalExpiresAt: "2026-10-31T12:00:00.000Z",
+    },
+  });
+  const update = vi.spyOn(FirestoreRestClient.prototype, "updateDocument").mockResolvedValue({});
+  try {
+    const response = await handleAdminApi(new Request("https://admin.example.test/api/admin/adoptions/application-1/status", {
+      method: "PATCH", headers: { Origin: "https://admin.example.test", "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    }), env, identity, keyDependencies());
+    assert.equal(response.status, 200);
+    const expiresAt = status === "pending" ? "2026-10-31T12:00:00.000Z" : "2026-10-17T03:00:00.000Z";
+    assert.deepEqual(update.mock.calls[0], [name, {
+      status, expiresAt: new Date(expiresAt),
+      originalExpiresAt: "2026-10-31T12:00:00.000Z",
+      ...(status === "pending" ? {} : { decisionExpiresAt: expiresAt }),
+    }, { expectedUpdateTime: updateTime }]);
+    assert.equal((await response.json() as { expiresAt: string }).expiresAt, expiresAt);
+  } finally {
+    get.mockRestore(); update.mockRestore(); vi.useRealTimers();
+  }
+});
+
 test("adoption detail validates the id and loads one full application", async () => {
   let requestedId = "";
   const detail = {

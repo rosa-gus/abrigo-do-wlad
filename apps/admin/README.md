@@ -153,6 +153,21 @@ Avisos têm `message` (1–240 caracteres), `type` (`trivial`, `urgent`, `succes
 ou `info`) e `expiration` (`1h`, `6h`, `12h` ou `until_deleted`). O Worker
 calcula `expiresAt`; avisos vencidos deixam de aparecer automaticamente.
 
+Ao aprovar ou reprovar uma solicitação, o Worker antecipa `expiresAt` para a
+última execução diária do cron (03h UTC) dentro dos próximos 7 dias, respeitando
+o vencimento original de 30 dias desde o envio. `originalExpiresAt` preserva o
+prazo original e `decisionExpiresAt` preserva a janela da primeira decisão.
+O botão **Reconsiderar**, na lista e na ficha, devolve a solicitação para
+`pending` antes do vencimento e restaura seu prazo original. Decisões posteriores
+não prorrogam a janela de exclusão da primeira decisão. Alterações de status e
+exclusões pelo cron exigem que a versão do documento continue igual à consultada.
+Essa programação depende do cron diário; mudanças no horário precisam ser
+refletidas em `shared/adoption-retention.ts`.
+
+O cron usa `ADOPTION_CLEANUP_MODE=delete` em produção e `dry-run` no ambiente
+local. A nova programação é aplicada ao alterar o status; decisões anteriores
+sem esses campos mantêm o vencimento já armazenado até uma nova ação da equipe.
+
 As principais mutações geram eventos em `admin_audit_log` sem copiar payloads,
 candidaturas ou URLs de mídia. Mudanças em animais também agendam a reconstrução
 do catálogo público no KV, que pode levar um breve período para convergir entre

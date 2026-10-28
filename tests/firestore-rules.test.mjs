@@ -35,21 +35,38 @@ before(async () => {
 beforeEach(async () => testEnvironment.clearFirestore());
 after(async () => testEnvironment.cleanup());
 
-describe("public catalog", () => {
-  test("allows reads for dogs, recycle points and public settings", async () => {
-    await seed("dogs/wlad", { nome: "Wlad" });
+describe("public data", () => {
+  test("allows reads for recycle points and public settings", async () => {
     await seed("recycle_points/point-1", { name: "Point" });
     await seed("system/settings", { adoptionEnabled: true });
     const db = testEnvironment.unauthenticatedContext().firestore();
 
-    await assertSucceeds(getDoc(doc(db, "dogs/wlad")));
-    await assertSucceeds(getDocs(collection(db, "dogs")));
     await assertSucceeds(getDoc(doc(db, "recycle_points/point-1")));
     await assertSucceeds(getDoc(doc(db, "system/settings")));
   });
 });
 
 describe("client isolation", () => {
+  for (const authenticated of [false, true]) {
+    test(`rejects direct dog reads for ${authenticated ? "authenticated" : "anonymous"} clients`, async () => {
+      await seed("dogs/active", { nome: "Wlad" });
+      await seed("dogs/archived", {
+        nome: "Wlad arquivado",
+        archivedAt: "2026-10-28T12:00:00.000Z",
+        archivedBy: "operator@example.test",
+        fotos: ["https://example.test/dog.jpg"],
+        retainedPhotos: ["https://example.test/retained.jpg"],
+      });
+      const db = authenticated
+        ? authenticatedFirestore()
+        : testEnvironment.unauthenticatedContext().firestore();
+
+      await assertFails(getDoc(doc(db, "dogs/active")));
+      await assertFails(getDoc(doc(db, "dogs/archived")));
+      await assertFails(getDocs(collection(db, "dogs")));
+    });
+  }
+
   test("rejects every public write", async () => {
     const db = testEnvironment.unauthenticatedContext().firestore();
     await assertFails(setDoc(doc(db, "dogs/new"), { nome: "Dog" }));

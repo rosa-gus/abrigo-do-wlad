@@ -1,4 +1,5 @@
 import type { DogProps } from "../types/dogs";
+import { adoptionStatusUpdate, AdoptionTransitionError } from "../../shared/adoption-retention";
 import type {
   AdminNotification,
   NotificationExpiration,
@@ -582,9 +583,17 @@ export async function handleMockAdminRequest(request: Request): Promise<Response
     const adoption = state.adoptions.find((item) => item.id === segments[3]);
     if (!adoption) return jsonResponse({ error: "Adoption application not found." }, 404);
     const { status } = await readJson<{ status: AdoptionStatus }>(request);
-    adoption.status = status;
+    if (!["pending", "approved", "rejected"].includes(status)) return jsonResponse({ error: "Invalid status" }, 400);
+    let update;
+    try {
+      update = adoptionStatusUpdate(adoption, status);
+    } catch (error) {
+      if (error instanceof AdoptionTransitionError) return jsonResponse({ error: error.message }, 409);
+      throw error;
+    }
+    Object.assign(adoption, update);
     recordMutation(request, `adoption_application/${adoption.id}`);
-    return jsonResponse({ ok: true });
+    return jsonResponse({ ok: true, ...update });
   }
 
   if (segments[2] === "dogs" && segments.length <= 5) {

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { adoptionStatusUpdate, AdoptionTransitionError } from "../shared/adoption-retention";
 
 import {
   dogInputSchema as dogSchema,
@@ -59,7 +60,7 @@ const MANAGED_COLLECTIONS = {
 } as const;
 
 const httpsUrl = z.string().url().refine((value) => value.startsWith("https://"));
-const adoptionStatusSchema = z.object({ status: z.enum(["approved", "rejected"]) });
+const adoptionStatusSchema = z.object({ status: z.enum(["pending", "approved", "rejected"]) });
 const imageDeleteSchema = z.object({ imageUrl: httpsUrl });
 const archiveDogSchema = z.object({ reason: z.enum(["adopted_via_site", "other"]) });
 
@@ -697,8 +698,13 @@ async function routeAdminApi(
       const document = await createFirestoreClient(env).getDocument(`adoption_application/${id}`);
       if (!document) throw new ApiError(404, "Adoption application not found.");
       const { status } = adoptionStatusSchema.parse(await parseJson(request));
-      await createFirestoreClient(env).updateDocument(document.name, { status });
-      return jsonResponse(200, { ok: true });
+      const update = adoptionStatusUpdate(document.data, status);
+      if (!document.updateTime) throw new ApiError(409, "A versão da solicitação não está disponível. Atualize a página.");
+      await createFirestoreClient(env).updateDocument(document.name, {
+        ...update,
+        expiresAt: new Date(update.expiresAt),
+      }, { expectedUpdateTime: document.updateTime });
+      return jsonResponse(200, { ok: true, ...update });
     }
     if (segments[2] === "dogs" && segments.length <= 5) {
       const operation = segments.length === 5
@@ -777,6 +783,7 @@ async function routeAdminApi(
         issues: error.issues,
       });
     }
+    if (error instanceof AdoptionTransitionError) return jsonResponse(409, { error: error.message });
     if (error instanceof ApiError) return jsonResponse(error.status, { error: error.message });
     if (error instanceof CloudinaryUploadError) {
       return jsonResponse(error.status, { error: error.message });
