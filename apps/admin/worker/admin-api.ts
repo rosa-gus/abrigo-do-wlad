@@ -32,6 +32,7 @@ import {
 import {
   CloudinaryUploadError,
   deleteCloudinaryImage,
+  publicIdFromUrl,
   uploadCloudinaryImage,
   type UploadedDogImage,
 } from "./cloudinary";
@@ -734,10 +735,27 @@ async function routeAdminApi(
     if (url.pathname === "/api/admin/media/delete") {
       if (request.method !== "POST") return methodNotAllowed(["POST"]);
       const { imageUrl } = imageDeleteSchema.parse(await parseJson(request));
+      const cloudName = env.CLOUDINARY_CLOUD_NAME;
+      if (!cloudName) throw new ApiError(500, "Image service is not configured.");
+      let publicId: string;
+      try {
+        publicId = publicIdFromUrl(imageUrl, cloudName);
+      } catch {
+        throw new ApiError(400, "Invalid managed image URL.");
+      }
       const dogs = await createFirestoreClient(env).listDocuments<Record<string, unknown>>("dogs");
+      const isSameImage = (photo: unknown): boolean => {
+        if (typeof photo !== "string") return false;
+        try {
+          return publicIdFromUrl(photo, cloudName) === publicId;
+        } catch {
+          // External and legacy URLs cannot identify an image in this account.
+          return false;
+        }
+      };
       if (dogs.some(({ data }) =>
-        (Array.isArray(data.fotos) && data.fotos.includes(imageUrl))
-        || (Array.isArray(data.retainedPhotos) && data.retainedPhotos.includes(imageUrl))
+        (Array.isArray(data.fotos) && data.fotos.some(isSameImage))
+        || (Array.isArray(data.retainedPhotos) && data.retainedPhotos.some(isSameImage))
       )) {
         throw new ApiError(409, "Image is linked to a dog.");
       }

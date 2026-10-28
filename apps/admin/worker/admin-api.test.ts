@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { test, vi } from "vitest";
+
+import { FirestoreRestClient } from "../../../workers/shared/api/_lib/firestore";
 
 import type { AccessIdentity } from "./access";
 import { handleAdminApi, type AdminApiDependencies } from "./admin-api";
@@ -70,6 +72,73 @@ function keyDependencies(
     ...overrides,
   };
 }
+
+const linkedImage = "https://res.cloudinary.com/test-cloud/image/upload/v1/abrigo-do-wlad/dogs/image-id.jpg";
+
+for (const field of ["fotos", "retainedPhotos"]) {
+  test.each([
+    linkedImage,
+    `${linkedImage}?variant=1`,
+    `${linkedImage}#preview`,
+    linkedImage.replace("/v1/", "/c_fill,w_200/v2/"),
+    linkedImage.replace("image-id.jpg", "image-id.webp"),
+    linkedImage.replace("image-id", "%69mage-id"),
+    linkedImage.replace("/v1/", "/"),
+    linkedImage.replace("/v1/", "/c_fill,w_200/f_webp/"),
+  ].flatMap((url) => [[linkedImage, url], [url, linkedImage]]))(
+    `media deletion protects ${field} across equivalent URLs: %s → %s`,
+    async (storedUrl, imageUrl) => {
+      const list = vi.spyOn(FirestoreRestClient.prototype, "listDocuments").mockResolvedValue([{
+        id: "dog-1",
+        name: "projects/test-project/databases/(default)/documents/dogs/dog-1",
+        data: { [field]: [storedUrl] },
+      }]);
+      const fetcher = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Must not delete linked media"));
+      try {
+        const response = await handleAdminApi(
+          new Request("https://admin.example.test/api/admin/media/delete", {
+            method: "POST",
+            headers: { Origin: "https://admin.example.test", "Content-Type": "application/json" },
+            body: JSON.stringify({ imageUrl }),
+          }),
+          env, identity, keyDependencies(),
+        );
+        assert.equal(response.status, 409);
+        assert.equal(fetcher.mock.calls.length, 0);
+      } finally {
+        fetcher.mockRestore();
+        list.mockRestore();
+      }
+    },
+  );
+}
+
+test("media deletion still removes unlinked images in the managed folder", async () => {
+  const list = vi.spyOn(FirestoreRestClient.prototype, "listDocuments").mockResolvedValue([{
+    id: "dog-1",
+    name: "projects/test-project/databases/(default)/documents/dogs/dog-1",
+    data: { fotos: [linkedImage, "https://example.test/legacy.jpg"], retainedPhotos: [null] },
+  }]);
+  const fetcher = vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ result: "ok" }));
+  try {
+    const response = await handleAdminApi(
+      new Request("https://admin.example.test/api/admin/media/delete", {
+        method: "POST",
+        headers: { Origin: "https://admin.example.test", "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: linkedImage.replace("image-id", "orphan") }),
+      }),
+      env, identity, keyDependencies(),
+    );
+    assert.equal(response.status, 200);
+    assert.equal(fetcher.mock.calls.length, 1);
+    const [url, init] = fetcher.mock.calls[0];
+    assert.equal(String(url), "https://api.cloudinary.com/v1_1/test-cloud/image/destroy");
+    assert.equal((init?.body as URLSearchParams).get("public_id"), "abrigo-do-wlad/dogs/orphan");
+  } finally {
+    fetcher.mockRestore();
+    list.mockRestore();
+  }
+});
 
 test("adoption list returns only the summary contract provided by the repository", async () => {
   const summaries = [{

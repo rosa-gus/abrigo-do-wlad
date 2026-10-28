@@ -407,7 +407,7 @@ export async function uploadCloudinaryImage(
   throw new CloudinaryUploadError(502, "O serviço de imagens rejeitou o upload.");
 }
 
-function publicIdFromUrl(imageUrl: string, cloudName: string): string {
+export function publicIdFromUrl(imageUrl: string, cloudName: string): string {
   const url = new URL(imageUrl);
   if (url.protocol !== "https:" || url.hostname !== "res.cloudinary.com") {
     throw new TypeError("Only HTTPS Cloudinary image URLs can be deleted.");
@@ -422,6 +422,12 @@ function publicIdFromUrl(imageUrl: string, cloudName: string): string {
     (segment, index) => index >= 3 && /^v\d+$/.test(segment),
   );
   const publicSegments = segments.slice(versionIndex >= 0 ? versionIndex + 1 : 3);
+  if (versionIndex < 0) {
+    // Versionless delivery URLs may also contain transformation components.
+    while (publicSegments.length > 0 && /^[a-z][a-z0-9]*_/i.test(publicSegments[0])) {
+      publicSegments.shift();
+    }
+  }
   if (publicSegments.length === 0) throw new TypeError("Invalid Cloudinary image URL.");
 
   const last = publicSegments.at(-1)!;
