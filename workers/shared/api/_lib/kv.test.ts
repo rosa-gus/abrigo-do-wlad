@@ -58,3 +58,37 @@ test("local KV isolates projects and leaves production values intact", async () 
   });
   assert.equal(await admin.get("dogs-feed:current"), "development");
 });
+
+test.each(["hero-dog", "dogs-tombstone:dog-123"])(
+  "KV deletion respects environment and project isolation for %s",
+  async (key) => {
+    const values = new Map<string, string>();
+    const binding: NonNullable<CloudflareEnv["KV"]> = {
+      async get(key) { return values.get(key) ?? null; },
+      async put(key, value) { values.set(key, String(value)); },
+      async delete(key) { values.delete(key); },
+    };
+    const first = getKvStore({
+      KV: binding, APP_ENV: "local", FIREBASE_PROJECT_ID: "dev-one",
+    });
+    const second = getKvStore({
+      KV: binding, APP_ENV: "local", FIREBASE_PROJECT_ID: "dev-two",
+    });
+    const production = getKvStore({ KV: binding, APP_ENV: "production" });
+
+    await first.set(key, "first project");
+    await second.set(key, "second project");
+    await production.set(key, "production");
+
+    await first.delete(key);
+
+    assert.equal(await first.get(key), null);
+    assert.equal(await second.get(key), "second project");
+    assert.equal(await production.get(key), "production");
+
+    await production.delete(key);
+
+    assert.equal(await production.get(key), null);
+    assert.equal(await second.get(key), "second project");
+  },
+);

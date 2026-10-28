@@ -161,7 +161,7 @@ export function getKvStore(env?: CloudflareEnv): KvCacheStore {
     delete: async (key) => {
       if (!kv) throw new Error("Cloudflare KV binding is not configured.");
       if (!kv.delete) throw new Error("Cloudflare KV delete is not available.");
-      await kv.delete(key);
+      await kv.delete(storageKey(key));
     },
     get: async <T>(key: string): Promise<T | null> => {
       if (!kv) {
