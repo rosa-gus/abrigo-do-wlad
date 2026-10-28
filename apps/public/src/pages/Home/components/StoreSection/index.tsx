@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import reveal from "../../Reveal.module.css";
+import { useSectionReveal } from "../../useSectionReveal";
 import * as Lucide from "lucide-react";
 
 import { Button } from "@jaci/ui/Button";
@@ -9,29 +10,7 @@ import storeImage from "@/assets/images/bazar.jpg";
 import { STORE_URL } from "@/utils/links";
 
 export function StoreSection() {
-  const [isVisible, setIsVisible] = useState(false);
-  const sectionRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const [entry] = entries;
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      {
-        threshold: 0.2,
-      },
-    );
-
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
+  const { sectionRef, isVisible } = useSectionReveal();
 
   return (
     <section
@@ -41,7 +20,7 @@ export function StoreSection() {
     >
       <div className={styles.gridContainer}>
         <div
-          className={`${styles.textSide} ${isVisible ? styles.visible : ""}`}
+          className={`${styles.textSide} ${reveal.item} ${isVisible ? reveal.visible : ""}`}
         >
           <div className={styles.header}>
             <h2 className="section-title">Bazar Pet Solidário</h2>
@@ -76,8 +55,8 @@ export function StoreSection() {
         </div>
 
         <div
-          className={`${styles.imageWrapper} ${
-            isVisible ? styles.visible : ""
+          className={`${styles.imageWrapper} ${reveal.item} ${
+            isVisible ? reveal.visible : ""
           }`}
         >
           <img src={storeImage} alt="Bazar Pet Solidário" />

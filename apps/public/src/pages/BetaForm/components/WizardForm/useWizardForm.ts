@@ -46,6 +46,7 @@ export function useWizardForm() {
       return {};
     }
   });
+  const [validationAttempt, setValidationAttempt] = React.useState(0);
   const [errors, setErrors] = React.useState<FieldError>({});
   const [highestCompletedStep, setHighestCompletedStep] =
     React.useState<number>(() => {
@@ -120,6 +121,7 @@ export function useWizardForm() {
         fieldErrors[field] = err.message;
       });
       setErrors(fieldErrors);
+      setValidationAttempt((attempt) => attempt + 1);
       return false;
     }
 
@@ -144,7 +146,6 @@ export function useWizardForm() {
     if (validateCurrentStep() && currentStep < totalSteps - 1) {
       setHighestCompletedStep((prev) => Math.max(prev, currentStep + 1)); // liberar próxima step
       navigate(`/beta/formulario/step/${currentStep + 2}`);
-      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   }, [validateCurrentStep, currentStep, totalSteps, navigate]);
 
@@ -152,7 +153,6 @@ export function useWizardForm() {
     if (currentStep > 0) {
       setErrors({});
       navigate(`/beta/formulario/step/${currentStep}`);
-      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   }, [currentStep, navigate]);
 
@@ -190,7 +190,6 @@ export function useWizardForm() {
       setErrors({});
       setHighestCompletedStep(0);
       navigate("/beta/formulario/step/1", { replace: true });
-      window.scrollTo({ top: 0, behavior: "smooth" });
     },
     [navigate],
   );
@@ -203,6 +202,7 @@ export function useWizardForm() {
     progress,
     formData,
     errors,
+    validationAttempt,
     updateField,
     nextStep,
     prevStep,

@@ -9,9 +9,6 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  opacity: 0;
-  transform: translateX(-50px);
-  transition: all 0.8s cubic-bezier(0.5, 0, 0, 1);
   position: relative;
 }
 
@@ -25,9 +22,7 @@
 }
 
 .textSide {
-  opacity: 0;
-  transform: translateX(50px);
-  transition: all 0.8s cubic-bezier(0.5, 0, 0, 1) 0.2s;
+  --reveal-delay: 60ms;
 }
 
 .textSide p {
@@ -43,11 +38,6 @@
   justify-content: flex-start;
 }
 
-.visible {
-  opacity: 1;
-  transform: translateX(0) !important;
-}
-
 @media (max-width: 768px) {
   .contentSection {
     margin-top: 4rem;
@@ -57,11 +47,6 @@
   .gridContainer {
     grid-template-columns: 1fr;
     gap: 2.5rem;
-  }
-
-  .imageWrapper,
-  .textSide {
-    transform: translateY(30px);
   }
 
   .textSide {

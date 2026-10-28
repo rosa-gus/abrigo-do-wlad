@@ -195,6 +195,23 @@ describe("WizardForm", () => {
 
     expect(await screen.findByText("Família e Renda")).toBeInTheDocument();
     expect(screen.getByText("Etapa 2 de 10")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Etapa 2 de 10: Família e Renda" })).toHaveFocus();
+
+    await user.click(screen.getByRole("button", { name: /Anterior/ }));
+    expect(screen.getByRole("heading", { name: "Etapa 1 de 10: Dados Pessoais" })).toHaveFocus();
+  });
+
+  it("leva o foco ao primeiro campo inválido e permite tentar novamente", async () => {
+    const user = userEvent.setup();
+    renderWizard();
+
+    await user.click(screen.getByRole("button", { name: /Próximo/ }));
+    expect(screen.getByLabelText(/Nome do adotante/)).toHaveFocus();
+
+    await user.type(screen.getByLabelText(/Nome do adotante/), "Maria da Silva");
+    await user.click(screen.getByRole("button", { name: /Próximo/ }));
+    expect(screen.getByLabelText(/Idade/)).toHaveFocus();
+    expect(screen.getByText("Etapa 1 de 10")).toBeInTheDocument();
   });
 
   it("bloqueia o envio quando a última etapa é inválida", async () => {

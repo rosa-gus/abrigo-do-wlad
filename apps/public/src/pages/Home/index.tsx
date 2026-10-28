@@ -3,6 +3,7 @@ import { useDailyDog } from "@/hooks/useDailyDog";
 import { ScrollIndicators } from "@/components/ScrollIndicators";
 
 import { ActionCards } from "./components/ActionCards";
+import { AdoptionBanner } from "@/components/AdoptionBanner";
 import { HistorySection } from "./components/HistorySection";
 import { FaqSection } from "./components/FaqSection";
 
@@ -14,17 +15,18 @@ export default function Home() {
   const dog = useDailyDog();
   const containerRef = useRef<HTMLDivElement>(null!);
 
-  const sectionLabels = ["Destaque", "Ações", "História", "Loja", "Dúvidas"];
+  const sectionLabels = ["Destaque", "Adoção", "Ações", "História", "Loja", "Dúvidas"];
 
   return (
     <main>
       <ScrollIndicators
         containerRef={containerRef}
-        sectionCount={5}
+        sectionCount={sectionLabels.length}
         labels={sectionLabels}
       />
       <div className={`container ${styles.homeContainer}`} ref={containerRef}>
         <Hero dog={dog} />
+        <AdoptionBanner />
         <ActionCards />
         <HistorySection />
         <StoreSection />

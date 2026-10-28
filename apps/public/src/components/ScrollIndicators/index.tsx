@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Blend } from "lucide-react";
+import { Button } from "@jaci/ui/Button";
 import { useIndicatorStorage } from "./useIndicatorStorage";
 import styles from "./ScrollIndicators.module.css";
 
@@ -86,7 +87,8 @@ export function ScrollIndicators({
       }
     };
 
-    window.addEventListener("scroll", handleScroll);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, [containerRef, sectionCount]);
 
@@ -104,7 +106,7 @@ export function ScrollIndicators({
 
       window.scrollTo({
         top: targetScroll,
-        behavior: "smooth",
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
       });
     }
   };
@@ -116,7 +118,7 @@ export function ScrollIndicators({
 
     window.scrollTo({
       top: targetScroll,
-      behavior: "smooth",
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
     });
   };
 
@@ -141,32 +143,39 @@ export function ScrollIndicators({
   if (!isVisible && !isFadingOut) {
     return (
       <div className={styles.hiddenArea}>
-        <button
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
           className={styles.showButton}
           onClick={showIndicator}
           title="Mostrar navegação"
           aria-label="Mostrar navegação"
         >
-          <Blend size={19} strokeWidth={2} />
-        </button>
+          <Blend size={14} strokeWidth={2} />
+        </Button>
       </div>
     );
   }
 
   return (
     <nav
+      aria-label="Seções da página"
       className={`${styles.indicators} ${isFadingOut ? styles.fadeOut : styles.fadeIn}`}
     >
       <div className={styles.indicatorWrapper}>
         <div className={styles.dotsContainer}>
-          <button
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
             className={styles.hideButton}
             onClick={hideIndicator}
             title="Ocultar navegação"
             aria-label="Ocultar navegação"
           >
             <Blend size={14} strokeWidth={2.5} />
-          </button>
+          </Button>
           {visibleIndices.map((index, i) => {
             const isEdgeTop = i === 0 && hasMoreTop;
             const isEdgeBottom =
@@ -178,6 +187,8 @@ export function ScrollIndicators({
             return (
               <div key={i} className={styles.dotGroup}>
                 <button
+                  type="button"
+                  aria-current={isParentActive ? "location" : undefined}
                   className={`${styles.dot} ${isParentActive ? styles.active : ""} ${edgeClass}`}
                   onClick={() => handleDotClick(index)}
                   aria-label={`Ir para ${labels[index] || `seção ${index + 1}`}`}
@@ -192,6 +203,9 @@ export function ScrollIndicators({
                         {subs.map((sub, subIdx) => (
                           <button
                             key={`sub-${subIdx}`}
+                            type="button"
+                            aria-current={isParentActive && subIdx === activeSubIndex ? "location" : undefined}
+                            tabIndex={isParentActive ? 0 : -1}
                             className={`${styles.subDot} ${subIdx === activeSubIndex ? styles.activeSubDot : ""}`}
                             onClick={(e) => {
                               e.stopPropagation();

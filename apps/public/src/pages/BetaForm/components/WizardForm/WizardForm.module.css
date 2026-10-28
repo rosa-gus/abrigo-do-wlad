@@ -3,11 +3,21 @@
   flex-direction: column;
   margin: 2rem auto;
   padding: 2rem;
-  max-width: 900px;
+  width: 100%;
   background-color: var(--surface-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
+}
+
+.stepHeading {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* ========== Step Content ========== */

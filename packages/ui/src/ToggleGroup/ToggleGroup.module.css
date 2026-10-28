@@ -36,10 +36,15 @@
 }
 
 .item[data-state="on"] {
-  border-color: var(--primary);
-  background: var(--surface-water);
-  color: var(--primary);
-  box-shadow: inset 0 0 0 1px var(--primary);
+  --toggle-selected-accent: var(--primary);
+
+  border-color: color-mix(in srgb, var(--toggle-selected-accent) 65%, var(--surface-water));
+  background: color-mix(in srgb, var(--toggle-selected-accent) 5%, var(--surface-water));
+  color: var(--toggle-selected-accent);
+}
+
+:global(body.dark-mode) .item[data-state="on"] {
+  --toggle-selected-accent: color-mix(in srgb, var(--primary) 55%, var(--text-secondary));
 }
 
 .item:disabled {

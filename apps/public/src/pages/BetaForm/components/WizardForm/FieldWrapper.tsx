@@ -24,7 +24,10 @@ export function FieldWrapper({
 
   return (
     <FieldContext.Provider value={{ name, labelId, errorId, error }}>
-      <div className={`${styles.field} ${error ? styles.fieldError : ""}`}>
+      <div
+        className={`${styles.field} ${error ? styles.fieldError : ""}`}
+        data-field-error={error ? true : undefined}
+      >
         <label id={labelId} htmlFor={name}>
           {label} {required && <span className={styles.required}>*</span>}
         </label>

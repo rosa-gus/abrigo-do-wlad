@@ -6,40 +6,10 @@
   z-index: 10;
 }
 
-.card:nth-child(1) {
-  animation-delay: 0.1s;
-}
-.card:nth-child(2) {
-  animation-delay: 0.3s;
-}
-.card:nth-child(3) {
-  animation-delay: 0.5s;
-}
-
-@keyframes revealCard {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.card {
-  opacity: 0;
-  transform: translateY(30px);
-  transition:
-    opacity 0.6s ease-out,
-    transform 0.6s ease-out;
-}
-
-.card.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
 .cardDelay1 {
-  transition-delay: 0.15s;
+  --reveal-delay: 80ms;
 }
 
 .cardDelay2 {
-  transition-delay: 0.3s;
+  --reveal-delay: 160ms;
 }

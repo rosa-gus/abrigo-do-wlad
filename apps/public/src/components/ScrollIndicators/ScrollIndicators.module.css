@@ -1,334 +1,209 @@
-.indicators {
+.indicators,
+.hiddenArea {
   position: fixed;
   left: 2rem;
   top: 50%;
   transform: translateY(-50%);
   z-index: 100;
-  pointer-events: auto;
-  transition:
-    opacity 0.4s ease-out,
-    transform 0.4s ease-out;
-}
-
-.fadeIn {
-  animation: fadeInAnim 0.4s ease-out forwards;
-}
-
-@keyframes fadeInAnim {
-  from {
-    opacity: 0;
-    transform: translateY(-50%) translateX(-60px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(-50%) translateX(0);
-  }
-}
-
-.fadeOut {
-  animation: fadeOutAnim 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  pointer-events: none;
-}
-
-@keyframes fadeOutAnim {
-  from {
-    opacity: 1;
-    transform: translateY(-50%) translateX(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-50%) translateX(-60px);
-  }
 }
 
 .hiddenArea {
-  position: fixed;
+  display: flex;
+  align-items: center;
   left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 100px;
-  height: 300px;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
+  width: 112px;
+  height: 320px;
   padding-left: 2rem;
-}
-
-.showButton {
-  width: 35px;
-  height: 35px;
-  background-color: var(--surface-card);
-  border: 1px solid var(--border);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-primary);
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  opacity: 0;
-  transform: scale(0.8) translateX(-10px);
   pointer-events: none;
 }
 
-.hiddenArea:hover .showButton {
-  opacity: 1;
+.hiddenArea::before {
+  position: absolute;
+  inset: 0;
+  content: "";
   pointer-events: auto;
-  transform: scale(1) translateX(0);
 }
 
-.showButton:hover {
-  background-color: var(--glass-secondary);
-  color: var(--primary);
-  border-color: var(--primary);
-  transform: scale(1.1) translateX(0) !important;
+.showButton {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border);
+  background: var(--glass);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: var(--blur);
+  color: var(--text-secondary);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+.hiddenArea:hover .showButton,
+.hiddenArea:focus-within .showButton {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.fadeIn {
+  /* Release the opacity animation so the rail can blur the page behind it. */
+  animation: fadeInAnim 240ms ease-out;
+}
+
+.fadeOut {
+  animation: fadeOutAnim 240ms ease-in both;
+  pointer-events: none;
+}
+
+@keyframes fadeInAnim {
+  from { opacity: 0; transform: translate(-12px, -50%); }
+  to { opacity: 1; transform: translate(0, -50%); }
+}
+
+@keyframes fadeOutAnim {
+  from { opacity: 1; transform: translate(0, -50%); }
+  to { opacity: 0; transform: translate(-12px, -50%); }
+}
+
+.dotsContainer {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--glass);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: var(--blur);
+}
+
+.hideButton {
+  width: 28px;
+  height: 28px;
+  color: var(--text-secondary);
 }
 
 .indicatorWrapper {
   display: flex;
-  align-items: center;
-  gap: 1rem;
+  align-items: flex-start;
+  gap: 0.75rem;
 }
 
 .dotsContainer {
-  background-color: var(--glass);
-  border-radius: var(--radius-lg);
-  padding: 8px 4px;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
   align-items: center;
-  position: relative;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  width: max-content;
-  min-width: 25px;
-  align-self: center;
-}
-
-.hideButton {
-  position: absolute;
-  top: -25px;
-  right: -25px;
-  width: 24px;
-  height: 24px;
-  background-color: var(--surface-card);
-  border: 1px solid var(--border);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-  cursor: pointer;
-  opacity: 0;
-  transform: scale(0.8);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 10;
-  box-shadow: var(--shadow-md);
-}
-
-.indicators:hover .hideButton {
-  opacity: 0.8;
-  transform: scale(1);
-}
-
-.hideButton:hover {
-  opacity: 1 !important;
-  color: var(--text-primary);
-  background-color: var(--bg-body);
-  transform: scale(1.1) !important;
+  gap: 0.5rem;
+  padding: 0.375rem;
 }
 
 .rowsContainer {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  justify-content: center;
+  gap: 0.5rem;
+  /* Match the rail's padding, 28px control and 8px gap. */
+  padding-top: calc(0.375rem + 37px);
+}
+
+.dotGroup,
+.rowGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.dotGroup {
+  align-items: center;
+}
+
+.dot,
+.subDot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-xl);
+  background: transparent;
+  cursor: pointer;
+}
+
+.dot::before,
+.subDot::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transform: rotate(45deg);
+  background: var(--text-muted);
+  opacity: 0.45;
+  transition:
+    height 240ms ease,
+    width 240ms ease,
+    border-radius 240ms ease,
+    opacity 180ms ease,
+    background-color 180ms ease;
+}
+
+.dot:hover,
+.subDot:hover {
+  background: var(--btn-ghost-bg);
+}
+
+.dot:hover::before,
+.subDot:hover::before {
+  opacity: 0.8;
+}
+
+.dot.active::before {
+  width: 8px;
+  height: 8px;
+  border-radius: 12%;
+  background: var(--primary);
+  opacity: 1;
+}
+
+.edgeDot::before {
+  width: 5px;
+  height: 5px;
+  opacity: 0.25;
 }
 
 .indicatorRow {
-  height: 10px;
   display: flex;
   align-items: center;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 24px;
 }
 
-.dot {
-  width: 10px;
-  height: 10px;
-  border: 0;
-  appearance: none;
-  background-color: var(--primary);
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  padding: 0;
-  border-radius: 100%;
-  flex-shrink: 0;
-  opacity: 0.4;
-  transform: scale(1);
-}
-
-.dot:hover {
-  background-color: var(--primary);
-  transform: scale(1.2);
-}
-
-.dot.active {
-  background-color: var(--primary);
-  opacity: 1;
-  transform: scale(1.2);
-}
-
-.edgeDot {
-  transform: scale(0.5);
-  opacity: 0.2;
-  pointer-events: none;
-}
-
-.label {
-  font-size: 0.875rem;
-  color: var(--text-muted);
-  white-space: nowrap;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  opacity: 0;
-  transform: translateX(-10px);
-  pointer-events: none;
-  font-weight: 600;
-  text-align: left;
-  min-width: 70px;
-  letter-spacing: -0.3px;
+.label,
+.subLabel {
   max-width: 150px;
   overflow: hidden;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
   text-overflow: ellipsis;
+  opacity: 0;
+  transform: translateX(-6px);
+  pointer-events: none;
+  transition: opacity 180ms ease, transform 180ms ease;
 }
 
-.label.activeLabel {
+.label.activeLabel,
+.subLabel.activeSubLabel {
   color: var(--primary);
   opacity: 1;
   transform: translateX(0);
 }
 
-@media (max-width: 768px) {
-  .indicators {
-    left: 1rem;
-  }
-
-  .indicatorWrapper {
-    gap: 0.75rem;
-  }
-
-  .dotsContainer {
-    padding: 6px 3px;
-    gap: 0.75rem;
-  }
-
-  .rowsContainer {
-    gap: 0.75rem;
-  }
-
-  .dot {
-    width: 8px;
-    height: 8px;
-  }
-
-  .indicatorRow {
-    height: 8px;
-  }
-
-  .label {
-    font-size: 0.75rem;
-    min-width: 50px;
-    text-shadow: 2px 2px 4px rgba(4, 4, 4, 0.211);
-  }
-}
-
-@media (max-width: 480px) {
-  .indicators {
-    display: none;
-  }
-}
-
-/* Minimized indicators for tall/narrow screens (iPad portrait, split screen, etc) */
-@media (min-width: 768px) and (max-width: 1024px) and (min-height: 800px) {
-  .indicators {
-    left: 0.2rem;
-  }
-
-  .indicatorWrapper {
-    gap: 0.3rem;
-  }
-
-  .dotsContainer {
-    padding: 8px 2px;
-    gap: 0.4rem;
-    border-radius: var(--radius-sm);
-  }
-
-  .dot {
-    width: 6px;
-    height: 6px;
-  }
-
-  .rowsContainer {
-    display: none;
-  }
-
-  .indicatorRow {
-    height: 6px;
-  }
-
-  .label {
-    display: none;
-  }
-
-  .hideButton {
-    width: 16px;
-    height: 16px;
-    top: -10px;
-    right: -10px;
-    opacity: 0;
-  }
-
-  .hideButton:hover {
-    opacity: 1 !important;
-  }
-
-  /* Expand on hover */
-  .indicators:hover .dotsContainer {
-    max-width: 200px;
-    padding: 8px 4px;
-  }
-
-  .indicators:hover .dot {
-    width: 8px;
-    height: 8px;
-  }
-
-  .indicators:hover .hideButton {
-    opacity: 1;
-  }
-
-  .indicators:hover .indicatorWrapper {
-    gap: 0.6rem;
-  }
-}
-
-.dotGroup {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.4rem;
+.label.activeLabel {
+  font-weight: 600;
 }
 
 .accordionWrapper {
   display: grid;
   grid-template-rows: 0fr;
-  transition:
-    grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   opacity: 0;
   visibility: hidden;
+  transition: grid-template-rows 240ms ease, opacity 180ms ease, visibility 240ms;
 }
 
 .accordionOpen {
@@ -338,85 +213,171 @@
 }
 
 .accordionInner {
-  overflow: hidden;
   display: flex;
   flex-direction: column;
-  align-items: center; /* helps dots center */
+  align-items: center;
   min-width: 0;
+  overflow: hidden;
 }
 
 .subRowInner {
   align-items: flex-start;
 }
 
-.subDotsContainer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.6rem;
-  background-color: var(--glass-secondary);
-  border-radius: 99px;
-  padding: 8px 6px;
-  margin: 0;
-}
-
-.subDot {
-  width: 6px;
-  height: 6px;
-  background-color: var(--primary);
-  border-radius: 100%;
-  cursor: pointer;
-  opacity: 0.4;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.subDot:hover {
-  opacity: 0.8;
-  transform: scale(1.2);
-}
-
-.subDot.activeSubDot {
-  opacity: 1;
-  transform: scale(1.3);
-}
-
-.rowGroup {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  gap: 0.4rem;
-}
-
+.subDotsContainer,
 .subRowsContainer {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  padding: 8px 0;
-  margin: 0;
+  gap: 0.25rem;
+  padding-block: 0.375rem;
+}
+
+.subDotsContainer {
+  border-radius: var(--radius-xl);
+  background: var(--glass-secondary);
+}
+
+.subDot,
+.subRow {
+  height: 20px;
+}
+
+.subDot::before {
+  width: 5px;
+  height: 5px;
+}
+
+.subDot.activeSubDot::before {
+  width: 6px;
+  height: 6px;
+  border-radius: 12%;
+  background: var(--primary);
+  opacity: 1;
 }
 
 .subRow {
-  height: 6px;
   display: flex;
   align-items: center;
 }
 
 .subLabel {
   font-size: 0.75rem;
-  color: var(--text-muted);
-  opacity: 0;
-  transform: translateX(-10px);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  pointer-events: none;
-  font-weight: 500;
-  white-space: nowrap;
-  max-width: 150px;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.subLabel.activeSubLabel {
-  color: var(--primary);
-  opacity: 0.9;
-  transform: translateX(0);
+@media (max-width: 768px) {
+  .indicators {
+    left: 1rem;
+  }
+
+  .hiddenArea {
+    padding-left: 1rem;
+  }
+}
+
+/* Keep the rail inside the page gutter when the full navigation cannot fit. */
+@media (max-width: 1440px) {
+  .indicators {
+    left: 0.2rem;
+  }
+
+  .hiddenArea {
+    padding-left: 0.2rem;
+  }
+
+  .rowsContainer {
+    display: none;
+  }
+
+  .dotsContainer {
+    gap: 0.25rem;
+    padding: 0.25rem 2px;
+  }
+
+  .indicators .hideButton {
+    width: 18px;
+    height: 18px;
+    padding: 0;
+  }
+
+  .showButton {
+    width: 24px;
+    height: 32px;
+  }
+
+  .dot {
+    width: 18px;
+    height: 20px;
+  }
+
+  .dot::before {
+    width: 6px;
+    height: 6px;
+  }
+
+  .dot.active::before {
+    width: 6px;
+    height: 6px;
+  }
+
+  .edgeDot::before {
+    width: 4px;
+    height: 4px;
+  }
+
+  .subDot {
+    width: 14px;
+    height: 16px;
+  }
+
+  .subDot::before {
+    width: 4px;
+    height: 4px;
+  }
+
+  .subDot.activeSubDot::before {
+    width: 5px;
+    height: 5px;
+  }
+}
+
+@media (max-width: 768px) {
+  .indicators {
+    left: 0;
+  }
+
+  .dotsContainer {
+    padding-inline: 0;
+  }
+
+  .dot,
+  .indicators .hideButton {
+    width: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .indicators,
+  .hiddenArea {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fadeIn,
+  .fadeOut {
+    animation: none;
+  }
+
+  .fadeOut {
+    opacity: 0;
+  }
+
+  .dot::before,
+  .showButton,
+  .subDot::before,
+  .label,
+  .subLabel,
+  .accordionWrapper {
+    transition: none;
+  }
 }

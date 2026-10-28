@@ -29,6 +29,12 @@ const ScrollToTop: React.FC = () => {
     const previousPathname = previousPathnameRef.current;
     previousPathnameRef.current = pathname;
 
+    // The adoption wizard manages focus and scrolling between its own steps.
+    if (
+      previousPathname?.startsWith("/beta/formulario/step/") &&
+      pathname.startsWith("/beta/formulario/step/")
+    ) return;
+
     if (isDogModalTransition(previousPathname, pathname)) return;
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [pathname]);

@@ -118,7 +118,20 @@ interface WizardFormProps {
   onSubmitSuccess?: (result: AdoptionSubmissionResult) => void;
 }
 
+function focusAndScroll(target: HTMLElement, scrollTarget = target) {
+  target.focus({ preventScroll: true });
+  const header = document.querySelector("header");
+  const headerHeight = header && getComputedStyle(header).position === "fixed"
+    ? header.getBoundingClientRect().height
+    : 0;
+  window.scrollTo({
+    top: Math.max(0, window.scrollY + scrollTarget.getBoundingClientRect().top - headerHeight - 16),
+    behavior: "instant",
+  });
+}
+
 export function WizardForm({ onSubmitSuccess }: WizardFormProps) {
+  const containerRef = React.useRef<HTMLDivElement>(null);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const petName = searchParams.get("pet") || "";
@@ -160,6 +173,7 @@ export function WizardForm({ onSubmitSuccess }: WizardFormProps) {
     progress,
     formData,
     errors,
+    validationAttempt,
     updateField,
     nextStep,
     prevStep,
@@ -169,6 +183,27 @@ export function WizardForm({ onSubmitSuccess }: WizardFormProps) {
     resetForm,
     fillFormWithSampleData,
   } = useWizardForm();
+
+  React.useEffect(() => {
+    if (showResumeDialog) return;
+    const container = containerRef.current;
+    const heading = container?.querySelector<HTMLElement>(
+      showWarning ? "#warning-title" : "#wizard-step-heading",
+    );
+    if (container && heading) {
+      heading.tabIndex = -1;
+      focusAndScroll(heading, container);
+    }
+  }, [currentStep, warningStep, showWarning, showResumeDialog]);
+
+  React.useEffect(() => {
+    if (validationAttempt === 0) return;
+    const field = containerRef.current?.querySelector<HTMLElement>("[data-field-error]");
+    const control = field?.querySelector<HTMLElement>(
+      'input:not([type="hidden"]), textarea, button, [role="radio"], [tabindex="0"]',
+    );
+    if (field && control) focusAndScroll(control, field);
+  }, [validationAttempt]);
 
   React.useEffect(() => {
     if (isAdoptionRecaptchaBypassed()) return;
@@ -327,7 +362,7 @@ export function WizardForm({ onSubmitSuccess }: WizardFormProps) {
     const warningProgress = ((warningStep + 1) / INTRO_WARNINGS.length) * 100;
 
     return (
-      <div className={styles.wizardContainer}>
+      <div className={styles.wizardContainer} ref={containerRef}>
         <header className={styles.warningHeader}>
           <span className={styles.warningEyebrow}>Antes de prosseguir</span>
           <h2>Leia com atenção</h2>
@@ -448,7 +483,10 @@ export function WizardForm({ onSubmitSuccess }: WizardFormProps) {
   }
 
   return (
-    <div className={styles.wizardContainer}>
+    <div className={styles.wizardContainer} ref={containerRef}>
+      <h2 id="wizard-step-heading" className={styles.stepHeading} tabIndex={-1}>
+        Etapa {currentStep + 1} de {totalSteps}: {STEP_TITLES[currentStep].label}
+      </h2>
       {import.meta.env.PUBLIC_DEV_TOOLS && (
         <div className={styles.sampleDataAction}>
           <p id="sample-data-description">

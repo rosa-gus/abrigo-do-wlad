@@ -48,9 +48,8 @@ export function CarouselNavigation({
     >
       <Button
         type="button"
-        variant="outline"
+        variant="ghost"
         size={buttonSize}
-        blur
         onClick={api.goPrev}
         disabled={isFirstPage}
         aria-label={previousLabel}
@@ -88,9 +87,8 @@ export function CarouselNavigation({
 
       <Button
         type="button"
-        variant="outline"
+        variant="ghost"
         size={buttonSize}
-        blur
         onClick={api.goNext}
         disabled={isLastPage}
         aria-label={nextLabel}

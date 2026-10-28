@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { STORAGE_KEYS } from "@/lib/storage";
 
 export function useIndicatorStorage() {
@@ -8,16 +8,13 @@ export function useIndicatorStorage() {
   });
   const [isFadingOut, setIsFadingOut] = useState(false);
 
-  useEffect(() => {
-  }, []);
-
   const hideIndicator = () => {
     setIsFadingOut(true);
     setTimeout(() => {
       setIsVisible(false);
       setIsFadingOut(false);
       localStorage.setItem(STORAGE_KEYS.UI.INDICATORS_VISIBLE, "false");
-    }, 400);
+    }, 240);
   };
 
   const showIndicator = () => {

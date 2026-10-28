@@ -156,10 +156,7 @@ describe("useWizardForm", () => {
       );
       expect(result.current.highestCompletedStep).toBe(1);
     });
-    expect(window.scrollTo).toHaveBeenCalledWith({
-      top: 0,
-      behavior: "smooth",
-    });
+    expect(window.scrollTo).not.toHaveBeenCalled();
     expect(sessionStorage.getItem(WIZARD_STORAGE_KEYS.highestStep)).toBe("1");
   });
 

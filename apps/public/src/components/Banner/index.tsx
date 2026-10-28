@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Badge } from "@jaci/ui/Badge";
 import {
   getOptimizedImageUrl,
@@ -10,10 +11,12 @@ const MOBILE_BANNER_SIZE = { width: 768, height: 800 } as const;
 
 type BannerProps = {
   image?: string;
-  badge: string;
+  badge?: string;
   title: string;
   description: string;
   className?: string;
+  children?: ReactNode;
+  leading?: ReactNode;
 };
 
 /**
@@ -25,6 +28,8 @@ export default function Banner({
   title,
   description,
   className,
+  children,
+  leading,
 }: BannerProps) {
   const desktopImage = getOptimizedImageUrl(image, {
     ...DESKTOP_BANNER_SIZE,
@@ -82,16 +87,18 @@ export default function Banner({
       )}
       <div className={styles.bannerOverlay} />
       <div className={styles.bannerContent}>
-        <Badge
+        {leading}
+        {badge && <Badge
           size="lg"
           blur={true}
           variant="outline"
-          style={{ color: "var(--always-white)", textTransform: "uppercase" }}
+          className={styles.imageBadge}
         >
           {badge}
-        </Badge>
+        </Badge>}
         <h1>{title}</h1>
         <p>{description}</p>
+        {children}
       </div>
     </section>
   );
