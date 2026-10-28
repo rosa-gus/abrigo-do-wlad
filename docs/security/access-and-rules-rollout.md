@@ -54,6 +54,10 @@ secrets em `wrangler.jsonc` nem em variáveis `VITE_*`.
    e `hasMore` nos logs e faça o backup necessário; o dry-run não exclui dados.
 6. Após conferir as candidaturas vencidas, altere o modo para `delete`. Ausência
    ou valor inválido mantém o cron em `disabled`.
+7. Para limpar cães arquivados após 30 dias, configure `DOG_PURGE_MODE=dry-run`,
+   confira `matched`, `deleted` e `hasMore` e, após revisar o resultado, altere
+   para `delete`. O padrão também é `disabled`. A tarefa remove documentos do
+   Firestore; imagens no Cloudinary permanecem.
 
 Os comandos de verificação e o CI não fazem deploy automaticamente.
 

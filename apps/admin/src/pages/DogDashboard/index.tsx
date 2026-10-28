@@ -4,7 +4,8 @@ import { CircleAlert, Plus, Dog, Search } from "lucide-react";
 import { Badge } from "@jaci/ui/Badge";
 import { Button } from "@jaci/ui/Button";
 import { Input } from "@jaci/ui/Field";
-import { getDogs, removeDogAndTrack } from "../../services/dogs";
+import { EmptyState } from "@jaci/ui/EmptyState";
+import { getDogs, archiveDog } from "../../services/dogs";
 import { DogCard } from "../../components/DogCard";
 import { AdoptionModal } from "../../components/AdoptionModal";
 import { ErrorModal } from "../../components/ErrorModal";
@@ -75,7 +76,7 @@ export default function DogDashboard() {
     setIsProcessingDog(true);
 
     try {
-      await removeDogAndTrack(selectedDog.id, adoptedViaSite);
+      await archiveDog(selectedDog.id, adoptedViaSite);
 
       setDogs(prev => prev.filter(dog => dog.id !== selectedDog.id));
 
@@ -85,13 +86,13 @@ export default function DogDashboard() {
         setSuccessInfo({
           isOpen: true,
           title: "Adoção Registrada!",
-          message: "O animal foi removido da lista do abrigo com sucesso."
+        message: "O animal foi arquivado e pode ser restaurado na página Arquivado."
         });
       } else {
         setSuccessInfo({
           isOpen: true,
-          title: "Animal Removido",
-          message: "O animal foi removido da lista do abrigo com sucesso."
+          title: "Animal Arquivado",
+        message: "O animal foi arquivado e pode ser restaurado na página Arquivado."
         });
       }
 
@@ -115,7 +116,7 @@ export default function DogDashboard() {
       <div className={styles.topBar}>
 
         <div className={styles.searchWrapper}>
-          <Search className={styles.searchIcon} size={20} />
+          <Search size={20} aria-hidden="true" />
           <Input
             type="text"
             aria-label="Buscar cachorro por nome"
@@ -125,7 +126,6 @@ export default function DogDashboard() {
               setSearchTerm(e.target.value);
               setCurrentPage(1);
             }}
-            className={styles.searchInput}
           />
         </div>
 
@@ -144,10 +144,12 @@ export default function DogDashboard() {
       )}
 
       {!loading && loadError && (
-        <div className={styles.emptyState} role="alert">
-          <CircleAlert size={48} color="var(--error)" />
-          <p>{loadError}</p>
-          <Button
+        <EmptyState
+          role="alert"
+          size="lg"
+          icon={<CircleAlert color="var(--error)" />}
+          title={loadError}
+          actions={<Button
             type="button"
             variant="secondary"
             onClick={() => {
@@ -155,24 +157,21 @@ export default function DogDashboard() {
               setLoadError(null);
               setReloadToken(token => token + 1);
             }}
-          >
-            Tentar novamente
-          </Button>
-        </div>
+          >Tentar novamente</Button>}
+        />
       )}
 
       {!loading && !loadError && filteredDogs.length === 0 && (
-        <div className={styles.emptyState}>
-          <Dog size={48} color="var(--border)" />
-          <p>
-            {searchTerm
-              ? `Nenhum cachorro encontrado para "${searchTerm}"`
-              : "Nenhum cachorro cadastrado ainda."}
-          </p>
-          {!searchTerm && (
+        <EmptyState
+          size="lg"
+          icon={<Dog />}
+          title={searchTerm
+            ? `Nenhum cachorro encontrado para "${searchTerm}"`
+            : "Nenhum cachorro cadastrado ainda."}
+          actions={!searchTerm && (
             <Button variant="text" onClick={() => navigate("/admin/dog/new")}>Cadastre o primeiro</Button>
           )}
-        </div>
+        />
       )}
 
       {!loading && !loadError && currentDogs.length > 0 && (
@@ -182,7 +181,7 @@ export default function DogDashboard() {
               <DogCard
                 key={dog.id}
                 dog={dog}
-                onDelete={openAdoptionModal}
+                onArchive={openAdoptionModal}
                 priority={index < 3}
               />
             ))}

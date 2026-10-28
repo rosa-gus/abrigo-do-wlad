@@ -158,12 +158,17 @@ account mantidas no runtime.
 ## Worker agendado
 
 O Worker [`workers/cron/index.ts`](../../workers/cron/index.ts) executa
-diariamente três tarefas:
+diariamente quatro tarefas:
 
 - atualização do animal em destaque armazenado no KV;
 - reconstrução determinística do catálogo rotativo de cães armazenado no KV;
 - identificação e remoção de candidaturas vencidas conforme a política de
   retenção.
+- limpeza dos registros de cães arquivados cujo prazo individual venceu.
+
+Cães arquivados ficam fora do catálogo e da seleção de destaque. Cada registro
+recebe um prazo individual de 30 dias em `purgeAfter`. O cron só exclui seus
+documentos quando `DOG_PURGE_MODE=delete`; as fotos no Cloudinary permanecem.
 
 O endpoint `/api/dogs` aceita `page`, `limit`, `cateIdade`, `cor`, `tag` e uma
 `version` opcional. A versão mantém a ordem estável entre páginas; versões
@@ -176,6 +181,9 @@ O comportamento da limpeza é definido por `ADOPTION_CLEANUP_MODE`:
 | `disabled` | Não consulta nem remove candidaturas. |
 | `dry-run` | Registra nos logs os documentos elegíveis sem removê-los. |
 | `delete` | Remove os documentos elegíveis. |
+
+`DOG_PURGE_MODE` aceita os mesmos valores. Configure `dry-run` para conferir os
+campos `matched`, `deleted` e `hasMore` nos logs antes de ativar `delete`.
 
 ## Build, verificação e publicação
 

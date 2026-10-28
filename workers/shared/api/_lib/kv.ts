@@ -4,6 +4,7 @@ type KvValue = string | number | boolean | object | null | undefined;
 
 type KvStore = {
   get: (key: string) => Promise<string | null>;
+  delete?: (key: string) => Promise<void>;
   put: (
     key: string,
     value: string,
@@ -13,6 +14,7 @@ type KvStore = {
 
 type KvCacheStore = {
   get: <T>(key: string) => Promise<T | null>;
+  delete: (key: string) => Promise<void>;
   set: (
     key: string,
     value: KvValue,
@@ -93,6 +95,10 @@ export function getKvStore(env?: CloudflareEnv): KvCacheStore {
   );
 
   const mockKv: KvCacheStore = {
+    delete: async (key) => {
+      mockExpirations.delete(key);
+      mockStore.delete(key);
+    },
     get: async <T>(key: string): Promise<T | null> => {
       console.log(`[KV MOCK] GET "${key}"`);
 
@@ -144,6 +150,11 @@ export function getKvStore(env?: CloudflareEnv): KvCacheStore {
   };
 
   const liveKv: KvCacheStore = {
+    delete: async (key) => {
+      if (!kv) throw new Error("Cloudflare KV binding is not configured.");
+      if (!kv.delete) throw new Error("Cloudflare KV delete is not available.");
+      await kv.delete(key);
+    },
     get: async <T>(key: string): Promise<T | null> => {
       if (!kv) {
         throw new Error("Cloudflare KV binding is not configured.");

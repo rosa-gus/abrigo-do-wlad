@@ -9,7 +9,9 @@ const AUDIT_LIST_LIMIT = 100;
 export const adminAuditActionSchema = z.enum([
   "adoption.status.updated",
   "dog.created",
+  "dog.archived",
   "dog.deleted",
+  "dog.restored",
   "dog.updated",
   "media.deleted",
   "media.uploaded",

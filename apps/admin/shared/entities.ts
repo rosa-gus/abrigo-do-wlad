@@ -163,6 +163,12 @@ export const dogUpdateSchema = dogWritableFieldsSchema.partial().refine(
 
 export const dogEntitySchema = dogInputSchema.extend({
   id: z.number().int().nonnegative(),
+  archivedAt: z.string().datetime().nullish(),
+  purgeAfter: z.string().datetime().nullish(),
+  archiveReason: z.enum(["adopted_via_site", "other"]).nullish(),
+  archivedBy: z.string().email().nullish(),
+  adoptionCountedAt: z.string().datetime().nullish(),
+  retainedPhotos: z.array(z.string()).optional(),
   // Reads stay tolerant so legacy records can be opened and corrected manually.
   idade: dogAgeReadSchema,
   temperamento: dogTemperamentReadSchema,

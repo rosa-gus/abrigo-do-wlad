@@ -5,6 +5,7 @@ import { Badge } from "@jaci/ui/Badge";
 import { Button } from "@jaci/ui/Button";
 import { Card, CardBody, CardContent, CardFooter } from "@jaci/ui/Card";
 import { Input } from "@jaci/ui/Field";
+import { EmptyState } from "@jaci/ui/EmptyState";
 import { getRecyclePoints, deleteRecyclePoint } from "../../services/recycle";
 import type { RecyclePoint } from "../../types/recycle";
 import { DeleteModal } from "../../components/DeleteModal";
@@ -100,7 +101,7 @@ export default function RecycleDashboard() {
       <div className={styles.topBar}>
 
         <div className={styles.searchWrapper}>
-          <Search className={styles.searchIcon} size={20} />
+          <Search size={20} aria-hidden="true" />
           <Input
             type="text"
             aria-label="Buscar ponto de coleta"
@@ -110,7 +111,6 @@ export default function RecycleDashboard() {
               setSearchTerm(e.target.value);
               setCurrentPage(1);
             }}
-            className={styles.searchInput}
           />
         </div>
 
@@ -129,10 +129,12 @@ export default function RecycleDashboard() {
       )}
 
       {!loading && loadError && (
-        <div className={styles.emptyState} role="alert">
-          <CircleAlert size={48} color="var(--error)" />
-          <p>{loadError}</p>
-          <Button
+        <EmptyState
+          role="alert"
+          size="lg"
+          icon={<CircleAlert color="var(--error)" />}
+          title={loadError}
+          actions={<Button
             type="button"
             variant="secondary"
             onClick={() => {
@@ -140,24 +142,21 @@ export default function RecycleDashboard() {
               setLoadError(null);
               setReloadToken(token => token + 1);
             }}
-          >
-            Tentar novamente
-          </Button>
-        </div>
+          >Tentar novamente</Button>}
+        />
       )}
 
       {!loading && !loadError && filteredPoints.length === 0 && (
-        <div className={styles.emptyState}>
-          <MapPin size={48} color="var(--border)" />
-          <p>
-            {searchTerm
-              ? `Nenhum ponto encontrado para "${searchTerm}"`
-              : "Nenhum ponto de coleta cadastrado ainda."}
-          </p>
-          {!searchTerm && (
+        <EmptyState
+          size="lg"
+          icon={<MapPin />}
+          title={searchTerm
+            ? `Nenhum ponto encontrado para "${searchTerm}"`
+            : "Nenhum ponto de coleta cadastrado ainda."}
+          actions={!searchTerm && (
             <Button variant="text" onClick={() => navigate("/admin/recycle/new")}>Cadastre o primeiro</Button>
           )}
-        </div>
+        />
       )}
 
       {/* Lista de Pontos */}

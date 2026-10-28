@@ -1,16 +1,19 @@
 import type { CloudflareEnv } from "../shared/api/_lib/env";
 import { cleanupExpiredAdoptionApplications } from "../shared/api/adoption/cleanup";
 import { updateDogFeed } from "../shared/api/dogs/feed";
+import { purgeArchivedDogs } from "../shared/api/dogs/purge";
 import { updateHeroDog } from "../shared/api/hero-dog/update";
 
 export interface CronDependencies {
   cleanupExpiredAdoptionApplications: typeof cleanupExpiredAdoptionApplications;
+  purgeArchivedDogs: typeof purgeArchivedDogs;
   updateDogFeed: typeof updateDogFeed;
   updateHeroDog: typeof updateHeroDog;
 }
 
 const productionDependencies: CronDependencies = {
   cleanupExpiredAdoptionApplications,
+  purgeArchivedDogs,
   updateDogFeed,
   updateHeroDog,
 };
@@ -24,6 +27,10 @@ export async function runCronJobs(
   const configuredMode = env.ADOPTION_CLEANUP_MODE?.trim().toLowerCase();
   const cleanupMode = configuredMode === "delete" || configuredMode === "dry-run"
     ? configuredMode
+    : "disabled";
+  const configuredDogPurgeMode = env.DOG_PURGE_MODE?.trim().toLowerCase();
+  const dogPurgeMode = configuredDogPurgeMode === "delete" || configuredDogPurgeMode === "dry-run"
+    ? configuredDogPurgeMode
     : "disabled";
   console.log(
     JSON.stringify({
@@ -45,12 +52,25 @@ export async function runCronJobs(
         cutoff: scheduledAt,
         dryRun: cleanupMode === "dry-run",
       });
+  const dogPurgePromise = dogPurgeMode === "disabled"
+    ? Promise.resolve({
+        batches: 0,
+        cutoff: scheduledAt.toISOString(),
+        deleted: 0,
+        hasMore: false,
+        matched: 0,
+      })
+    : dependencies.purgeArchivedDogs(env, {
+        cutoff: scheduledAt,
+        dryRun: dogPurgeMode === "dry-run",
+      });
   const results = await Promise.allSettled([
     dependencies.updateHeroDog(env),
     dependencies.updateDogFeed(env, { now: scheduledAt }),
     cleanupPromise,
+    dogPurgePromise,
   ]);
-  const [heroResult, dogFeedResult, cleanupResult] = results;
+  const [heroResult, dogFeedResult, cleanupResult, dogPurgeResult] = results;
   const errors: string[] = [];
 
   if (heroResult.status === "rejected") {
@@ -91,6 +111,18 @@ export async function runCronJobs(
         ...cleanupResult.value,
       }),
     );
+  }
+
+  if (dogPurgeResult.status === "rejected") {
+    errors.push(
+      `dog-purge: ${dogPurgeResult.reason instanceof Error ? dogPurgeResult.reason.message : String(dogPurgeResult.reason)}`,
+    );
+  } else {
+    console.log(JSON.stringify({
+      event: dogPurgeMode === "disabled" ? "cron.dog-purge.skipped" : "cron.dog-purge.completed",
+      mode: dogPurgeMode,
+      ...dogPurgeResult.value,
+    }));
   }
 
   if (errors.length > 0) {

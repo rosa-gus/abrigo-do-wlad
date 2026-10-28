@@ -280,6 +280,24 @@ test("deleteDocuments commits only documents from the configured database", asyn
   );
 });
 
+test("conditional deletes require the scanned document version", async () => {
+  let requestBody: Record<string, unknown> | undefined;
+  const client = new FirestoreRestClient("test-project", {
+    fetcher: mockFetch((_url, init) => {
+      requestBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      return Response.json({ commitTime: "2026-10-29T00:00:00.000Z" });
+    }),
+    tokenProvider: async () => "test-token",
+  });
+  const name = "projects/test-project/databases/(default)/documents/dogs/dog-1";
+  const updateTime = "2026-09-29T00:00:00.000Z";
+  const result = await client.deleteDocumentsIfUnchanged([{ name, updateTime }]);
+  assert.equal(result.deleted, 1);
+  assert.deepEqual(requestBody, {
+    writes: [{ delete: name, currentDocument: { updateTime } }],
+  });
+});
+
 test("createDocument encodes data and applies a server timestamp", async () => {
   let requestUrl = "";
   let requestBody: Record<string, unknown> | undefined;
@@ -643,6 +661,47 @@ test("updateDocument uses an existence precondition and an update mask", async (
       updateMask: { fieldPaths: ["nome", "tags"] },
       currentDocument: { exists: true },
     }],
+  });
+});
+
+test("archiving and adoption count share one guarded commit with a timestamp deadline", async () => {
+  const dogName = "projects/test-project/databases/(default)/documents/dogs/dog-1";
+  const statisticsName = "projects/test-project/databases/(default)/documents/system/statistics";
+  let commit: { writes: Array<Record<string, unknown>> } | undefined;
+  const client = new FirestoreRestClient("test-project", {
+    fetcher: mockFetch((url, init) => {
+      if (url.endsWith("/documents/system/statistics")) {
+        return Response.json({ name: statisticsName, fields: {} });
+      }
+      commit = JSON.parse(String(init?.body)) as { writes: Array<Record<string, unknown>> };
+      return Response.json({ commitTime: "2026-09-29T10:00:00Z" });
+    }),
+    tokenProvider: async () => "test-token",
+  });
+  await client.updateDocumentAndIncrementField(
+    dogName,
+    { archivedAt: "2026-09-29T10:00:00.000Z", purgeAfter: new Date("2026-10-29T10:00:00.000Z") },
+    "system/statistics", "adoptionsCount", 1,
+    { expectedUpdateTime: "2026-09-29T09:59:00Z" },
+  );
+  assert.equal(commit?.writes.length, 2);
+  assert.deepEqual(commit?.writes[0], {
+    update: {
+      name: dogName,
+      fields: {
+        archivedAt: { stringValue: "2026-09-29T10:00:00.000Z" },
+        purgeAfter: { timestampValue: "2026-10-29T10:00:00.000Z" },
+      },
+    },
+    updateMask: { fieldPaths: ["archivedAt", "purgeAfter"] },
+    currentDocument: { updateTime: "2026-09-29T09:59:00Z" },
+  });
+  assert.deepEqual(commit?.writes[1], {
+    transform: {
+      document: statisticsName,
+      fieldTransforms: [{ fieldPath: "adoptionsCount", increment: { integerValue: "1" } }],
+    },
+    currentDocument: { exists: true },
   });
 });
 

@@ -105,6 +105,17 @@ test("updateDogFeed stores a versioned daily feed before its current pointer", a
   );
 });
 
+test("updateDogFeed excludes archived dogs", async () => {
+  const { env } = kvEnv();
+  const active = document(dog("active"));
+  const archived = document(dog("archived"));
+  archived.data.archivedAt = "2026-09-29T10:00:00.000Z";
+  const feed = await updateDogFeed(env, {
+    source: { async listDocuments() { return [active, archived]; } },
+  });
+  assert.deepEqual(feed.dogs.map((item) => item.id), ["active"]);
+});
+
 test("updateDogFeed preserves legacy temperament longer than 80 characters", async () => {
   const { env } = kvEnv();
   const legacyTemperament = "Temperamento legado ".repeat(5);

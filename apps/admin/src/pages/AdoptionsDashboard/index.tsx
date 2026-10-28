@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import * as Lucide from "lucide-react";
 import { Button } from "@jaci/ui/Button";
 import { Badge } from "@jaci/ui/Badge";
+import { EmptyState } from "@jaci/ui/EmptyState";
 import {
   Card,
   CardBody,
@@ -416,10 +417,12 @@ export default function AdoptionsDashboard() {
       {loading ? (
         <p style={{ color: "var(--text-muted)" }}>Buscando solicitações...</p>
       ) : listError ? (
-        <div className={styles.emptyState} role="alert">
-          <Lucide.CircleAlert size={48} />
-          <p>{listError}</p>
-          <Button
+        <EmptyState
+          role="alert"
+          size="lg"
+          icon={<Lucide.CircleAlert color="var(--error)" />}
+          title={listError}
+          actions={<Button
             type="button"
             variant="secondary"
             onClick={() => {
@@ -427,15 +430,14 @@ export default function AdoptionsDashboard() {
               setListError(null);
               setReloadToken(token => token + 1);
             }}
-          >
-            Tentar novamente
-          </Button>
-        </div>
+          >Tentar novamente</Button>}
+        />
       ) : requests.length === 0 ? (
-        <div className={styles.emptyState}>
-          <Lucide.Inbox size={48} style={{ margin: "0 auto 1rem", opacity: 0.5 }} />
-          <p>Nenhuma solicitação de adoção pendente.</p>
-        </div>
+        <EmptyState
+          size="lg"
+          icon={<Lucide.Inbox />}
+          title="Nenhuma solicitação de adoção pendente."
+        />
       ) : (
         <div className={styles.listContainer}>
           {requests.map((req) => {
