@@ -1,0 +1,5 @@
+.onImage {
+  background-color: var(--glass-secondary);
+  color: var(--text-on-image);
+  text-transform: uppercase;
+}

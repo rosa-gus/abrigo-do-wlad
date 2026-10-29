@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { Blend } from "lucide-react";
+import { ChevronLeft, ListTree, X } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { Button } from "@jaci/ui/Button";
 import { useIndicatorStorage } from "./useIndicatorStorage";
 import styles from "./ScrollIndicators.module.css";
 
@@ -14,11 +16,26 @@ export function ScrollIndicators({
   sectionCount,
   labels = [],
 }: ScrollIndicatorsProps) {
+  const reduceMotion = useReducedMotion();
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isCompactOpen, setIsCompactOpen] = useState(false);
+  const [isFooterVisible, setIsFooterVisible] = useState(false);
   const [activeSubIndex, setActiveSubIndex] = useState(-1);
   const [subSections, setSubSections] = useState<
     { node: HTMLElement; label: string }[][]
   >([]);
+
+  useEffect(() => {
+    const footer = document.getElementById("footer");
+    if (!footer) return;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      setIsFooterVisible(entry.isIntersecting);
+      if (entry.isIntersecting) setIsCompactOpen(false);
+    });
+    observer.observe(footer);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -86,7 +103,8 @@ export function ScrollIndicators({
       }
     };
 
-    window.addEventListener("scroll", handleScroll);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, [containerRef, sectionCount]);
 
@@ -104,7 +122,7 @@ export function ScrollIndicators({
 
       window.scrollTo({
         top: targetScroll,
-        behavior: "smooth",
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
       });
     }
   };
@@ -116,7 +134,7 @@ export function ScrollIndicators({
 
     window.scrollTo({
       top: targetScroll,
-      behavior: "smooth",
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
     });
   };
 
@@ -140,120 +158,122 @@ export function ScrollIndicators({
 
   if (!isVisible && !isFadingOut) {
     return (
-      <div className={styles.hiddenArea}>
-        <button
+      <div className={styles.hiddenArea} data-footer-visible={isFooterVisible}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
           className={styles.showButton}
           onClick={showIndicator}
           title="Mostrar navegação"
           aria-label="Mostrar navegação"
         >
-          <Blend size={19} strokeWidth={2} />
-        </button>
+          <ListTree size={18} aria-hidden="true" />
+        </Button>
       </div>
     );
   }
 
   return (
-    <nav
-      className={`${styles.indicators} ${isFadingOut ? styles.fadeOut : styles.fadeIn}`}
-    >
-      <div className={styles.indicatorWrapper}>
-        <div className={styles.dotsContainer}>
-          <button
+    <>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        className={styles.compactToggle}
+        data-footer-visible={isFooterVisible}
+        onClick={() => setIsCompactOpen(open => !open)}
+        aria-expanded={isCompactOpen}
+        aria-controls="page-section-navigation"
+        aria-label={isCompactOpen ? "Fechar seções da página" : "Abrir seções da página"}
+      >
+        {isCompactOpen ? <X size={18} aria-hidden="true" /> : <ListTree size={18} aria-hidden="true" />}
+      </Button>
+      <nav
+        id="page-section-navigation"
+        data-footer-visible={isFooterVisible}
+        aria-label="Seções da página"
+        className={`${styles.indicators} ${isCompactOpen ? styles.compactOpen : ""} ${isFadingOut ? styles.fadeOut : styles.fadeIn}`}
+        onKeyDown={event => {
+          if (event.key === "Escape") {
+            setIsCompactOpen(false);
+            document.querySelector<HTMLButtonElement>(`button[aria-controls="page-section-navigation"]`)?.focus();
+          }
+        }}
+      >
+        <div className={styles.indicatorWrapper}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
             className={styles.hideButton}
             onClick={hideIndicator}
             title="Ocultar navegação"
             aria-label="Ocultar navegação"
           >
-            <Blend size={14} strokeWidth={2.5} />
-          </button>
-          {visibleIndices.map((index, i) => {
-            const isEdgeTop = i === 0 && hasMoreTop;
-            const isEdgeBottom =
-              i === visibleIndices.length - 1 && hasMoreBottom;
-            const edgeClass = isEdgeTop || isEdgeBottom ? styles.edgeDot : "";
-            const isParentActive = index === activeIndex;
-            const subs = subSections[index] || [];
+            <ChevronLeft size={18} aria-hidden="true" />
+          </Button>
+          <AnimatePresence initial={false} mode="popLayout">
+            {visibleIndices.map((index, i) => {
+              const isEdge = (i === 0 && hasMoreTop) ||
+                (i === visibleIndices.length - 1 && hasMoreBottom);
+              const isParentActive = index === activeIndex;
+              const subs = subSections[index] || [];
+              const label = labels[index] || `Seção ${index + 1}`;
 
-            return (
-              <div key={i} className={styles.dotGroup}>
-                <button
-                  className={`${styles.dot} ${isParentActive ? styles.active : ""} ${edgeClass}`}
-                  onClick={() => handleDotClick(index)}
-                  aria-label={`Ir para ${labels[index] || `seção ${index + 1}`}`}
-                  title={labels[index] || `Seção ${index + 1}`}
-                />
-                {subs.length > 0 && (
-                  <div
-                    className={`${styles.accordionWrapper} ${isParentActive ? styles.accordionOpen : ""}`}
+              return (
+                <motion.div
+                  key={index}
+                  className={styles.dotGroup}
+                  layout={reduceMotion ? false : "position"}
+                  initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={reduceMotion ? { opacity: 1 } : { opacity: 0, y: -6, pointerEvents: "none" }}
+                  transition={{
+                    duration: reduceMotion ? 0 : 0.22,
+                    ease: [0.22, 1, 0.36, 1],
+                  }}
+                >
+                  <button
+                    type="button"
+                    aria-current={isParentActive ? "location" : undefined}
+                    className={`${styles.dot} ${isParentActive ? styles.active : ""} ${isEdge ? styles.edgeDot : ""}`}
+                    onClick={() => { handleDotClick(index); setIsCompactOpen(false); }}
+                    aria-label={`Ir para ${label}`}
+                    title={label}
                   >
-                    <div className={styles.accordionInner}>
-                      <div className={styles.subDotsContainer}>
-                        {subs.map((sub, subIdx) => (
-                          <button
-                            key={`sub-${subIdx}`}
-                            className={`${styles.subDot} ${subIdx === activeSubIndex ? styles.activeSubDot : ""}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSubDotClick(sub.node);
-                            }}
-                            aria-label={`Ir para a subseção ${sub.label}`}
-                            title={sub.label}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        <div className={styles.rowsContainer}>
-          {visibleIndices.map((index, i) => {
-            const isParentActive = index === activeIndex;
-            const subs = subSections[index] || [];
-
-            return (
-              <div key={i} className={styles.rowGroup}>
-                <div className={styles.indicatorRow}>
-                  <span
-                    className={`${styles.label} ${isParentActive ? styles.activeLabel : ""}`}
-                    title={labels[index] || ""}
-                  >
-                    {labels[index] || ""}
-                  </span>
-                </div>
-                {subs.length > 0 && (
-                  <div
-                    className={`${styles.accordionWrapper} ${isParentActive ? styles.accordionOpen : ""}`}
-                  >
-                    <div
-                      className={`${styles.accordionInner} ${styles.subRowInner}`}
-                    >
-                      <div className={styles.subRowsContainer}>
-                        {subs.map((sub, subIdx) => (
-                          <div
-                            key={`sub-row-${subIdx}`}
-                            className={styles.subRow}
-                          >
-                            <span
-                              className={`${styles.subLabel} ${subIdx === activeSubIndex ? styles.activeSubLabel : ""}`}
+                    <span className={styles.marker} aria-hidden="true" />
+                    <span className={styles.label}>{label}</span>
+                  </button>
+                  {subs.length > 0 && (
+                    <div className={`${styles.accordionWrapper} ${isParentActive ? styles.accordionOpen : ""}`}>
+                      <div className={styles.accordionInner}>
+                        <div className={styles.subDotsContainer}>
+                          {subs.map((sub, subIdx) => (
+                            <button
+                              key={subIdx}
+                              type="button"
+                              aria-current={isParentActive && subIdx === activeSubIndex ? "location" : undefined}
+                              tabIndex={isParentActive ? 0 : -1}
+                              className={`${styles.subDot} ${subIdx === activeSubIndex ? styles.activeSubDot : ""}`}
+                              onClick={() => { handleSubDotClick(sub.node); setIsCompactOpen(false); }}
+                              aria-label={`Ir para a subseção ${sub.label}`}
                               title={sub.label}
                             >
-                              {sub.label}
-                            </span>
-                          </div>
-                        ))}
+                              <span className={styles.marker} aria-hidden="true" />
+                              <span className={styles.subLabel}>{sub.label}</span>
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                  )}
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         </div>
-      </div>
-    </nav>
+      </nav>
+    </>
   );
 }

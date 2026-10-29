@@ -30,64 +30,81 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  color: var(--text-primary);
 }
 
-.faqCardBadges {
+.visitOptions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+  margin-top: 0.5rem;
+}
+
+.visitPanel {
+  height: auto;
+  min-width: 0;
+  box-shadow: none;
+}
+
+.panelBody {
   display: flex;
-  gap: 0.5rem;
-  margin-top: -0.5rem;
-  margin-bottom: 1rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
 }
 
-.faqCard {
-  max-width: 500px;
-  margin: 1rem auto;
+.panelHeading {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.625rem;
+  margin-bottom: 0;
+  color: var(--text-primary);
 }
 
-.faqCardFooter {
+.panelHeading svg {
+  flex-shrink: 0;
+  color: var(--secondary);
+}
+
+.panelHeading h4 {
+  font-size: 1rem;
+  letter-spacing: var(--tracking-heading);
+}
+
+.visitSchedule,
+.visitActions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
 }
 
-/* reveal */
-.titleFaq {
-  opacity: 0;
-  transform: translateY(30px);
-  transition:
-    opacity 0.6s ease-out,
-    transform 0.6s ease-out;
+.scheduleBadge {
+  max-width: 100%;
+  white-space: normal;
 }
 
-.titleFaq.visible {
-  opacity: 1;
-  transform: translateY(0);
+.scheduleBadge span {
+  line-height: 1.4;
 }
 
+/* Shared section entrance */
 .accordionWrapper {
-  opacity: 0;
-  transform: translateY(30px);
-  transition:
-    opacity 0.6s ease-out 0.2s,
-    transform 0.6s ease-out 0.2s;
+  --reveal-delay: 60ms;
+  width: 100%;
+  max-width: 900px;
+  margin-inline: auto;
 }
 
-.accordionWrapper.visible {
-  opacity: 1;
-  transform: translateY(0);
+.faqItem {
+  position: relative;
 }
 
 @media (max-width: 768px) {
-  .faqCardFooter,
-  .faqCardBadges {
-    flex-direction: column;
-    justify-content: center;
+  .visitOptions {
+    grid-template-columns: 1fr;
   }
 
-  .faqCardFooter {
-    gap: 1rem;
-  }
-
-  .faqBadge {
-    justify-content: center;
+  .visitActions {
+    gap: 0.75rem;
   }
 }

@@ -1,4 +1,5 @@
-import * as React from "react";
+import reveal from "../../Reveal.module.css";
+import { useSectionReveal } from "../../useSectionReveal";
 import * as Lucide from "lucide-react";
 
 import {
@@ -11,49 +12,27 @@ import {
 import styles from "./FaqSection.module.css";
 import { Button } from "@jaci/ui/Button";
 import { Badge } from "@jaci/ui/Badge";
-import * as CardComponent from "@jaci/ui/Card";
+import { Card, CardBody, CardFooter, CardHeader } from "@jaci/ui/Card";
+import { Link } from "react-router";
 
 import { ExternalLink } from "@/components/common/ExternalLink";
 import { SHELTER_INSTAGRAM_URL } from "@/utils/links";
 
 export function FaqSection() {
-  const [isVisible, setIsVisible] = React.useState(false);
-  const sectionRef = React.useRef<HTMLElement>(null);
-
-  React.useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const [entry] = entries;
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      {
-        threshold: 0.2,
-      },
-    );
-
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
+  const { sectionRef, isVisible } = useSectionReveal();
 
   return (
     <section id="faq" ref={sectionRef}>
-      <div className={`${styles.titleFaq} ${isVisible ? styles.visible : ""}`}>
+      <div className={`${styles.titleFaq} ${reveal.item} ${isVisible ? reveal.visible : ""}`}>
         <h2 className="section-title">Você pode estar se perguntando...</h2>
         <p>Algumas respostas para perguntas frequentes.</p>
       </div>
       <Accordion
         type="single"
         collapsible
-        style={{ width: "100%" }}
-        className={`${styles.accordionWrapper} ${isVisible ? styles.visible : ""}`}
+        className={`${styles.accordionWrapper} ${reveal.item} ${isVisible ? reveal.visible : ""}`}
       >
-        <AccordionItem value="item-1">
+        <AccordionItem value="item-1" className={styles.faqItem}>
           <AccordionTrigger>Vocês fazem resgate de animais?</AccordionTrigger>
           <AccordionContent>
             <div className={styles.faqContainer}>
@@ -72,76 +51,90 @@ export function FaqSection() {
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem value="item-2">
+        <AccordionItem value="item-2" className={styles.faqItem}>
           <AccordionTrigger>Posso visitar o abrigo?</AccordionTrigger>
           <AccordionContent>
             <div className={styles.faqContainer}>
-              <p>Sim! As visitas devem ser agendadas com antecedência.</p>
-              <CardComponent.Card
-                className={styles.faqCard}
-                size="sm"
-                tone="info"
-              >
-                <CardComponent.CardBody>
-                  <CardComponent.CardHeader>
-                    <CardComponent.CardIcon>
-                      <Lucide.Calendar />
-                    </CardComponent.CardIcon>
-                    <CardComponent.CardTitle>
-                      Agendar visita
-                    </CardComponent.CardTitle>
-                  </CardComponent.CardHeader>
-                  <CardComponent.CardContent>
-                    <div className={styles.faqCardBadges}>
-                      <Badge className={styles.faqBadge} variant="outline">
-                        Segunda a sábado
-                      </Badge>
-                      <Badge className={styles.faqBadge} variant="outline">
-                        14h às 17h
-                      </Badge>
-                      <Badge className={styles.faqBadge} variant="danger">
-                        Exceto em feriados
-                      </Badge>
+              <p>Sim! <strong>As visitas precisam ser agendadas com antecedência.</strong></p>
+              <div className={styles.visitOptions}>
+                <Card size="sm" tone="muted" className={styles.visitPanel}>
+                  <CardBody className={styles.panelBody}>
+                    <CardHeader className={styles.panelHeading}>
+                      <Lucide.Calendar size={22} aria-hidden="true" />
+                      <h4>Conhecer o abrigo</h4>
+                    </CardHeader>
+                    <div className={styles.visitSchedule}>
+                      <Badge variant="outline">Segunda a sábado</Badge>
+                      <Badge variant="outline">14h às 17h</Badge>
                     </div>
+                    <Badge
+                      variant="danger"
+                      leftIcon={<Lucide.CalendarOff size={16} aria-hidden="true" />}
+                      className={styles.scheduleBadge}
+                    >
+                      Não realizamos visitas em feriados
+                    </Badge>
                     <p>
-                      As visitas são abertas para conhecer o espaço e trazer
-                      doações. Para adoção, é necessário{" "}
-                      <ExternalLink href={"/formulario"}>
-                        preencher o questionário
-                      </ExternalLink>{" "}
-                      previamente; o agendamento será feito apenas se o perfil
-                      do candidato for compatível com o do cãozinho.
+                      Para conhecer o espaço ou trazer doações, combine sua
+                      visita por e-mail ou Instagram.
                     </p>
-                  </CardComponent.CardContent>
-                </CardComponent.CardBody>
-                <CardComponent.CardFooter>
-                  <div className={styles.faqCardFooter}>
-                    <ExternalLink href="mailto:abrigodowlad@gmail.com">
+                  </CardBody>
+                  <CardFooter>
+                    <div className={styles.visitActions}>
+                      <ExternalLink href="mailto:abrigodowlad@gmail.com">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          leftIcon={<Lucide.Mail size={18} aria-hidden="true" />}
+                        >
+                          E-mail
+                        </Button>
+                      </ExternalLink>
+                      <ExternalLink href={SHELTER_INSTAGRAM_URL}>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          leftIcon={<Lucide.Instagram size={18} aria-hidden="true" />}
+                        >
+                          Instagram
+                        </Button>
+                      </ExternalLink>
+                    </div>
+                  </CardFooter>
+                </Card>
+
+                <Card size="sm" tone="muted" className={styles.visitPanel}>
+                  <CardBody className={styles.panelBody}>
+                    <CardHeader className={styles.panelHeading}>
+                      <Lucide.Dog size={22} aria-hidden="true" />
+                      <h4>Visita para adoção</h4>
+                    </CardHeader>
+                    <p><strong>O primeiro passo é preencher o formulário.</strong></p>
+                    <p>
+                      Nossa equipe analisa a compatibilidade entre seu perfil e
+                      o do cão. Se houver compatibilidade, entramos em contato
+                      para combinar a visita.
+                    </p>
+                  </CardBody>
+                  <CardFooter>
+                    <Link to="/formulario">
                       <Button
                         size="sm"
-                        variant="secondary"
-                        leftIcon={<Lucide.Mail size={18} />}
+                        tabIndex={-1}
+                        variant="primary"
+                        leftIcon={<Lucide.FilePenLine size={16} aria-hidden="true" />}
                       >
-                        E-mail
+                        Preencher formulário
                       </Button>
-                    </ExternalLink>
-                    <ExternalLink href={SHELTER_INSTAGRAM_URL}>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        leftIcon={<Lucide.Instagram size={18} />}
-                      >
-                        Instagram
-                      </Button>
-                    </ExternalLink>
-                  </div>
-                </CardComponent.CardFooter>
-              </CardComponent.Card>
+                    </Link>
+                  </CardFooter>
+                </Card>
+              </div>
             </div>
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem value="item-3">
+        <AccordionItem value="item-3" className={styles.faqItem}>
           <AccordionTrigger>
             Como funciona o processo de adoção?
           </AccordionTrigger>

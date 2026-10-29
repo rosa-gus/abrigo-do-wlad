@@ -3,8 +3,9 @@
   align-items: center;
   gap: 0.65rem;
   padding: 0.45rem;
+  border: 1px solid var(--border);
   border-radius: var(--radius-xl);
-  background: color-mix(in srgb, var(--surface-card) 60%, transparent);
+  background: var(--glass);
   box-shadow: var(--shadow-sm);
   backdrop-filter: var(--blur);
 }
@@ -16,18 +17,19 @@
 
 .position {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   gap: 0.25rem;
   min-width: 2.6rem;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
 .position span:first-child {
   color: var(--text-primary);
-  font-size: 0.95rem;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .dots {

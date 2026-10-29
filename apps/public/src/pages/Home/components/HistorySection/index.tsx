@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import reveal from "../../Reveal.module.css";
+import { useSectionReveal } from "../../useSectionReveal";
 import { Link } from "react-router";
 import * as Lucide from "lucide-react";
 
@@ -9,29 +10,7 @@ import styles from "./HistorySection.module.css";
 import sectionImage from "@/assets/images/wlad.jpg";
 
 export function HistorySection() {
-  const [isVisible, setIsVisible] = useState(false);
-  const sectionRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const [entry] = entries;
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      {
-        threshold: 0.2,
-      },
-    );
-
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
+  const { sectionRef, isVisible } = useSectionReveal();
 
   return (
     <section
@@ -41,8 +20,8 @@ export function HistorySection() {
     >
       <div className={styles.gridContainer}>
         <div
-          className={`${styles.imageWrapper} ${
-            isVisible ? styles.visible : ""
+          className={`${styles.imageWrapper} ${reveal.item} ${
+            isVisible ? reveal.visible : ""
           }`}
         >
           <img src={sectionImage} alt="Wlad" />
@@ -57,6 +36,7 @@ export function HistorySection() {
               zIndex: 10,
               pointerEvents: "none",
               border: "3px solid var(--bg-body)",
+              boxShadow: "none",
             }}
           >
             Wlad
@@ -64,7 +44,7 @@ export function HistorySection() {
         </div>
 
         <div
-          className={`${styles.textSide} ${isVisible ? styles.visible : ""}`}
+          className={`${styles.textSide} ${reveal.item} ${isVisible ? reveal.visible : ""}`}
         >
           <h2 className="section-title">Nossa história</h2>
 
@@ -87,7 +67,7 @@ export function HistorySection() {
           <div className={styles.buttonWrapper}>
             <Link to="/sobre">
               <Button variant="text">
-                Ler história completa <Lucide.ArrowRight size={20} />
+                Ler história completa <Lucide.ChevronRight size={20} />
               </Button>
             </Link>
           </div>

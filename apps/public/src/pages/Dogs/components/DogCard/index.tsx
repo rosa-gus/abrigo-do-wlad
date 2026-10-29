@@ -74,11 +74,6 @@ export function DogCard({ data, onClick, isLoading }: DogCardProps) {
                   )
                 }
                 variant="outline"
-                style={{
-                  color: `${data.sexo === "Macho" ? "#70a3f6ff" : "#eb6fadff"}`,
-                  borderColor: `${data.sexo === "Macho" ? "#70a3f6ff" : "#eb6fadff"}`,
-                  backgroundColor: `${data.sexo === "Macho" ? "#70a3f63a" : "#eb6fad23"}`,
-                }}
                 className={styles.badgeContent}
               >
                 {data.sexo === "Macho" ? "Macho" : "Fêmea"}
@@ -89,7 +84,6 @@ export function DogCard({ data, onClick, isLoading }: DogCardProps) {
                 blur={true}
                 leftIcon={<Lucide.Calendar size={14} />}
                 variant="outline"
-                style={{ color: "var(--always-white)" }}
                 className={styles.badgeContent}
               >
                 {data.idade}
@@ -100,7 +94,6 @@ export function DogCard({ data, onClick, isLoading }: DogCardProps) {
                 blur={true}
                 leftIcon={<Lucide.BriefcaseMedical size={14} />}
                 variant="outline"
-                style={{ color: "var(--always-white)" }}
                 className={styles.badgeContent}
               >
                 {data.status}

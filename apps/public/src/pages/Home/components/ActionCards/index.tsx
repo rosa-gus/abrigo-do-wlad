@@ -1,4 +1,5 @@
-import * as React from "react"
+import reveal from "../../Reveal.module.css";
+import { useSectionReveal } from "../../useSectionReveal";
 import * as Lucide from "lucide-react";
 import styles from "./ActionCards.module.css";
 import { Link } from "react-router";
@@ -10,29 +11,7 @@ import PixModal from "@/components/PixModal";
 
 
 export function ActionCards() {
-  const [isVisible, setIsVisible] = React.useState(false);
-  const sectionRef = React.useRef<HTMLElement>(null);
-
-  React.useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const [entry] = entries;
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      {
-        threshold: 0.2,
-      },
-    );
-
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
+  const { sectionRef, isVisible } = useSectionReveal();
 
   return (
     <section className={styles.cardsContainer} ref={sectionRef}>
@@ -40,7 +19,7 @@ export function ActionCards() {
       <Card.Card
         tone="danger"
         interactive
-        className={`${styles.card} ${isVisible ? styles.visible : ""}`}
+        className={`${reveal.item} ${isVisible ? reveal.visible : ""}`}
       >
         <Card.CardBody>
           <Card.CardHeader>
@@ -69,7 +48,7 @@ export function ActionCards() {
       {/* donations & pix modal */}
       <Card.Card
         interactive
-        className={`${styles.card} ${styles.cardDelay1} ${isVisible ? styles.visible : ""}`}
+        className={`${reveal.item} ${styles.cardDelay1} ${isVisible ? reveal.visible : ""}`}
       >
         <Card.CardBody>
           <Card.CardHeader>
@@ -102,7 +81,7 @@ export function ActionCards() {
       <Card.Card
         tone="success"
         interactive
-        className={`${styles.card} ${styles.cardDelay2} ${isVisible ? styles.visible : ""}`}
+        className={`${reveal.item} ${styles.cardDelay2} ${isVisible ? reveal.visible : ""}`}
       >
         <Card.CardBody>
           <Card.CardHeader>

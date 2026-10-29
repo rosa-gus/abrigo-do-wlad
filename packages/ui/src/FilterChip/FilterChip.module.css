@@ -1,20 +1,26 @@
 .root {
+  --chip-accent: var(--primary);
+
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--primary);
+  border: 1px solid color-mix(in srgb, var(--chip-accent) 35%, var(--surface-water));
   border-radius: var(--radius-xl);
-  background: var(--surface-water);
-  color: var(--primary);
+  background: color-mix(in srgb, var(--chip-accent) 5%, var(--surface-water));
+  color: var(--chip-accent);
   font-weight: 600;
   line-height: 1;
   transition: var(--transition);
 }
 
 .root:hover:not(:disabled) {
-  background: var(--primary);
-  color: var(--text-on-primary);
+  border-color: color-mix(in srgb, var(--chip-accent) 65%, var(--surface-water));
+  background: color-mix(in srgb, var(--chip-accent) 12%, var(--surface-water));
   transform: translateY(-1px);
+}
+
+:global(body.dark-mode) .root {
+  --chip-accent: color-mix(in srgb, var(--primary) 55%, var(--text-secondary));
 }
 
 .root:disabled {

@@ -30,6 +30,8 @@ import {
 } from "@/services/dogService";
 
 import Banner from "@/components/Banner";
+import { AdoptionBanner } from "@/components/AdoptionBanner";
+import { LocationBadge } from "@/components/LocationBadge";
 import { Badge } from "@jaci/ui/Badge";
 import { Skeleton } from "@jaci/ui/Skeleton";
 import { Button } from "@jaci/ui/Button";
@@ -408,7 +410,7 @@ export default function Dogs() {
       <Banner
         image={heroImage as string}
         title="Nossos doguinhos"
-        badge="Amigos fiéis"
+        leading={<LocationBadge onImage />}
         description="Cada um tem uma história e uma personalidade única. Utilize os filtros abaixo para encontrar quem combina com seu estilo de vida."
       />
 
@@ -423,6 +425,8 @@ export default function Dogs() {
             tagCounts={tagCounts}
           />
         )}
+
+        <AdoptionBanner context="catalog" />
 
         <LiveRegion>
           {loading

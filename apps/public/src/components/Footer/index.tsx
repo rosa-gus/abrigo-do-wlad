@@ -8,7 +8,7 @@ import logo from "@/assets/images/logo.png";
 import logoDark from "@/assets/images/logo-dark-mode.png";
 
 import { ExternalLink } from "@/components/common/ExternalLink";
-import { Badge } from "@jaci/ui/Badge";
+import { LocationBadge } from "@/components/LocationBadge";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 
 export function Footer() {
@@ -40,9 +40,7 @@ export function Footer() {
             dedicado à adoção responsável.
           </p>
           <div className={styles.footerBadges}>
-            <Badge variant="success" leftIcon={<Lucide.MapPin />}>
-              São Paulo <span style={{ opacity: 0.5 }}>•</span> Morumbi
-            </Badge>
+            <LocationBadge />
           </div>
         </div>
 

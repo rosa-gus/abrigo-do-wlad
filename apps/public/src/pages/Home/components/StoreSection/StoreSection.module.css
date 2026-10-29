@@ -1,115 +1,272 @@
+.contentSection {
+  padding: clamp(1.25rem, 4vw, 3.5rem);
+  border: 1px solid color-mix(in srgb, var(--brand-earth) 16%, var(--surface-earth));
+  border-radius: var(--radius-lg);
+  background: var(--surface-earth);
+}
+
 .gridContainer {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4rem;
-  align-items: center;
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  grid-template-areas: "copy tag" "actions tag";
+  gap: 1rem 3rem;
+  align-items: start;
 }
 
 .textSide {
-  opacity: 0;
-  transform: translateX(-50px);
-  transition: all 0.8s cubic-bezier(0.5, 0, 0, 1);
-  text-align: right;
+  grid-area: copy;
+  text-align: left;
 }
 
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+.title {
+  max-width: 15ch;
+  margin: 1.25rem 0 1rem;
+  color: var(--text-primary);
+  font-size: clamp(1.875rem, 3.5vw, 2.875rem);
+  line-height: 1.15;
+  letter-spacing: var(--tracking-display);
+  text-wrap: balance;
 }
 
-.header h2 {
+.description {
+  max-width: 48ch;
   margin: 0;
-}
-
-.textSide p {
-  margin-bottom: 1.5rem;
-  font-size: 1.05rem;
   color: var(--text-secondary);
-  text-align: right;
+  font-size: 1rem;
+  line-height: 1.75;
 }
 
-.buttonWrapper {
-  margin-top: 2rem;
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-}
-
-.recentPostsSection {
-  margin-top: 2.5rem;
-  padding-top: 2rem;
-  border-top: 1px solid var(--border);
-}
-
-.postsTitle {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  margin: 0 0 1.2rem 0;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.imageWrapper {
+.actions {
+  grid-area: actions;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  opacity: 0;
-  transform: translateX(50px);
-  transition: all 0.8s cubic-bezier(0.5, 0, 0, 1) 0.2s;
+  align-items: flex-start;
+  gap: 0.875rem;
+}
+
+.availability {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  line-height: 1.65;
+}
+
+.tagWrapper {
+  --reveal-delay: 80ms;
+  --tag-swing-delay: calc(var(--reveal-delay) + 450ms);
+  --tag-swing-duration: 1400ms;
+  --tag-rest-angle: 3.5deg;
+  --tag-pivot-x: 50%;
+  --tag-pivot-y: calc(1.25rem + 9px);
+  grid-area: tag;
+  align-self: center;
   position: relative;
+  display: flex;
+  justify-content: center;
+  padding: 4.5rem 0 1rem;
+  filter: drop-shadow(var(--shadow-sm));
 }
 
-.imageWrapper img {
+.tag {
+  isolation: isolate;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(100%, 260px);
+  padding: 1.25rem 1.5rem 1.5rem;
+  color: var(--action);
+  text-align: center;
+  transform-origin: var(--tag-pivot-x) var(--tag-pivot-y);
+  transform: rotate(var(--tag-rest-angle));
+}
+
+/* Keep paper and content in positive layers while the label rotates. */
+.tag > :not(.tagCord) {
+  position: relative;
+  z-index: 2;
+}
+
+.tagWrapper[data-revealed="true"] .tag {
+  animation: tagSettle var(--tag-swing-duration) ease-in-out var(--tag-swing-delay) both;
+}
+
+@keyframes tagSettle {
+  0%, 100% { transform: rotate(var(--tag-rest-angle)); }
+  35% { transform: rotate(calc(var(--tag-rest-angle) - 10deg)); }
+  70% { transform: rotate(calc(var(--tag-rest-angle) + 4deg)); }
+}
+
+/* Two paper layers keep a fine edge around the cut shoulders. */
+.tag::before,
+.tag::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  clip-path: polygon(28px 0, calc(100% - 28px) 0, 100% 28px, 100% 100%, 0 100%, 0 28px);
+  background: color-mix(in srgb, var(--brand-earth) 20%, var(--surface-earth));
+}
+
+.tag::after {
+  inset: 1px;
+  z-index: 1;
+  background: color-mix(in srgb, var(--warning-bg) 30%, var(--surface-card));
+}
+
+.tagCord {
+  position: absolute;
+  z-index: 2;
+  top: calc(1.25rem + 9px - 100px);
+  left: calc(50% - 36px);
+  width: 72px;
+  height: 104px;
+  stroke: color-mix(in srgb, var(--brand-earth) 65%, var(--surface-earth));
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  overflow: visible;
+}
+
+.tagHole {
+  width: 18px;
+  height: 18px;
+  margin-bottom: 1.5rem;
+  border: 4px solid color-mix(in srgb, var(--brand-earth) 16%, var(--surface-earth));
+  border-radius: 50%;
+  background: var(--surface-earth);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--brand-earth) 16%, transparent);
+}
+
+.tagEyebrow {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.tagName {
+  margin-top: 1rem;
+  color: var(--text-primary);
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: var(--tracking-display);
+}
+
+.tagPortrait {
+  display: grid;
+  margin-top: 1.25rem;
+  width: 112px;
+  height: 112px;
+}
+
+.tagDog {
+  pointer-events: none;
+  grid-area: 1 / 1;
+  align-self: start;
+  justify-self: center;
+  margin-top: 16px;
+  width: auto;
+  height: 96px;
+  min-height: 0;
+  object-fit: contain;
+}
+
+.tagWrapper[data-revealed="true"] .tagDog {
+  animation: dogPortraitTurn 2.4s steps(1, end) infinite;
+  animation-delay: calc(var(--tag-swing-delay) + var(--tag-swing-duration));
+}
+
+@keyframes dogPortraitTurn {
+  0%, 100% { transform: scaleX(1); }
+  50% { transform: scaleX(-1); }
+}
+
+.tagCaption {
+  --speech-border: color-mix(in srgb, var(--brand-earth) 50%, var(--border));
+
+  position: relative;
+  width: min(100%, 176px);
+  margin-top: 0.375rem;
+  padding: 0.875rem 1rem;
+  border: 2px solid var(--speech-border);
   border-radius: var(--radius);
-  width: 100%;
-  height: 100%;
-  max-height: 450px;
-  object-fit: cover;
-  display: block;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  line-height: 1.5;
 }
 
-.visible {
-  opacity: 1;
-  transform: translateX(0) !important;
+.tagCaption::before {
+  content: "";
+  position: absolute;
+  top: -7px;
+  left: calc(58% - 5px);
+  width: 10px;
+  height: 10px;
+  background: inherit;
+  border-top: 2px solid var(--speech-border);
+  border-left: 2px solid var(--speech-border);
+  border-top-left-radius: 5px;
+  transform: rotate(45deg);
+}
+
+.support {
+  --reveal-delay: 120ms;
+  margin-top: 2.5rem;
 }
 
 @media (max-width: 768px) {
   .gridContainer {
-    grid-template-columns: 1fr;
-    gap: 2.5rem;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-template-areas: "copy" "actions" "tag";
+    gap: 1.5rem;
   }
 
-  .textSide,
-  .imageWrapper {
-    transform: translateY(30px);
+  .title {
+    max-width: 20ch;
   }
 
-  .textSide {
-    text-align: center;
-    order: 2;
-  }
-
-  .textSide p {
-    text-align: center;
-  }
-
-  .imageWrapper {
-    order: 1;
-  }
-
-  .header {
-    flex-direction: column-reverse;
+  .tagWrapper {
+    --tag-rest-angle: 3deg;
     justify-content: center;
+    padding: 4.5rem 0.5rem 0.5rem;
   }
 
-  .buttonWrapper {
+  .tag {
+    width: min(100%, 220px);
+    padding: 1.25rem 1rem;
+  }
+
+  .tagHole {
+    margin-bottom: 1rem;
+  }
+
+  .tagEyebrow {
+    font-size: 0.6875rem;
+  }
+
+  .tagName {
+    margin-top: 0.75rem;
+    font-size: 1.625rem;
+  }
+
+  .storeLink {
     width: 100%;
-    justify-content: center;
+  }
+
+  .support {
+    margin-top: 2rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tagWrapper[data-revealed="true"] .tag,
+  .tagWrapper[data-revealed="true"] .tagDog {
+    animation: none;
   }
 }

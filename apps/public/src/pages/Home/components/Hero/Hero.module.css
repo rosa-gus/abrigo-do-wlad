@@ -43,6 +43,12 @@
   text-align: end;
 }
 
+.location {
+  display: flex;
+  justify-content: end;
+  margin-bottom: 1.5rem;
+}
+
 .btnGroup {
   display: flex;
   align-items: center;
@@ -97,6 +103,10 @@
 
   .btnGroup {
     flex-direction: column;
+    justify-content: center;
+  }
+
+  .location {
     justify-content: center;
   }
 

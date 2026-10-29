@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import * as Lucide from "lucide-react";
 
-import Banner from "@/components/Banner";
 import { Button } from "@jaci/ui/Button";
 import {
   Card,
@@ -21,7 +20,6 @@ import {
   DialogIcon,
   DialogTitle,
 } from "@jaci/ui/Dialog";
-import { getThirdPartyImage } from "@/utils/common";
 import { SHELTER_FALLBACK_FORM_URL, SHELTER_INSTAGRAM_URL } from "@/utils/links";
 import { WizardForm } from "./components/WizardForm";
 import { ExternalLink } from "@/components/common/ExternalLink";
@@ -34,7 +32,6 @@ export default function BetaForm() {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [successId, setSuccessId] = useState<string>("");
   const [successWarning, setSuccessWarning] = useState<string | null>(null);
-  const heroImage = getThirdPartyImage("form")?.url;
   const navigate = useNavigate();
   const { settings, loading: loadingSettings } = useSystemSettings();
 
@@ -115,13 +112,11 @@ export default function BetaForm() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Banner
-        image={heroImage as string}
-        badge="Questionário"
-        title="Intenção de adoção"
-        description="Por favor, responda com sinceridade. Adoção é um ato de amor e responsabilidade."
-      />
-      <div className="container">
+      <div className={`container ${styles.formContainer}`}>
+        <header className={styles.pageHeader}>
+          <h1>Intenção de adoção</h1>
+          <p>Vamos conhecer você e sua rotina. Responda com atenção e sinceridade.</p>
+        </header>
         {loadingSettings ? (
           <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginTop: "2rem" }}>
             <Skeleton style={{ width: "100%", height: "150px" }} />

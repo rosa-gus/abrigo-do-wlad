@@ -4,6 +4,7 @@ import * as Lucide from "lucide-react";
 import { Button } from "@jaci/ui/Button";
 import { Badge } from "@jaci/ui/Badge";
 import { Skeleton } from "@jaci/ui/Skeleton";
+import { LocationBadge } from "@/components/LocationBadge";
 import { analytics } from "@/utils/analytics";
 import {
   getOptimizedImageUrl,
@@ -44,6 +45,10 @@ export function Hero({ dog }: HeroProps) {
   return (
     <section className={styles.heroContainer}>
       <div className={styles.heroContent}>
+        <div className={styles.location}>
+          <LocationBadge />
+        </div>
+
         <h1 className={styles.title}>
           Transformando abandono em novos começos.
         </h1>
@@ -111,6 +116,7 @@ export function Hero({ dog }: HeroProps) {
               zIndex: 10,
               pointerEvents: "none",
               border: "3px solid var(--bg-body)",
+              boxShadow: "none",
             }}
           >
             {dog.nome}
