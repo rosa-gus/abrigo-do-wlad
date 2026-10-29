@@ -109,7 +109,7 @@ export default function About() {
                     </CardComponent.CardTitle>
                   </CardComponent.CardHeader>
                   <CardComponent.CardContent>
-                    <p style={{ textAlign: "justify" }}>
+                    <p>
                       Um dos projetos criados para arrecadar recursos foi a
                       reciclagem de tampinhas plásticas. A iniciativa coleta
                       tampas e outros materiais de polipropileno, que são

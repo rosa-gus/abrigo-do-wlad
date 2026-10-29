@@ -54,21 +54,7 @@
 }
 
 .panelHeading {
-  flex-direction: row;
-  align-items: center;
-  gap: 0.625rem;
   margin-bottom: 0;
-  color: var(--text-primary);
-}
-
-.panelHeading svg {
-  flex-shrink: 0;
-  color: var(--secondary);
-}
-
-.panelHeading h4 {
-  font-size: 1rem;
-  letter-spacing: var(--tracking-heading);
 }
 
 .visitSchedule,
@@ -100,6 +86,10 @@
 }
 
 @media (max-width: 768px) {
+  .titleFaq {
+    text-align: start;
+  }
+
   .visitOptions {
     grid-template-columns: 1fr;
   }

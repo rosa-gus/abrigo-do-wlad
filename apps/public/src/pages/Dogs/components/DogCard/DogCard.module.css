@@ -62,11 +62,3 @@
     transform: rotate(360deg);
   }
 }
-
-/* media query */
-@media (max-width: 768px) {
-  .badgeContent,
-  .badgeContainer {
-    justify-content: center;
-  }
-}

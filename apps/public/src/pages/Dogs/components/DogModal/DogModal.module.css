@@ -130,7 +130,7 @@
 .description {
   color: var(--text-secondary);
   line-height: 1.6;
-  text-align: justify;
+  text-align: start;
 }
 
 .badges {
@@ -201,9 +201,9 @@
   .details {
     padding: 1.5rem;
     min-height: 0;
-    text-align: center;
-    justify-content: center;
-    align-items: center;
+    text-align: start;
+    justify-content: flex-start;
+    align-items: stretch;
     border: none;
   }
 
@@ -213,7 +213,7 @@
   }
 
   .footer {
-    align-items: center;
+    align-items: stretch;
   }
 
   .footerActions {
@@ -232,16 +232,16 @@
 
   .description,
   .title {
-    text-align: center;
+    text-align: start;
     width: 100%;
   }
 
   .titleWrapper {
-    justify-content: center;
+    justify-content: flex-start;
   }
 
   .badges {
-    justify-content: center;
+    justify-content: flex-start;
     gap: 10px;
   }
 }

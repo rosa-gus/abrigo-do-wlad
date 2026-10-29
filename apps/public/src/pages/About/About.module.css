@@ -12,7 +12,7 @@
 .historyText p {
   margin-bottom: 1.5rem;
   font-size: 1.05rem;
-  text-align: justify;
+  text-align: start;
   color: var(--text-secondary);
 }
 

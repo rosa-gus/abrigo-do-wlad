@@ -297,7 +297,7 @@
   .cardFooter,
   .cardContent p,
   .card {
-    text-align: center;
+    text-align: var(--card-mobile-text-align, center);
   }
 
   .cardContent {
@@ -305,7 +305,7 @@
   }
 
   .callout:not(.layoutInline) .cardHeader {
-    align-items: center;
+    align-items: var(--card-mobile-header-align, center);
     flex-direction: column;
   }
 
@@ -314,9 +314,10 @@
   }
 
   .layoutInline .cardBody {
+    align-items: var(--card-mobile-body-align, stretch);
     display: flex;
     flex-direction: column;
-    text-align: center;
+    text-align: var(--card-mobile-text-align, center);
   }
 
   .layoutInline .cardIcon {
@@ -326,6 +327,6 @@
   .layoutInline .cardTitle,
   .layoutInline .cardContent,
   .layoutInline .cardContent p {
-    text-align: center;
+    text-align: var(--card-mobile-text-align, center);
   }
 }

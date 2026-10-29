@@ -10,7 +10,7 @@
 }
 
 .recycleTextContainer > p {
-  text-align: justify;
+  text-align: start;
 }
 
 .donationCarousel {
@@ -120,7 +120,7 @@
   gap: 0.75rem;
   padding: clamp(2rem, 5vw, 4rem);
   color: var(--always-white);
-  text-align: left;
+  text-align: start;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
 }
 
@@ -145,7 +145,7 @@
   color: var(--always-white);
   font-size: clamp(0.95rem, 1.5vw, 1.1rem);
   line-height: 1.6;
-  text-align: left;
+  text-align: start;
 }
 
 .carouselNavigation {
@@ -325,7 +325,7 @@
 .collectionCardName,
 .collectionCardAddress {
   margin: 0 !important;
-  text-align: left !important;
+  text-align: start !important;
 }
 
 .collectionCardName {
@@ -410,7 +410,7 @@
   }
 
   .recycleTextContainer > p {
-    text-align: left;
+    text-align: start;
   }
 
   .donationCarousel {
@@ -458,10 +458,10 @@
   }
 
   .resultsHeader {
-    align-items: center;
+    align-items: flex-start;
     flex-direction: column;
     gap: 0.2rem;
-    text-align: center;
+    text-align: start;
   }
 
   .pointsGrid {
@@ -469,33 +469,9 @@
   }
 
   .pointCardHeader {
-    align-items: center;
+    align-items: flex-start;
     flex-direction: column-reverse;
     gap: 1rem;
-  }
-
-  .neighborhoodHeading,
-  .collectionCardItem {
-    align-items: center;
-    flex-direction: column;
-    gap: 0.4rem;
-    text-align: center;
-  }
-
-  .neighborhoodHeading > div,
-  .collectionCardItem > div {
-    width: 100%;
-  }
-
-  .neighborhoodHeading > svg,
-  .collectionCardIcon {
-    margin-top: 0;
-  }
-
-  .collectionCardNeighborhood,
-  .collectionCardName,
-  .collectionCardAddress {
-    text-align: center !important;
   }
 
   .cardFooter {

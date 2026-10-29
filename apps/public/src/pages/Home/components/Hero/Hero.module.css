@@ -88,7 +88,7 @@
 /* media query */
 @media (max-width: 768px) {
   .heroContainer {
-    text-align: center;
+    text-align: start;
     grid-template-columns: 1fr;
     gap: 2rem;
   }
@@ -102,12 +102,18 @@
   }
 
   .btnGroup {
+    align-items: stretch;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
+  }
+
+  .btnGroup a,
+  .btnGroup button {
+    width: 100%;
   }
 
   .location {
-    justify-content: center;
+    justify-content: flex-start;
   }
 
   .heroImage {
@@ -132,11 +138,11 @@
 
   .title {
     font-size: 2.5rem;
-    text-align: center;
+    text-align: start;
   }
 
   .description {
     font-size: 1rem;
-    text-align: center;
+    text-align: start;
   }
 }

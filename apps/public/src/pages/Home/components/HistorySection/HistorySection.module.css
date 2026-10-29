@@ -29,7 +29,7 @@
   margin-bottom: 1.5rem;
   font-size: 1.05rem;
   color: var(--text-secondary);
-  text-align: justify;
+  text-align: start;
 }
 
 .buttonWrapper {
@@ -50,12 +50,12 @@
   }
 
   .textSide {
-    text-align: center;
+    text-align: start;
     padding-bottom: 1rem;
   }
 
   .buttonWrapper {
     width: 100%;
-    justify-content: center;
+    justify-content: flex-start;
   }
 }

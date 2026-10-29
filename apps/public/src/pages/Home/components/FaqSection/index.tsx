@@ -12,7 +12,14 @@ import {
 import styles from "./FaqSection.module.css";
 import { Button } from "@jaci/ui/Button";
 import { Badge } from "@jaci/ui/Badge";
-import { Card, CardBody, CardFooter, CardHeader } from "@jaci/ui/Card";
+import {
+  Card,
+  CardBody,
+  CardFooter,
+  CardHeader,
+  CardIcon,
+  CardTitle,
+} from "@jaci/ui/Card";
 import { Link } from "react-router";
 
 import { ExternalLink } from "@/components/common/ExternalLink";
@@ -60,8 +67,10 @@ export function FaqSection() {
                 <Card size="sm" tone="muted" className={styles.visitPanel}>
                   <CardBody className={styles.panelBody}>
                     <CardHeader className={styles.panelHeading}>
-                      <Lucide.Calendar size={22} aria-hidden="true" />
-                      <h4>Conhecer o abrigo</h4>
+                      <CardIcon>
+                        <Lucide.Calendar size={32} strokeWidth={1.5} aria-hidden="true" />
+                      </CardIcon>
+                      <CardTitle>Conhecer o abrigo</CardTitle>
                     </CardHeader>
                     <div className={styles.visitSchedule}>
                       <Badge variant="outline">Segunda a sábado</Badge>
@@ -106,11 +115,13 @@ export function FaqSection() {
                 <Card size="sm" tone="muted" className={styles.visitPanel}>
                   <CardBody className={styles.panelBody}>
                     <CardHeader className={styles.panelHeading}>
-                      <Lucide.Dog size={22} aria-hidden="true" />
-                      <h4>Visita para adoção</h4>
+                      <CardIcon>
+                        <Lucide.Dog size={32} strokeWidth={1.5} aria-hidden="true" />
+                      </CardIcon>
+                      <CardTitle>Visita para adoção</CardTitle>
                     </CardHeader>
-                    <p><strong>O primeiro passo é preencher o formulário.</strong></p>
                     <p>
+                      <strong>O primeiro passo é preencher o formulário.</strong>{" "}
                       Nossa equipe analisa a compatibilidade entre seu perfil e
                       o do cão. Se houver compatibilidade, entramos em contato
                       para combinar a visita.

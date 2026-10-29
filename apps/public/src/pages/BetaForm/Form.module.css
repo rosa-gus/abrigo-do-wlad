@@ -1,4 +1,8 @@
 .formContainer {
+  /* Preserve the form’s existing mobile card composition. */
+  --card-mobile-text-align: center;
+  --card-mobile-header-align: center;
+  --card-mobile-body-align: stretch;
   padding-top: 10rem;
 }
 

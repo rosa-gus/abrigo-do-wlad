@@ -85,6 +85,10 @@
   }
 
   .bannerContent {
+    width: 100%;
+    align-items: flex-start;
+    text-align: start;
+    padding-inline: 1rem;
     margin-top: 2rem;
   }
 

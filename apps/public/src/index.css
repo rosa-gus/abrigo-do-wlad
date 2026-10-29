@@ -1,6 +1,9 @@
 @import "@jaci/ui/styles.css";
 
 :root {
+  --card-mobile-text-align: start;
+  --card-mobile-header-align: flex-start;
+  --card-mobile-body-align: flex-start;
   --control-border: var(--brand-water);
 }
 

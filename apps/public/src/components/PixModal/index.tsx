@@ -37,10 +37,23 @@ export default function PixModal() {
       </Dialog.DialogHeader>
       <ScrollArea className={styles.pixScrollArea} showScrollShadows>
         <div className={styles.pixModalContainer}>
-          {/* qr code image */}
-          <div className={styles.qrCodeWrapper}>
-            <img src={qrCodePix} alt="Código QR para doação via Pix" />
-          </div>
+          <figure className={styles.qrCodeWrapper}>
+            <figcaption className={styles.scanHeading}>
+              <Lucide.Camera size={22} aria-hidden="true" />
+              <strong>Escaneie para doar</strong>
+            </figcaption>
+            <div className={styles.qrCodeFrame}>
+              <span className={styles.cornerTopLeft} aria-hidden="true" />
+              <span className={styles.cornerTopRight} aria-hidden="true" />
+              <span className={styles.cornerBottomLeft} aria-hidden="true" />
+              <span className={styles.cornerBottomRight} aria-hidden="true" />
+              <img src={qrCodePix} alt="Código QR para doação via Pix" />
+            </div>
+            <p className={styles.scanInstruction}>
+              Abra o app do seu banco, escolha <strong>Pix</strong> e depois{" "}
+              <strong>Ler QR Code</strong>.
+            </p>
+          </figure>
 
           {/* clipboard pix key */}
           <div className={styles.pixCard}>

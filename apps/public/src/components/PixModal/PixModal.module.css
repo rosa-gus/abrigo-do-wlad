@@ -23,16 +23,88 @@
 
 .qrCodeWrapper {
   display: flex;
-  justify-content: center;
-  border: 2px dashed var(--primary);
-  background-color: var(--accent-primary);
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  margin: 0;
+  padding: 1.5rem 1rem;
+  background-color: var(--surface-muted);
   border-radius: var(--radius);
-  padding: 1rem 0;
+  text-align: center;
 }
 
-.qrCodeWrapper img {
-  max-width: 250px;
-  max-height: 250px;
+.scanHeading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  color: var(--text-primary);
+}
+
+.scanHeading svg {
+  flex-shrink: 0;
+  color: var(--primary);
+}
+
+.qrCodeFrame {
+  position: relative;
+  width: min(100%, 274px);
+  padding: 12px;
+  background-color: #fff;
+  border-radius: 8px;
+}
+
+.qrCodeFrame img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.cornerTopLeft,
+.cornerTopRight,
+.cornerBottomLeft,
+.cornerBottomRight {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border: solid var(--primary);
+  pointer-events: none;
+}
+
+.cornerTopLeft {
+  top: 0;
+  left: 0;
+  border-width: 3px 0 0 3px;
+  border-top-left-radius: 8px;
+}
+
+.cornerTopRight {
+  top: 0;
+  right: 0;
+  border-width: 3px 3px 0 0;
+  border-top-right-radius: 8px;
+}
+
+.cornerBottomLeft {
+  bottom: 0;
+  left: 0;
+  border-width: 0 0 3px 3px;
+  border-bottom-left-radius: 8px;
+}
+
+.cornerBottomRight {
+  bottom: 0;
+  right: 0;
+  border-width: 0 3px 3px 0;
+  border-bottom-right-radius: 8px;
+}
+
+.scanInstruction {
+  max-width: 32ch;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.6;
 }
 
 .pixCard {
@@ -76,22 +148,18 @@
 
   .beneficiaryData li {
     flex-direction: column;
-    text-align: center;
+    text-align: start;
     justify-content: center;
     gap: 5px;
   }
 
   .pixCard {
+    align-items: flex-start;
     flex-direction: column;
     gap: 10px;
   }
 
-  .qrCodeWrapper img {
-    max-width: 200px;
-    max-height: 200px;
-  }
-
-  .qrCodeWrapper {
-    border: none;
+  .qrCodeFrame {
+    width: min(100%, 224px);
   }
 }
