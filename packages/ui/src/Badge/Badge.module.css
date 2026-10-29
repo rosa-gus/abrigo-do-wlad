@@ -38,7 +38,7 @@
   --badge-relief-color: var(--badge-primary);
 
   background-color: var(--surface-coral);
-  border-color: color-mix(in srgb, var(--badge-primary) 35%, var(--surface-coral));
+  border-color: color-mix(in srgb, var(--badge-primary) 12%, var(--surface-coral));
   color: var(--action);
 }
 
@@ -46,27 +46,23 @@
   --badge-relief-color: var(--badge-secondary);
 
   background-color: var(--surface-water);
-  border-color: color-mix(in srgb, var(--badge-secondary) 35%, var(--surface-water));
+  border-color: color-mix(in srgb, var(--badge-secondary) 12%, var(--surface-water));
   color: var(--secondary);
 }
 
 .outline {
   --badge-relief-color: var(--text-muted);
-  --badge-gloss-top: 16%;
-  --badge-gloss-bottom: 10%;
-  --badge-highlight: 28%;
-  --badge-inner-light: 12%;
 
   background-color: var(--glass);
   color: var(--text-primary);
-  border-color: var(--badge-outline-border);
+  border-color: color-mix(in srgb, var(--border) 32%, transparent);
 }
 
 .danger {
   --badge-relief-color: var(--badge-danger);
 
   background-color: var(--accent-red);
-  border-color: color-mix(in srgb, var(--badge-danger) 35%, var(--accent-red));
+  border-color: color-mix(in srgb, var(--badge-danger) 12%, var(--accent-red));
   color: var(--error);
 }
 
@@ -74,7 +70,7 @@
   --badge-relief-color: var(--badge-success);
 
   background-color: var(--surface-leaf);
-  border-color: color-mix(in srgb, var(--badge-success) 35%, var(--surface-leaf));
+  border-color: color-mix(in srgb, var(--badge-success) 12%, var(--surface-leaf));
   color: var(--success);
 }
 
@@ -83,26 +79,51 @@
 .success,
 .danger,
 .outline {
-  --badge-shadow-offset: 3px;
-  --badge-shadow-blur: 7px;
-  --badge-shadow-contact: color-mix(in srgb, var(--badge-relief-color) 18%, transparent);
-  --badge-shadow-ambient: color-mix(in srgb, var(--badge-relief-color) 16%, transparent);
+  --badge-light-color: var(--surface-elevated);
+  --badge-light: 42%;
+  --badge-shade: 7%;
+  --badge-inner-light: 36%;
+  --badge-inner-shade: 10%;
+  --badge-shadow-contact: color-mix(in srgb, var(--badge-relief-color) 9%, transparent);
 
+  /* Broad, diffuse light keeps the tinted surface soft rather than glossy. */
   background-image: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--surface-elevated) var(--badge-gloss-top, 32%), transparent) 0%,
-    color-mix(in srgb, var(--surface-elevated) 8%, transparent) 30%,
-    transparent 48%,
-    color-mix(in srgb, var(--badge-relief-color) 10%, transparent) 72%,
-    color-mix(in srgb, var(--badge-relief-color) var(--badge-gloss-bottom, 24%), transparent) 100%
+    color-mix(in srgb, var(--badge-light-color) var(--badge-light), transparent),
+    color-mix(in srgb, var(--badge-relief-color) var(--badge-shade), transparent)
   );
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--surface-elevated) var(--badge-highlight, 95%), transparent),
-    inset 0 2px 2px color-mix(in srgb, var(--surface-elevated) var(--badge-inner-light, 40%), transparent),
-    inset 0 -2px 3px color-mix(in srgb, var(--badge-relief-color) 12%, transparent),
-    0 1px 2px var(--badge-shadow-contact),
-    0 var(--badge-shadow-offset) var(--badge-shadow-blur)
-      var(--badge-shadow-ambient);
+    inset 0 1px 3px color-mix(in srgb, var(--badge-light-color) var(--badge-inner-light), transparent),
+    inset 0 -2px 4px color-mix(in srgb, var(--badge-relief-color) var(--badge-inner-shade), transparent),
+    0 1px 2px var(--badge-shadow-contact);
+}
+
+/* Outline has a muted, pigmented finish instead of a white glass reflection. */
+.badge.outline {
+  --badge-light-color: var(--surface-water);
+  --badge-light: 14%;
+  --badge-shade: 4%;
+  --badge-inner-light: 14%;
+  --badge-inner-shade: 6%;
+}
+
+/* A translucent water tint and soft upper light suggest a curved surface. */
+.outline.blur {
+  --badge-light: 26%;
+  --badge-inner-light: 20%;
+  --badge-inner-shade: 8%;
+
+  background-color: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--brand-water) 18%, var(--brand-navy)) 30%,
+    var(--glass-secondary)
+  );
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--badge-light-color) var(--badge-light), transparent) 0%,
+    transparent 65%,
+    color-mix(in srgb, var(--badge-relief-color) var(--badge-shade), transparent) 100%
+  );
 }
 
 :global(body.dark-mode) .primary,
@@ -110,8 +131,8 @@
 :global(body.dark-mode) .success,
 :global(body.dark-mode) .danger,
 :global(body.dark-mode) .outline {
-  --badge-shadow-contact: color-mix(in srgb, var(--overlay-dark) 45%, transparent);
-  --badge-shadow-ambient: transparent;
+  --badge-light-color: color-mix(in srgb, var(--badge-relief-color) 20%, var(--surface-elevated));
+  --badge-shadow-contact: color-mix(in srgb, var(--overlay-dark) 20%, transparent);
 }
 
 :global(body.dark-mode) .primary {
@@ -134,24 +155,46 @@
 :global(body.dark-mode) .secondary,
 :global(body.dark-mode) .success,
 :global(body.dark-mode) .danger {
-  border-color: color-mix(in srgb, var(--badge-relief-color) 24%, var(--border));
   color: var(--badge-relief-color);
 }
 
+:global(body.dark-mode) .primary {
+  border-color: var(--surface-coral);
+}
+
+:global(body.dark-mode) .secondary {
+  border-color: var(--surface-water);
+}
+
 :global(body.dark-mode) .success {
-  border-color: color-mix(in srgb, var(--badge-relief-color) 35%, var(--surface-leaf));
+  border-color: var(--surface-leaf);
+}
+
+:global(body.dark-mode) .danger {
+  border-color: var(--accent-red);
+}
+
+:global(body.dark-mode) .outline {
+  border-color: var(--glass);
+  --badge-light-color: var(--surface-earth);
+}
+
+:global(body.dark-mode) .outline.blur {
+  background-color: color-mix(in srgb, var(--glass-secondary) 70%, transparent);
+  border-color: color-mix(in srgb, var(--glass-secondary) 70%, transparent);
 }
 
 /* sizes */
-.outline.sm {
-  --badge-highlight: 18%;
-  --badge-inner-light: 0%;
-}
-
 .sm {
-  --badge-shadow-offset: 1px;
-  --badge-shadow-blur: 3px;
+  --badge-light: 34%;
+  --badge-shade: 5%;
+  --badge-inner-light: 28%;
+  --badge-inner-shade: 8%;
 
+  /* Small labels stay close to their surface, without external elevation. */
+  box-shadow:
+    inset 0 1px 2px color-mix(in srgb, var(--badge-light-color) var(--badge-inner-light), transparent),
+    inset 0 -1px 3px color-mix(in srgb, var(--badge-relief-color) var(--badge-inner-shade), transparent);
   padding: 0.2rem 0.4rem;
   font-size: 11px;
 }

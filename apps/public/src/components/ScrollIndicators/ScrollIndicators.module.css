@@ -1,201 +1,152 @@
 .indicators,
 .hiddenArea {
   position: fixed;
-  left: 2rem;
+  left: 1.25rem;
   top: 50%;
   transform: translateY(-50%);
   z-index: 100;
 }
 
-.hiddenArea {
-  display: flex;
-  align-items: center;
-  left: 0;
-  width: 112px;
-  height: 320px;
-  padding-left: 2rem;
-  pointer-events: none;
-}
-
-.hiddenArea::before {
-  position: absolute;
-  inset: 0;
-  content: "";
-  pointer-events: auto;
-}
-
-.showButton {
-  position: relative;
-  width: 40px;
-  height: 40px;
-  border: 1px solid var(--border);
-  background: var(--glass);
-  box-shadow: var(--shadow-sm);
-  backdrop-filter: var(--blur);
-  color: var(--text-secondary);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 180ms ease;
-}
-
-.hiddenArea:hover .showButton,
-.hiddenArea:focus-within .showButton {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.fadeIn {
-  /* Release the opacity animation so the rail can blur the page behind it. */
-  animation: fadeInAnim 240ms ease-out;
-}
-
-.fadeOut {
-  animation: fadeOutAnim 240ms ease-in both;
-  pointer-events: none;
-}
-
-@keyframes fadeInAnim {
-  from { opacity: 0; transform: translate(-12px, -50%); }
-  to { opacity: 1; transform: translate(0, -50%); }
-}
-
-@keyframes fadeOutAnim {
-  from { opacity: 1; transform: translate(0, -50%); }
-  to { opacity: 0; transform: translate(-12px, -50%); }
-}
-
-.dotsContainer {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
-  background: var(--glass);
-  box-shadow: var(--shadow-sm);
-  backdrop-filter: var(--blur);
-}
-
-.hideButton {
-  width: 28px;
-  height: 28px;
-  color: var(--text-secondary);
-}
-
 .indicatorWrapper {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-}
-
-.dotsContainer {
+  position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.375rem;
+  gap: 0.25rem;
+  padding-block: 0.375rem;
+  max-height: calc(100dvh - 160px);
+  overflow: hidden;
+  border-radius: var(--radius-lg);
 }
 
-.rowsContainer {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  /* Match the rail's padding, 28px control and 8px gap. */
-  padding-top: calc(0.375rem + 37px);
+/* Only the marker column has a surface; labels sit in the page gutter. */
+.indicatorWrapper::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 44px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-xl);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-sm);
+  pointer-events: none;
 }
 
-.dotGroup,
-.rowGroup {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
+.hideButton,
+.showButton,
+.compactToggle {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.showButton,
+.compactToggle {
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-sm);
+}
+
+.showButton:hover:not(:disabled),
+.compactToggle:hover:not(:disabled),
+.showButton:focus-visible,
+.compactToggle:focus-visible {
+  background-color: color-mix(in srgb, var(--surface-card) 90%, transparent);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  color: var(--text-primary);
+}
+
+.compactToggle {
+  display: none;
 }
 
 .dotGroup {
-  align-items: center;
+  display: flex;
+  flex-direction: column;
 }
 
 .dot,
 .subDot {
   position: relative;
   display: grid;
-  place-items: center;
-  width: 28px;
-  height: 24px;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  min-height: 44px;
   padding: 0;
   border: 0;
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-sm);
   background: transparent;
+  color: var(--text-muted);
+  text-align: left;
+  font: inherit;
   cursor: pointer;
 }
 
-.dot::before,
-.subDot::before {
-  content: "";
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  transform: rotate(45deg);
+.marker {
+  position: relative;
+  justify-self: center;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-xl);
   background: var(--text-muted);
-  opacity: 0.45;
-  transition:
-    height 240ms ease,
-    width 240ms ease,
-    border-radius 240ms ease,
-    opacity 180ms ease,
-    background-color 180ms ease;
+  opacity: 0.5;
+  transition: height 220ms ease, width 220ms ease, background-color 180ms ease,
+    box-shadow 180ms ease, opacity 180ms ease;
 }
 
-.dot:hover,
-.subDot:hover {
-  background: var(--btn-ghost-bg);
-}
-
-.dot:hover::before,
-.subDot:hover::before {
-  opacity: 0.8;
-}
-
-.dot.active::before {
-  width: 8px;
-  height: 8px;
-  border-radius: 12%;
+.dot.active .marker {
+  width: 10px;
+  height: 10px;
   background: var(--primary);
   opacity: 1;
 }
 
-.edgeDot::before {
-  width: 5px;
-  height: 5px;
-  opacity: 0.25;
-}
-
-.indicatorRow {
-  display: flex;
-  align-items: center;
-  height: 24px;
+.edgeDot:not(.active) .marker {
+  width: 4px;
+  height: 4px;
+  opacity: 0.35;
 }
 
 .label,
 .subLabel {
   max-width: 150px;
+  padding-inline: 0.75rem 0.875rem;
   overflow: hidden;
-  color: var(--text-muted);
   font-size: 0.8125rem;
   font-weight: 500;
   white-space: nowrap;
   text-overflow: ellipsis;
-  opacity: 0;
-  transform: translateX(-6px);
-  pointer-events: none;
-  transition: opacity 180ms ease, transform 180ms ease;
 }
 
-.label.activeLabel,
-.subLabel.activeSubLabel {
+.dot.active {
   color: var(--primary);
-  opacity: 1;
-  transform: translateX(0);
 }
 
-.label.activeLabel {
+.dot.active .label {
   font-weight: 600;
+}
+
+.dot:hover,
+.subDot:hover {
+  background: var(--btn-ghost-bg);
+  color: var(--primary);
+}
+
+.dot:hover .marker,
+.subDot:hover .marker {
+  opacity: 1;
+}
+
+.dot:focus-visible,
+.subDot:focus-visible,
+.hideButton:focus-visible,
+.showButton:focus-visible,
+.compactToggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
 }
 
 .accordionWrapper {
@@ -213,151 +164,181 @@
 }
 
 .accordionInner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 0;
+  min-height: 0;
   overflow: hidden;
 }
 
-.subRowInner {
-  align-items: flex-start;
-}
-
-.subDotsContainer,
-.subRowsContainer {
+.subDotsContainer {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  padding-block: 0.375rem;
 }
 
-.subDotsContainer {
-  border-radius: var(--radius-xl);
-  background: var(--glass-secondary);
+.subDotsContainer::before {
+  content: "";
+  position: absolute;
+  left: 21.5px;
+  top: 22px;
+  bottom: 22px;
+  width: 1px;
+  background: var(--border);
 }
 
-.subDot,
-.subRow {
-  height: 20px;
-}
-
-.subDot::before {
+.subDot .marker {
   width: 5px;
   height: 5px;
-}
-
-.subDot.activeSubDot::before {
-  width: 6px;
-  height: 6px;
-  border-radius: 12%;
-  background: var(--primary);
   opacity: 1;
-}
-
-.subRow {
-  display: flex;
-  align-items: center;
+  /* An opaque rim keeps the connecting line outside the dot. */
+  box-shadow: 0 0 0 3px var(--surface-card);
 }
 
 .subLabel {
+  padding-left: 1rem;
   font-size: 0.75rem;
 }
 
-@media (max-width: 768px) {
-  .indicators {
-    left: 1rem;
+.subDot.activeSubDot {
+  color: var(--primary);
+}
+
+.subDot.activeSubDot .marker {
+  width: 7px;
+  height: 7px;
+  background: var(--primary);
+  box-shadow: 0 0 0 4px var(--surface-card),
+    0 0 0 7px color-mix(in srgb, var(--primary) 14%, var(--surface-card));
+}
+
+.subDot.activeSubDot .subLabel {
+  font-weight: 600;
+}
+
+.fadeIn {
+  animation: fadeInAnim 240ms ease-out;
+}
+
+.fadeOut {
+  animation: fadeOutAnim 240ms ease-in both;
+  pointer-events: none;
+}
+
+@keyframes fadeInAnim {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOutAnim {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* During reading, only current locations carry a visible title. */
+@media (min-width: 1601px) {
+  .label,
+  .subLabel {
+    opacity: 0;
+    transition: opacity 180ms ease;
   }
 
-  .hiddenArea {
-    padding-left: 1rem;
+  .dot.active .label,
+  .subDot.activeSubDot .subLabel,
+  .indicators:hover .label,
+  .indicators:hover .subLabel,
+  .indicators:focus-within .label,
+  .indicators:focus-within .subLabel {
+    opacity: 1;
   }
 }
 
-/* Keep the rail inside the page gutter when the full navigation cannot fit. */
-@media (max-width: 1440px) {
-  .indicators {
-    left: 0.2rem;
-  }
-
-  .hiddenArea {
-    padding-left: 0.2rem;
-  }
-
-  .rowsContainer {
+/* Keep comfortable targets in the gutter before switching to a disclosure. */
+@media (1201px <= width <= 1600px) {
+  .label,
+  .subLabel {
     display: none;
   }
 
-  .dotsContainer {
-    gap: 0.25rem;
-    padding: 0.25rem 2px;
-  }
-
-  .indicators .hideButton {
-    width: 18px;
-    height: 18px;
-    padding: 0;
-  }
-
-  .showButton {
-    width: 24px;
-    height: 32px;
-  }
-
-  .dot {
-    width: 18px;
-    height: 20px;
-  }
-
-  .dot::before {
-    width: 6px;
-    height: 6px;
-  }
-
-  .dot.active::before {
-    width: 6px;
-    height: 6px;
-  }
-
-  .edgeDot::before {
-    width: 4px;
-    height: 4px;
-  }
-
+  .dot,
   .subDot {
-    width: 14px;
-    height: 16px;
-  }
-
-  .subDot::before {
-    width: 4px;
-    height: 4px;
-  }
-
-  .subDot.activeSubDot::before {
-    width: 5px;
-    height: 5px;
+    grid-template-columns: 44px;
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1200px) {
+  .hiddenArea {
+    left: 1rem;
+    top: auto;
+    bottom: calc(1rem + env(safe-area-inset-bottom));
+    transform: none;
+  }
+
+  .compactToggle {
+    display: inline-flex;
+    position: fixed;
+    left: 1rem;
+    bottom: calc(1rem + env(safe-area-inset-bottom));
+    z-index: 100;
+  }
+
   .indicators {
-    left: 0;
+    display: none;
+    left: 1rem;
+    top: auto;
+    bottom: calc(4.5rem + env(safe-area-inset-bottom));
+    transform: none;
+    width: min(280px, calc(100vw - 2rem));
+    padding: 0.375rem;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius);
+    background: var(--surface-card);
+    box-shadow: var(--shadow-md);
   }
 
-  .dotsContainer {
-    padding-inline: 0;
+  .indicators.compactOpen {
+    display: block;
   }
 
-  .dot,
-  .indicators .hideButton {
-    width: 14px;
+  .indicators[data-footer-visible="true"],
+  .hiddenArea[data-footer-visible="true"],
+  .compactToggle[data-footer-visible="true"] {
+    display: none;
+  }
+
+  .indicatorWrapper {
+    max-height: min(60dvh, 480px);
+    padding: 0;
+    border-radius: var(--radius-sm);
+  }
+
+  .indicatorWrapper::before {
+    display: none;
+  }
+
+  .label,
+  .subLabel {
+    max-width: none;
+  }
+}
+
+/* Leave room for the mobile dock, including its expanded actions. */
+@media (481px <= width <= 768px) {
+  .hiddenArea,
+  .compactToggle {
+    bottom: calc(14rem + env(safe-area-inset-bottom));
+  }
+
+  .indicators {
+    bottom: calc(17.5rem + env(safe-area-inset-bottom));
+  }
+
+  .indicatorWrapper {
+    max-height: calc(100dvh - 26rem - env(safe-area-inset-bottom));
   }
 }
 
 @media (max-width: 480px) {
   .indicators,
-  .hiddenArea {
+  .hiddenArea,
+  .compactToggle {
     display: none;
   }
 }
@@ -372,9 +353,7 @@
     opacity: 0;
   }
 
-  .dot::before,
-  .showButton,
-  .subDot::before,
+  .marker,
   .label,
   .subLabel,
   .accordionWrapper {

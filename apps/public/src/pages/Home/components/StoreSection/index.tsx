@@ -25,7 +25,7 @@ export function StoreSection() {
           <div className={styles.header}>
             <h2 className="section-title">Bazar Pet Solidário</h2>
             <Badge
-              variant="success"
+              variant="primary"
               size="md"
               leftIcon={<Lucide.ShoppingCart />}
             >
