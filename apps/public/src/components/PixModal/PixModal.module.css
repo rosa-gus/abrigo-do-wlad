@@ -1,3 +1,11 @@
+.headerSticker {
+  display: block;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 0.75rem;
+  object-fit: contain;
+}
+
 .pixScrollArea {
   flex: 1 1 auto;
   min-height: 0;

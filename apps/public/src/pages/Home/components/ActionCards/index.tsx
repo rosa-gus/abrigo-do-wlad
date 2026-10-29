@@ -8,6 +8,9 @@ import { analytics } from "@/utils/analytics";
 import * as Card from "@jaci/ui/Card";
 import * as Dialog from "@jaci/ui/Dialog";
 import PixModal from "@/components/PixModal";
+import heartsSticker from "@/assets/stickers/fluent-emoji/hearts.svg";
+import giftSticker from "@/assets/stickers/fluent-emoji/gift.svg";
+import leavesSticker from "@/assets/stickers/fluent-emoji/leaves.svg";
 
 
 export function ActionCards() {
@@ -23,9 +26,13 @@ export function ActionCards() {
       >
         <Card.CardBody>
           <Card.CardHeader>
-            <Card.CardIcon>
-              <Lucide.Heart size={38} strokeWidth={1.5} />
-            </Card.CardIcon>
+            <img
+              className={styles.sticker}
+              src={heartsSticker}
+              alt=""
+              width={80}
+              height={80}
+            />
             <Card.CardTitle>Adoção responsável</Card.CardTitle>
           </Card.CardHeader>
           <Card.CardContent>
@@ -52,9 +59,13 @@ export function ActionCards() {
       >
         <Card.CardBody>
           <Card.CardHeader>
-            <Card.CardIcon>
-              <Lucide.HeartHandshake size={38} strokeWidth={1.5} />
-            </Card.CardIcon>
+            <img
+              className={styles.sticker}
+              src={giftSticker}
+              alt=""
+              width={80}
+              height={80}
+            />
             <Card.CardTitle>Faça uma doação</Card.CardTitle>
           </Card.CardHeader>
           <Card.CardContent>
@@ -85,9 +96,13 @@ export function ActionCards() {
       >
         <Card.CardBody>
           <Card.CardHeader>
-            <Card.CardIcon>
-              <Lucide.Recycle size={38} strokeWidth={1.5} />
-            </Card.CardIcon>
+            <img
+              className={styles.sticker}
+              src={leavesSticker}
+              alt=""
+              width={80}
+              height={80}
+            />
             <Card.CardTitle>Projeto Tampinhas</Card.CardTitle>
           </Card.CardHeader>
           <Card.CardContent>

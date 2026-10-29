@@ -1,3 +1,73 @@
+.calloutSticker {
+  display: block;
+  width: 32px;
+  height: 32px;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.applicationId {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.8em;
+}
+
+.applicationIdLabel {
+  display: block;
+  text-align: left;
+}
+
+.copyApplicationId {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 0.375rem 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.copyApplicationId span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: text;
+}
+
+.copyApplicationId svg {
+  flex-shrink: 0;
+}
+
+.copyApplicationId:hover {
+  color: var(--primary);
+}
+
+.copyApplicationId:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 4px;
+}
+
+.copyStatus {
+  display: block;
+}
+
+.confirmationSticker {
+  display: block;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 0.75rem;
+  object-fit: contain;
+}
+
 .formContainer {
   /* Preserve the form’s existing mobile card composition. */
   --card-mobile-text-align: center;
@@ -8,6 +78,14 @@
 
 .pageHeader {
   margin: 0 auto 1.5rem;
+}
+
+.introSticker {
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 1.25rem;
+  object-fit: contain;
 }
 
 .pageHeader h1 {
@@ -28,6 +106,10 @@
 
   .pageHeader {
     text-align: center;
+  }
+
+  .introSticker {
+    margin-inline: auto;
   }
 }
 

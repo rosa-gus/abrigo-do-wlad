@@ -8,6 +8,7 @@ import { ScrollArea } from "@jaci/ui/ScrollArea";
 import { analytics } from "@/utils/analytics";
 
 import qrCodePix from "@/assets/images/pix-qr-code.png";
+import giftSticker from "@/assets/stickers/fluent-emoji/gift.svg";
 import styles from "./PixModal.module.css";
 
 export default function PixModal() {
@@ -27,13 +28,22 @@ export default function PixModal() {
   return (
     <Dialog.DialogContent size="fullscreen-mobile">
       <Dialog.DialogHeader>
-        <Dialog.DialogTitle>
-          Faça uma doação via Pix. Qualquer valor é bem-vindo!
-        </Dialog.DialogTitle>
-        <Dialog.DialogDescription>
-          Para doar, escaneie o QR Code com o app do seu banco ou copie a chave
-          Pix abaixo.
-        </Dialog.DialogDescription>
+        <Dialog.DialogHeading>
+          <img
+            className={styles.headerSticker}
+            src={giftSticker}
+            alt=""
+            width={56}
+            height={56}
+          />
+          <Dialog.DialogTitle>
+            Faça uma doação via Pix. Qualquer valor é bem-vindo!
+          </Dialog.DialogTitle>
+          <Dialog.DialogDescription>
+            Para doar, escaneie o QR Code com o app do seu banco ou copie a chave
+            Pix abaixo.
+          </Dialog.DialogDescription>
+        </Dialog.DialogHeading>
       </Dialog.DialogHeader>
       <ScrollArea className={styles.pixScrollArea} showScrollShadows>
         <div className={styles.pixModalContainer}>

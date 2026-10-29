@@ -13,6 +13,8 @@ import { Skeleton } from "@jaci/ui/Skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@jaci/ui/ToggleGroup";
 import * as Lucide from "lucide-react";
 
+import leavesSticker from "@/assets/stickers/fluent-emoji/leaves.svg";
+
 import Banner from "@/components/Banner";
 import { PageFeedback } from "@/components/PageFeedback";
 import { ScrollIndicators } from "@/components/ScrollIndicators";
@@ -231,7 +233,6 @@ export default function Recycle() {
       />
       <Banner
         image={heroImage as string}
-        badge="Reciclagem solidária"
         title="Sua tampinha vale vidas"
         description="Transformamos tampinhas em ração e medicamentos para os cães do abrigo. Encontre um ponto de coleta e participe."
       />
@@ -239,6 +240,13 @@ export default function Recycle() {
       <div className={styles.mainContainer} ref={containerRef}>
         <section className="container" ref={section1Ref}>
           <div className={styles.recycleTextContainer}>
+            <img
+              className={styles.introSticker}
+              src={leavesSticker}
+              alt=""
+              width={64}
+              height={64}
+            />
             <h2 className="section-title">O que doar?</h2>
             <p>
               Aceitamos qualquer tampinha de{" "}

@@ -459,3 +459,16 @@
     min-height: 2.75rem;
   }
 }
+
+/* Ilustração opcional de abertura da página; títulos de seção não exigem stickers. */
+.introSticker {
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 1.25rem;
+  object-fit: contain;
+}
+
+.recycleTextContainer .introSticker + h2 {
+  margin-top: 0;
+}

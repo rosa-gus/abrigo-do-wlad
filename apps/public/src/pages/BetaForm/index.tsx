@@ -17,7 +17,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogHeading,
-  DialogIcon,
   DialogTitle,
 } from "@jaci/ui/Dialog";
 import { SHELTER_FALLBACK_FORM_URL, SHELTER_INSTAGRAM_URL } from "@/utils/links";
@@ -25,12 +24,16 @@ import { WizardForm } from "./components/WizardForm";
 import { ExternalLink } from "@/components/common/ExternalLink";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
 import { Skeleton } from "@jaci/ui/Skeleton";
+import dogSticker from "@/assets/stickers/fluent-emoji/dog.svg";
+import starsSticker from "@/assets/stickers/fluent-emoji/stars.svg";
+import beetleSticker from "@/assets/stickers/fluent-emoji/beetle.svg";
 
 import styles from "./Form.module.css";
 
 export default function BetaForm() {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [successId, setSuccessId] = useState<string>("");
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
   const [successWarning, setSuccessWarning] = useState<string | null>(null);
   const navigate = useNavigate();
   const { settings, loading: loadingSettings } = useSystemSettings();
@@ -38,6 +41,21 @@ export default function BetaForm() {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  useEffect(() => {
+    if (copyStatus !== "copied") return;
+    const timeout = window.setTimeout(() => setCopyStatus("idle"), 2000);
+    return () => window.clearTimeout(timeout);
+  }, [copyStatus]);
+
+  const copyApplicationId = async () => {
+    try {
+      await navigator.clipboard.writeText(successId);
+      setCopyStatus("copied");
+    } catch {
+      setCopyStatus("error");
+    }
+  };
 
   return (
     <main>
@@ -49,20 +67,37 @@ export default function BetaForm() {
       >
         <DialogContent size="md">
           <DialogHeader>
-            <DialogIcon tone="success">
-              <Lucide.CheckCircle />
-            </DialogIcon>
             <DialogHeading>
+              <img
+                className={styles.confirmationSticker}
+                src={starsSticker}
+                alt=""
+                width={56}
+                height={56}
+              />
               <DialogTitle>Formulário enviado com sucesso!</DialogTitle>
               <DialogDescription>
                 {successId && (
-                  <span
-                    style={{
-                      color: "var(--text-muted)",
-                      fontSize: "0.8em",
-                    }}
-                  >
-                    ID da sua candidatura: {successId}
+                  <span className={styles.applicationId}>
+                    <span className={styles.applicationIdLabel}>ID da sua candidatura</span>
+                    <button
+                      type="button"
+                      className={styles.copyApplicationId}
+                      onClick={copyApplicationId}
+                      aria-label={`Copiar ID da candidatura: ${successId}`}
+                      title={successId}
+                    >
+                      <span>{successId}</span>
+                      {copyStatus === "copied" ? (
+                        <Lucide.Check size={16} aria-hidden="true" />
+                      ) : (
+                        <Lucide.Copy size={16} aria-hidden="true" />
+                      )}
+                    </button>
+                    <span className={styles.copyStatus} role="status">
+                      {copyStatus === "copied" && "ID copiado!"}
+                      {copyStatus === "error" && "Não foi possível copiar. Selecione o ID e copie manualmente."}
+                    </span>
                   </span>
                 )}
                 {successWarning && (
@@ -114,6 +149,13 @@ export default function BetaForm() {
       </Dialog>
       <div className={`container ${styles.formContainer}`}>
         <header className={styles.pageHeader}>
+          <img
+            className={styles.introSticker}
+            src={dogSticker}
+            alt=""
+            width={64}
+            height={64}
+          />
           <h1>Intenção de adoção</h1>
           <p>Vamos conhecer você e sua rotina. Responda com atenção e sinceridade.</p>
         </header>
@@ -152,7 +194,13 @@ export default function BetaForm() {
           <Card variant="callout" tone="info" size="xs" layout="inline">
             <CardBody>
               <CardIcon>
-                <Lucide.Sparkles size={20} aria-hidden="true" />
+                <img
+                  className={styles.calloutSticker}
+                  src={beetleSticker}
+                  alt=""
+                  width={32}
+                  height={32}
+                />
               </CardIcon>
               <CardTitle>Estamos aprimorando este formulário</CardTitle>
               <CardContent>

@@ -1,8 +1,10 @@
-import { ChevronRight, FilePenLine, Dog, PawPrint } from "lucide-react";
+import { ChevronRight, FilePenLine } from "lucide-react";
 import { Link } from "react-router";
 import { Card, CardBody, CardFooter } from "@jaci/ui/Card";
 import { Button } from "@jaci/ui/Button";
 import { analytics } from "@/utils/analytics";
+
+import dogSticker from "@/assets/stickers/fluent-emoji/dog.svg";
 
 import styles from "./AdoptionBanner.module.css";
 
@@ -37,21 +39,13 @@ export function AdoptionBanner({ context = "home" }: AdoptionBannerProps) {
             )}
           </div>
           <div className={styles.scene} aria-hidden="true">
-            <PawPrint className={`${styles.paw} ${styles.firstPaw}`} size={26} strokeWidth={1.5} />
-            <PawPrint className={`${styles.paw} ${styles.secondPaw}`} size={30} strokeWidth={1.5} />
-            <PawPrint className={`${styles.paw} ${styles.thirdPaw}`} size={34} strokeWidth={1.5} />
-            <svg
+            <img
               className={styles.dog}
+              src={dogSticker}
+              alt=""
               width={190}
               height={190}
-              viewBox="0 0 24 24"
-              fill="none"
-              focusable="false"
-            >
-              <g transform="rotate(-8 12 12)">
-                <Dog size={24} strokeWidth={0.75} />
-              </g>
-            </svg>
+            />
           </div>
         </CardBody>
         <CardFooter>

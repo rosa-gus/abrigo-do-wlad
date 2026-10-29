@@ -92,3 +92,15 @@
 .error {
   color: var(--error);
 }
+
+.introSticker {
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 1.25rem;
+  object-fit: contain;
+}
+
+.privacyText .introSticker + h2 {
+  margin-top: 0;
+}

@@ -9,6 +9,18 @@
   text-align: left;
 }
 
+.historySticker {
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 1.25rem;
+  object-fit: contain;
+}
+
+.historyText > .historySticker + h2 {
+  margin-top: 0;
+}
+
 .historyText p {
   margin-bottom: 1.5rem;
   font-size: 1.05rem;

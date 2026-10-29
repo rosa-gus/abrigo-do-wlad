@@ -1,0 +1,15 @@
+{
+  "repository": "https://github.com/microsoft/fluentui-emoji",
+  "commit": "1ffb34c752ecf5d402f04cfb4b392c77f57c54bc",
+  "files": {
+    "dog.svg": "assets/Dog/Color/dog_color.svg",
+    "hearts.svg": "assets/Two hearts/Color/two_hearts_color.svg",
+    "gift.svg": "assets/Wrapped gift/Color/wrapped_gift_color.svg",
+    "leaves.svg": "assets/Herb/Color/herb_color.svg",
+    "book.svg": "assets/Open book/Color/open_book_color.svg",
+    "folder.svg": "assets/File folder/Color/file_folder_color.svg",
+    "stars.svg": "assets/Sparkles/Color/sparkles_color.svg",
+    "LICENSE.txt": "LICENSE",
+    "beetle.svg": "assets/Beetle/Color/beetle_color.svg"
+  }
+}
