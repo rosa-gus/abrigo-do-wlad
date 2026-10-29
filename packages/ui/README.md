@@ -79,6 +79,39 @@ import {
 } from "@jaci/ui/Dialog";
 ```
 
+### Botões e links
+
+`Button` executa ações e renderiza um `<button>`. Para navegação com a mesma
+aparência, use `ButtonLink`, que renderiza um `<a>` e compartilha os estilos,
+variantes, tamanhos e opções de ícones do botão:
+
+```tsx
+import { Button, ButtonLink } from "@jaci/ui/Button";
+
+<Button type="submit">Salvar</Button>
+<ButtonLink href="https://example.com" target="_blank" rel="noopener noreferrer">
+  Visitar loja
+</ButtonLink>
+```
+
+Nas variantes de cor (`primary`, `secondary`, `success` e `danger`), a propriedade
+`emphasis` controla a presença visual sem adicionar bordas, gradientes ou sombras:
+
+- `strong`: preenchimento intenso e texto contrastante para ações principais.
+- `soft` (padrão): preserva o preenchimento tonal suave existente.
+- `minimal`: fundo transparente e texto colorido, com fundo tonal no hover.
+
+As cores consomem os tokens de cada tema: ações fortes têm texto claro no tema
+claro e texto escuro sobre cores luminosas no tema escuro. As variantes utilitárias
+`outline`, `ghost` e `text` mantêm seu tratamento próprio, sem efeito de `emphasis`.
+
+```tsx
+<ButtonLink href="https://example.com" variant="primary" emphasis="strong">
+  Visitar loja
+</ButtonLink>
+<Button variant="primary" emphasis="minimal">Ver detalhes</Button>
+```
+
 ### Campos de formulário
 
 `Field` reúne label, controle, descrição, obrigatoriedade e erro. `Input`,

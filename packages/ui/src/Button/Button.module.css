@@ -32,6 +32,12 @@
 
 /* Variants */
 .primary {
+  --button-strong-bg: var(--action);
+  --button-strong-hover: var(--action-hover);
+  --button-strong-text: var(--text-on-action);
+  --button-soft-bg: var(--btn-primary);
+  --button-tone: var(--action);
+
   background-color: var(--btn-primary);
   color: var(--action);
 }
@@ -42,6 +48,12 @@
 }
 
 .secondary {
+  --button-strong-bg: var(--secondary);
+  --button-strong-hover: var(--secondary-hover);
+  --button-strong-text: var(--text-on-secondary);
+  --button-soft-bg: var(--btn-secondary);
+  --button-tone: var(--secondary);
+
   background-color: var(--btn-secondary);
   color: var(--secondary);
 }
@@ -52,6 +64,12 @@
 }
 
 .success {
+  --button-strong-bg: var(--success);
+  --button-strong-hover: color-mix(in srgb, var(--success) 88%, var(--text-primary));
+  --button-strong-text: var(--text-on-success);
+  --button-soft-bg: var(--btn-success);
+  --button-tone: var(--success);
+
   background-color: var(--btn-success);
   color: var(--success);
 }
@@ -62,6 +80,12 @@
 }
 
 .danger {
+  --button-strong-bg: var(--error);
+  --button-strong-hover: color-mix(in srgb, var(--error) 88%, var(--text-primary));
+  --button-strong-text: var(--text-on-action);
+  --button-soft-bg: var(--accent-red);
+  --button-tone: var(--error);
+
   background-color: var(--accent-red);
   color: var(--error);
 }
@@ -104,6 +128,27 @@
   color: var(--btn-primary-hover);
 }
 
+/* Emphasis changes the weight of a colored action without adding a border. */
+:is(.primary, .secondary, .success, .danger).strong {
+  background-color: var(--button-strong-bg);
+  color: var(--button-strong-text);
+}
+
+:is(.primary, .secondary, .success, .danger).strong:hover:not(:disabled) {
+  background-color: var(--button-strong-hover);
+  color: var(--button-strong-text);
+}
+
+:is(.primary, .secondary, .success, .danger).minimal {
+  background-color: transparent;
+  color: var(--button-tone);
+}
+
+:is(.primary, .secondary, .success, .danger).minimal:hover:not(:disabled) {
+  background-color: var(--button-soft-bg);
+  color: var(--button-tone);
+}
+
 /* Sizes */
 .sm {
   padding: 0.6rem 1rem;
@@ -141,4 +186,14 @@
 
 .blur {
   backdrop-filter: var(--blur);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn {
+    transition: none;
+  }
+
+  .btn:hover:not(:disabled) {
+    transform: none;
+  }
 }
