@@ -19,16 +19,35 @@
     border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     border-radius 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  height: 100px;
-  border-radius: var(--radius-lg);
+  height: 96px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-xl);
 }
 
 .headerScrolled {
-  background-color: var(--header-bg-scrolled);
-  height: 80px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
+  background-color: color-mix(in srgb, var(--header-bg-scrolled) 50%, var(--bg-body));
+  height: 84px;
+  border-color: var(--border-light);
   box-shadow: var(--shadow-sm);
+}
+
+@media (min-width: 769px) {
+  .headerFramed {
+    position: absolute;
+    top: calc(1rem + 1px);
+    width: min(calc(100% - 4rem - 2px), 1198px);
+    height: 84px;
+    background-color: var(--surface-card);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .headerFramed .logoLight,
+  .headerFramed .logoDark {
+    height: 56px;
+  }
 }
 
 .actionsContainer {
@@ -46,10 +65,10 @@
 
 .logoLight,
 .logoDark {
-  height: 70px;
+  height: 64px;
   width: auto;
   object-fit: contain;
-  transition: height 0.3s;
+  transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .logoLight {
@@ -70,19 +89,20 @@
 
 .headerScrolled .logoLight,
 .headerScrolled .logoDark {
-  height: 50px;
+  height: 60px;
 }
 
 /* --- Navigation --- */
 .navMenu {
   display: flex;
-  gap: 2rem;
+  gap: 1rem;
   align-items: center;
   margin-left: auto;
   margin-right: 2rem;
 }
 
 .navLink {
+  padding: 3px 10px;
   border-radius: var(--radius);
   font-weight: 500;
   color: var(--text-primary);
@@ -90,28 +110,21 @@
   font-size: 1rem;
   cursor: pointer;
   text-decoration: none;
-  transition: all 0.3s;
+  transition: var(--transition);
 }
 
 .navLink:hover {
-  padding: 3px 10px;
   color: var(--primary);
   background-color: var(--btn-hover-gray);
 }
 
 .activeLink {
-  padding: 3px 10px;
   color: var(--primary);
   background-color: var(--accent-primary);
 }
 
 .mainBtn {
-  border-radius: var(--radius-xl) !important;
-}
-
-.headerScrolled .mainBtn {
-  background-color: var(--secondary) !important;
-  color: var(--text-on-secondary) !important;
+  border-radius: var(--radius-xl);
 }
 
 /* --- Hamburger Menu --- */
@@ -147,6 +160,29 @@
 }
 
 /* --- Mobile / Responsive --- */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .headerFramed {
+    padding-inline: 1rem;
+  }
+
+  .headerFramed .navMenu {
+    gap: 0.5rem;
+    margin-right: 1rem;
+  }
+
+  .headerFramed .navLink {
+    padding-inline: 6px;
+    font-size: 0.875rem;
+    white-space: nowrap;
+  }
+
+  .headerFramed .mainBtn {
+    padding-inline: 0.875rem;
+    font-size: 0.875rem;
+    white-space: nowrap;
+  }
+}
+
 @media (max-width: 768px) {
   .themeControl {
     display: none;

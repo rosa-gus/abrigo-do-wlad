@@ -46,3 +46,36 @@
   width: 18px;
   height: 18px;
 }
+
+.subtle .switch {
+  border: 1px solid var(--border-light);
+  padding-inline: 6px;
+  background-color: var(--surface-muted);
+  transition: var(--transition);
+}
+
+.subtle .switch:hover {
+  opacity: 1;
+  border-color: var(--primary);
+  background-color: var(--surface-card);
+}
+
+.subtle .thumb {
+  background-color: var(--accent-primary);
+  color: var(--primary);
+}
+
+.subtle .switch.dark {
+  background-color: var(--bg-body);
+  border-color: var(--border);
+}
+
+.subtle .switch.dark:hover {
+  background-color: var(--surface-card);
+  border-color: var(--primary);
+}
+
+.subtle .switch.dark .thumb {
+  background-color: var(--surface-coral);
+  color: var(--primary);
+}

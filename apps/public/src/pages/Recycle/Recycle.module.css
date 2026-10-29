@@ -345,31 +345,6 @@
   justify-content: flex-end;
 }
 
-.mapLink {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.55rem 0.75rem;
-  border-radius: var(--radius-sm);
-  background: var(--surface-water);
-  color: var(--primary);
-  font-size: 0.825rem;
-  font-weight: 700;
-  text-decoration: none;
-  transition: var(--transition);
-}
-
-.mapLink svg {
-  width: 1rem;
-  height: 1rem;
-}
-
-.mapLink:hover {
-  background: var(--primary);
-  color: var(--text-on-primary);
-  transform: translateY(-1px);
-}
-
 .loadMore {
   display: flex;
   justify-content: center;

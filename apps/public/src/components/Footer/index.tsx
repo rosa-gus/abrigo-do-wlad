@@ -1,5 +1,5 @@
 import { Link, NavLink } from "react-router";
-import * as Lucide from "lucide-react";
+import { Instagram, Mail } from "lucide-react";
 import styles from "./Footer.module.css";
 import { analytics } from "@/utils/analytics";
 import { SHELTER_INSTAGRAM_URL } from "@/utils/links";
@@ -7,20 +7,17 @@ import { SHELTER_INSTAGRAM_URL } from "@/utils/links";
 import logo from "@/assets/images/logo.png";
 import logoDark from "@/assets/images/logo-dark-mode.png";
 
+import { ContactLink } from "@/components/common/ContactLink";
 import { ExternalLink } from "@/components/common/ExternalLink";
 import { LocationBadge } from "@/components/LocationBadge";
-import { useIsDesktop } from "@/hooks/useIsDesktop";
 
 export function Footer() {
-  const isDesktop = useIsDesktop();
-
   return (
     <footer id="footer" className={styles.footer}>
       <div className={`container ${styles.footerGrid}`}>
         {/* Info */}
         <div className={styles.footerInfo}>
-          <div className={styles.footerBrand}>
-            {/* logos */}
+          <Link to="/" className={styles.footerBrand} aria-label="Abrigo do Wlad — início">
             <img
               src={logo}
               alt="logotipo do Abrigo do Wlad"
@@ -31,13 +28,11 @@ export function Footer() {
               alt="logotipo do Abrigo do Wlad"
               className={styles.logoDark}
             />
-
-            <span>ABRIGO DO WLAD</span>
-          </div>
+          </Link>
+          <h2 className={styles.mission}>Desde 2012, acolhendo novas histórias.</h2>
           <p>
-            Desde 2012, o Abrigo do Wlad acolhe e cuida de cães resgatados.
-            Somos um projeto social independente, mantido por doações e
-            dedicado à adoção responsável.
+            Acolhemos cães resgatados e promovemos a adoção responsável.
+            Um projeto independente, mantido por doações.
           </p>
           <div className={styles.footerBadges}>
             <LocationBadge />
@@ -45,9 +40,9 @@ export function Footer() {
         </div>
 
         {/* Navigation */}
-        <div className={styles.footerLinks}>
-          <h4 className={styles.columnTitle}>Navegação</h4>
-          <NavLink to="/" className={styles.linkItem}>
+        <nav className={styles.footerLinks} aria-labelledby="footer-navigation-title">
+          <h3 id="footer-navigation-title" className={styles.columnTitle}>Explore o abrigo</h3>
+          <NavLink to="/" end className={styles.linkItem}>
             Início
           </NavLink>
           <NavLink to="/caes" className={styles.linkItem}>
@@ -62,45 +57,42 @@ export function Footer() {
           <NavLink to="/formulario" className={styles.linkItem} onClick={() => analytics.trackConversionIntent("adopt_form")}>
             Formulário de interesse
           </NavLink>
-        </div>
+        </nav>
 
         {/* Contact */}
         <div className={styles.footerSocial}>
-          <h4 className={styles.columnTitle}>Fale conosco</h4>
+          <h3 className={styles.columnTitle}>Fique por perto</h3>
 
-          <a
-            href={SHELTER_INSTAGRAM_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.contactItem}
-          >
-            <div className={styles.iconBox}>
-              <Lucide.Instagram size={20} />
-            </div>
-            <span>@abrigodowlad</span>
-          </a>
-
-          <a
-            href="mailto:abrigodowlad@gmail.com"
-            className={styles.contactItem}
-            onClick={() => analytics.trackConversionIntent("contact", { method: "email" })}
-          >
-            <div className={styles.iconBox}>
-              <Lucide.Mail size={20} />
-            </div>
-            <span>abrigodowlad@gmail.com</span>
-          </a>
+          <div className={styles.contactLinks}>
+            <ContactLink
+              href={SHELTER_INSTAGRAM_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              icon={<Instagram size={20} aria-hidden="true" />}
+              label="Acompanhe o dia a dia"
+            >
+              @abrigodowlad
+            </ContactLink>
+            <ContactLink
+              href="mailto:abrigodowlad@gmail.com"
+              icon={<Mail size={20} aria-hidden="true" />}
+              label="Converse com a gente"
+              onClick={() => analytics.trackConversionIntent("contact", { method: "email" })}
+            >
+              abrigodowlad@gmail.com
+            </ContactLink>
+          </div>
         </div>
       </div>
 
       <div className={`container ${styles.footerBottom}`}>
         <div className={styles.footerBottomGroup}>
           <div className={styles.footerBottomCopyright}>
-            <p style={{ opacity: 0.8 }}>
+            <p>
               &copy; {new Date().getFullYear()} Abrigo do Wlad
             </p>
-            {isDesktop && <span style={{ opacity: 0.5 }}>•</span>}
-            <p style={{ opacity: 0.8 }}>Todos os direitos reservados</p>
+            <span className={styles.copyrightSeparator} aria-hidden="true">·</span>
+            <p>Todos os direitos reservados</p>
           </div>
         </div>
         <div className={styles.footerBottomGroup}>

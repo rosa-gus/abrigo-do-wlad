@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@jaci/ui/Badge";
-import { Button } from "@jaci/ui/Button";
+import { Button, ButtonLink } from "@jaci/ui/Button";
 import * as CardComponent from "@jaci/ui/Card";
 import { Carousel } from "@jaci/ui/Carousel";
 import { CarouselNavigation } from "@jaci/ui/CarouselNavigation";
@@ -233,7 +233,7 @@ export default function Recycle() {
         image={heroImage as string}
         badge="Reciclagem solidária"
         title="Sua tampinha vale vidas"
-        description="Transformamos plástico em ração e medicamentos. Descubra como um gesto simples pode salvar nossos animais."
+        description="Transformamos tampinhas em ração e medicamentos para os cães do abrigo. Encontre um ponto de coleta e participe."
       />
 
       <div className={styles.mainContainer} ref={containerRef}>
@@ -553,17 +553,20 @@ export default function Recycle() {
                             <CardComponent.CardFooter
                               className={styles.cardFooter}
                             >
-                              <a
+                              <ButtonLink
                                 href={location.googleMapsUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
+                                variant="secondary"
+                                emphasis="soft"
+                                size="sm"
+                                leftIcon={<Lucide.MapPinHouse size={16} aria-hidden="true" />}
+                                rightIcon={<Lucide.ArrowUpRight size={16} aria-hidden="true" />}
                                 className={styles.mapLink}
                                 aria-label={`Abrir ${location.name || location.neighborhood} no Google Maps`}
                               >
-                                <Lucide.MapPinHouse aria-hidden="true" />
                                 Abrir no Google Maps
-                                <Lucide.ArrowUpRight aria-hidden="true" />
-                              </a>
+                              </ButtonLink>
                             </CardComponent.CardFooter>
                           )}
                         </CardComponent.Card>

@@ -29,10 +29,10 @@ export function FaqSection() {
   const { sectionRef, isVisible } = useSectionReveal();
 
   return (
-    <section id="faq" ref={sectionRef}>
+    <section id="faq" ref={sectionRef} className={styles.faqSection} aria-labelledby="faq-title">
       <div className={`${styles.titleFaq} ${reveal.item} ${isVisible ? reveal.visible : ""}`}>
-        <h2 className="section-title">Você pode estar se perguntando...</h2>
-        <p>Algumas respostas para perguntas frequentes.</p>
+        <h2 id="faq-title" className="section-title">Ficou com alguma dúvida?</h2>
+        <p>Veja algumas respostas sobre o abrigo e a adoção.</p>
       </div>
       <Accordion
         type="single"
@@ -44,16 +44,22 @@ export function FaqSection() {
           <AccordionContent>
             <div className={styles.faqContainer}>
               <p>
-                A responsabilidade pelo resgate é do{" "}
-                <strong>poder público</strong>. O{" "}
-                <strong>Abrigo do Wlad</strong> está lotado e sem condições de
-                receber novos animais. Mas você pode ajudar: leve o animal ao
-                veterinário, vacine, vermifugue, castre (ou busque castração
-                social), tire boas fotos, divulgue para adoção em redes sociais
-                e eventos da região e crie vaquinhas ou rifas para cobrir os
-                custos — assim você dá ao animal a mesma chance que damos aos
-                nossos resgatados!
+                No momento, o abrigo está lotado e não consegue receber novos animais.
               </p>
+              <p>
+                O Abrigo do Wlad é um projeto independente e não substitui os
+                serviços públicos de proteção animal. Para orientações e
+                solicitações de atendimento, procure os órgãos responsáveis do
+                seu município. O atendimento depende dos critérios de cada serviço.
+              </p>
+              <div>
+                <h4 className={styles.helpTitle}>Como você pode ajudar</h4>
+                <ul className={styles.rescueHelpList}>
+                  <li>Busque atendimento veterinário para avaliar os cuidados necessários.</li>
+                  <li>Divulgue o animal com boas fotos e informações para encontrar um lar.</li>
+                  <li>Mobilize uma rede de apoio para ajudar com os cuidados e custos.</li>
+                </ul>
+              </div>
             </div>
           </AccordionContent>
         </AccordionItem>
@@ -151,21 +157,38 @@ export function FaqSection() {
           </AccordionTrigger>
           <AccordionContent>
             <div className={styles.faqContainer}>
-              <p>
-                Buscamos o cãozinho que combina com sua rotina e família, não
-                apenas pelo visual — isso evita frustrações e devoluções. O
-                processo começa com um <strong>questionário</strong> (avaliamos
-                perfil, experiência e disponibilidade), seguido de{" "}
-                <strong>entrevista via WhatsApp</strong> e, por fim,{" "}
-                <strong>visita presencial</strong> ao abrigo para conhecer o
-                animal.
-              </p>
-
-              <p>
-                <strong>Importante:</strong> Há taxa de adoção. Não reservamos
-                animais nem fazemos adoção por terceiros. Resposta em até 3 dias
-                úteis.
-              </p>
+              <ol className={styles.adoptionFlow} aria-label="Etapas da adoção">
+                <li className={styles.flowStep}>
+                  <span className={styles.stepNumber} aria-hidden="true">1</span>
+                  <div>
+                    <h4>Preencha o formulário</h4>
+                    <p>Conte sobre sua rotina e sua família.</p>
+                  </div>
+                  <Lucide.ArrowDown className={styles.flowArrow} size={20} aria-hidden="true" />
+                </li>
+                <li className={styles.flowStep}>
+                  <span className={styles.stepNumber} aria-hidden="true">2</span>
+                  <div>
+                    <h4>Converse com a equipe</h4>
+                    <p>Entrevista pelo WhatsApp para avaliar a compatibilidade.</p>
+                  </div>
+                  <Lucide.ArrowDown className={styles.flowArrow} size={20} aria-hidden="true" />
+                </li>
+                <li className={styles.flowStep}>
+                  <span className={styles.stepNumber} aria-hidden="true">3</span>
+                  <div>
+                    <h4>Conheça o cão no abrigo</h4>
+                    <p>Visita agendada após a avaliação.</p>
+                  </div>
+                </li>
+              </ol>
+              <div className={styles.flowFooter}>
+                <p className={styles.adoptionFee}>
+                  <Lucide.Info size={18} aria-hidden="true" />
+                  <strong>Há taxa de adoção.</strong>
+                </p>
+                <p>Não fazemos reservas nem adoções por terceiros. O prazo de resposta é de até 3 dias úteis.</p>
+              </div>
             </div>
           </AccordionContent>
         </AccordionItem>

@@ -411,7 +411,7 @@ export default function Dogs() {
         image={heroImage as string}
         title="Nossos doguinhos"
         leading={<LocationBadge onImage />}
-        description="Cada um tem uma história e uma personalidade única. Utilize os filtros abaixo para encontrar quem combina com seu estilo de vida."
+        description="Conheça os cães que esperam por um lar. Explore seus perfis e descubra quem pode fazer parte da sua família."
       />
 
       <div className="container">

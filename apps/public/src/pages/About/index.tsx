@@ -45,8 +45,8 @@ export default function About() {
       <Banner
         image={heroImage}
         badge="Nossa trajetória"
-        title="Uma história de amor e renúncia"
-        description="Conheça os passos que transformaram um quintal em um refúgio de esperança."
+        title="Como nasceu o Abrigo do Wlad"
+        description="Conheça a história do abrigo e das pessoas que dedicam sua vida ao cuidado de cães resgatados."
       />
       <div className="container" ref={containerRef}>
         <div

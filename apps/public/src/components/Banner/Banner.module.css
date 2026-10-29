@@ -1,3 +1,7 @@
+.bannerFrame {
+  display: contents;
+}
+
 .banner {
   height: 55vh;
   min-height: 400px;
@@ -44,6 +48,10 @@
   z-index: 1;
 }
 
+:global(body.dark-mode) .bannerOverlay {
+  opacity: 0.85;
+}
+
 .bannerContent {
   position: relative;
   max-width: 800px;
@@ -74,6 +82,34 @@
   font-size: 1.1rem;
   opacity: 0.9;
   max-width: 600px;
+}
+
+/* A shared surface joins the desktop navigation and the inset image. */
+@media (min-width: 769px) {
+  .bannerFrame {
+    display: block;
+    width: calc(100% - 4rem);
+    max-width: 1200px;
+    margin: 1rem auto 4rem;
+    padding: 84px 1rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background-color: var(--surface-card);
+    box-shadow: var(--shadow-sm);
+  }
+
+  :global(body.dark-mode) .bannerFrame {
+    border-color: color-mix(in srgb, var(--border-light) 55%, var(--surface-card));
+  }
+
+  .banner {
+    height: 46vh;
+    margin: 0;
+    padding: 2rem 0;
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: none;
+  }
 }
 
 /* media query */
