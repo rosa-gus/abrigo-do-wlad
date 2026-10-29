@@ -65,41 +65,43 @@ export default function Banner({
   );
 
   return (
-    <section className={`${styles.banner} ${className ?? ""}`}>
-      {desktopImage && (
-        <picture className={styles.bannerBackground} aria-hidden="true">
-          <source
-            media="(max-width: 768px)"
-            srcSet={mobileImageSrcSet || mobileImage}
-            sizes="100vw"
-          />
-          <img
-            src={desktopImage}
-            srcSet={desktopImageSrcSet || undefined}
-            sizes="100vw"
-            width={DESKTOP_BANNER_SIZE.width}
-            height={DESKTOP_BANNER_SIZE.height}
-            alt=""
-            decoding="async"
-            fetchPriority="high"
-          />
-        </picture>
-      )}
-      <div className={styles.bannerOverlay} />
-      <div className={styles.bannerContent}>
-        {leading}
-        {badge && <Badge
-          size="lg"
-          blur={true}
-          variant="outline"
-          className={styles.imageBadge}
-        >
-          {badge}
-        </Badge>}
-        <h1>{title}</h1>
-        <p>{description}</p>
-        {children}
-      </div>
-    </section>
+    <div className={styles.bannerFrame}>
+      <section className={`${styles.banner} ${className ?? ""}`}>
+        {desktopImage && (
+          <picture className={styles.bannerBackground} aria-hidden="true">
+            <source
+              media="(max-width: 768px)"
+              srcSet={mobileImageSrcSet || mobileImage}
+              sizes="100vw"
+            />
+            <img
+              src={desktopImage}
+              srcSet={desktopImageSrcSet || undefined}
+              sizes="100vw"
+              width={DESKTOP_BANNER_SIZE.width}
+              height={DESKTOP_BANNER_SIZE.height}
+              alt=""
+              decoding="async"
+              fetchPriority="high"
+            />
+          </picture>
+        )}
+        <div className={styles.bannerOverlay} />
+        <div className={styles.bannerContent}>
+          {leading}
+          {badge && <Badge
+            size="lg"
+            blur={true}
+            variant="outline"
+            className={styles.imageBadge}
+          >
+            {badge}
+          </Badge>}
+          <h1>{title}</h1>
+          <p>{description}</p>
+          {children}
+        </div>
+      </section>
+    </div>
   );
 }

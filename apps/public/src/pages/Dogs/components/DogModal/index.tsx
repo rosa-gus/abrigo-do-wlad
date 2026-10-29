@@ -138,8 +138,8 @@ export function DogModal({ dog: parentDog, isOpen, onClose }: ModalProps) {
                     {!isDesktop && (
                       <div>
                         <Button
-                          blur={true}
                           variant="outline"
+                          className={styles.mobileCloseButton}
                           onClick={handleClose}
                           size="icon"
                           aria-label={`Fechar detalhes de ${dog.nome}`}

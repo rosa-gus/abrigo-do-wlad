@@ -75,41 +75,8 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  width: fit-content;
-}
-
-.contactItem {
-  display: inline-flex;
-  align-items: center;
-  gap: 15px;
-  color: var(--contact-text);
-  text-decoration: none;
-  transition: 0.3s;
-  padding: 10px;
-  background-color: var(--contact-bg);
-  border: 1px solid var(--contact-border);
-  border-radius: var(--radius);
-}
-
-.contactItem:hover {
-  background: var(--contact-hover-bg);
-  color: var(--contact-hover-text);
-  transform: translateY(-3px);
-}
-
-.iconBox {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--contact-text);
-  transition: 0.3s;
-  flex-shrink: 0;
-}
-
-.contactItem:hover .iconBox {
-  color: var(--contact-hover-text);
+  width: 100%;
+  max-width: 440px;
 }
 
 .loading,

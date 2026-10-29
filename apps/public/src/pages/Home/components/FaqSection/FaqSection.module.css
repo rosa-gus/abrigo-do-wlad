@@ -1,8 +1,19 @@
+.faqSection {
+  display: grid;
+  grid-template-columns: minmax(0, 0.35fr) minmax(0, 0.65fr);
+  align-items: start;
+  gap: 3rem;
+}
+
 .titleFaq {
   display: flex;
-  margin-bottom: 2.5rem;
   flex-direction: column;
-  text-align: center;
+  text-align: start;
+}
+
+.titleFaq h2 {
+  line-height: 1.2;
+  text-wrap: balance;
 }
 
 .titleFaq p {
@@ -33,9 +44,106 @@
   color: var(--text-primary);
 }
 
+.helpTitle {
+  margin-bottom: 0.75rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: var(--tracking-heading);
+}
+
+.rescueHelpList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-left: 1.25rem;
+  list-style: disc;
+  color: var(--text-secondary);
+}
+
+.rescueHelpList li::marker {
+  color: var(--secondary);
+}
+
+.adoptionFlow {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem 0 0;
+}
+
+.flowStep {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: var(--radius);
+  background-color: var(--surface-card);
+}
+
+.stepNumber {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius);
+  background-color: var(--accent-primary);
+  color: var(--primary);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.flowStep h4 {
+  margin: 0 0 0.25rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: var(--tracking-heading);
+}
+
+.flowStep p {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.flowArrow {
+  position: absolute;
+  bottom: -26px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--secondary);
+}
+
+.flowFooter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.adoptionFee {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-primary);
+}
+
+.adoptionFee svg {
+  flex-shrink: 0;
+  color: var(--secondary);
+}
+
 .visitOptions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.25rem;
   margin-top: 0.5rem;
 }
@@ -77,23 +185,25 @@
 .accordionWrapper {
   --reveal-delay: 60ms;
   width: 100%;
-  max-width: 900px;
-  margin-inline: auto;
+  min-width: 0;
 }
 
 .faqItem {
   position: relative;
 }
 
+@media (max-width: 1024px) {
+  .faqSection {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+  }
+
+  .titleFaq h2 {
+    text-wrap: initial;
+  }
+}
+
 @media (max-width: 768px) {
-  .titleFaq {
-    text-align: start;
-  }
-
-  .visitOptions {
-    grid-template-columns: 1fr;
-  }
-
   .visitActions {
     gap: 0.75rem;
   }

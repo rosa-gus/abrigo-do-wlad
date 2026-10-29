@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import * as Lucide from "lucide-react";
 import * as CardComponent from "@jaci/ui/Card";
+import { ContactLink } from "@/components/common/ContactLink";
 import Banner from "../../components/Banner";
 import { ScrollIndicators } from "@/components/ScrollIndicators";
 
@@ -117,15 +118,13 @@ export default function PrivacyPolicy() {
                             <strong>{section.contact.organization}</strong>
                           </p>
                           <div className={styles.contactLinks}>
-                            <a
+                            <ContactLink
                               href={`mailto:${section.contact.email}`}
-                              className={styles.contactItem}
+                              icon={<Lucide.Mail size={20} aria-hidden="true" />}
+                              label="Desenvolvedores da plataforma"
                             >
-                              <div className={styles.iconBox}>
-                                <Lucide.Mail size={20} />
-                              </div>
-                              <span>{section.contact.email}</span>
-                            </a>
+                              {section.contact.email}
+                            </ContactLink>
                           </div>
                         </div>
                       )}

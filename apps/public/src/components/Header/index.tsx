@@ -25,7 +25,8 @@ export function Header() {
       setIsScrolled(window.scrollY > 40);
     };
 
-    window.addEventListener("scroll", handleScroll);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
@@ -43,7 +44,14 @@ export function Header() {
       : styles.navLink;
   };
 
-  const headerClasses = `${styles.headerContainer} ${isScrolled && !menuOpen ? styles.headerScrolled : ""}`;
+  const hasBanner = ["/sobre", "/tampinhas", "/politica-de-privacidade"].includes(location.pathname)
+    || location.pathname === "/caes"
+    || location.pathname.startsWith("/caes/");
+  const headerClasses = [
+    styles.headerContainer,
+    hasBanner && !isScrolled ? styles.headerFramed : "",
+    isScrolled && !menuOpen ? styles.headerScrolled : "",
+  ].filter(Boolean).join(" ");
 
   return (
     <header className={headerClasses}>
@@ -112,6 +120,7 @@ export function Header() {
               className={styles.mainBtn}
               size="md"
               variant="secondary"
+              emphasis="soft"
               onClick={() => analytics.trackButtonClick("header_donate")}
             >
               <Lucide.HeartHandshake size={20} />
@@ -124,7 +133,7 @@ export function Header() {
 
       {/* AÇÕES */}
       <div className={styles.actionsContainer}>
-        <div className={styles.themeControl}><ThemeToggle /></div>
+        <div className={styles.themeControl}><ThemeToggle variant="subtle" /></div>
 
         <button
           className={`${styles.hamburger} ${menuOpen ? styles.active : ""}`}

@@ -9,14 +9,14 @@ import {
 } from "@jaci/ui/Tooltip";
 import { motion } from "motion/react";
 
-export function ThemeToggle() {
+export function ThemeToggle({ variant = "default" }: { variant?: "default" | "subtle" }) {
   const { isDark, toggleTheme } = useTheme();
 
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className={styles.switchContainer}>
+          <div className={`${styles.switchContainer} ${variant === "subtle" ? styles.subtle : ""}`}>
             <button
               className={`${styles.switch} ${isDark ? styles.dark : ""}`}
               onClick={toggleTheme}
