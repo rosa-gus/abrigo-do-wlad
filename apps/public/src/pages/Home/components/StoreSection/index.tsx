@@ -63,12 +63,15 @@ export function StoreSection() {
         >
           <div className={styles.tag}>
             <svg className={styles.tagCord} viewBox="0 0 72 104" fill="none">
-              <path d="M36 100C28 78 8 39 23 16C39-8 66 44 49 76L36 100" />
-              <path d="M32 98L40 101M33 102L39 98" />
+              <path d="M35 71C32 52 14 11 20 -1C24 -10 33 -7 37 5C43 24 40 52 37 71" />
+              <path d="M35 73C35 80 33.5 87 35 93M37 73C37 80 35.5 87 37 93" />
+              <path className={styles.tagKnot} d="M33.5 70.5L38.5 69.5M33.5 73L38.5 72" />
             </svg>
             <span className={styles.tagHole} />
-            <span className={styles.tagEyebrow}>Tem algo pra você por aqui.</span>
-            <span className={styles.tagName}>Bazar<br />Pet Solidário</span>
+            <span className={styles.tagName}>
+              <span className={styles.tagNameBazar}>Bazar</span>
+              <span className={styles.tagNameMain}>Pet Solidário</span>
+            </span>
             <span className={styles.tagPortrait}>
               <img
                 src={dogCollageCutout}
@@ -82,6 +85,9 @@ export function StoreSection() {
             </span>
             <span className={styles.tagCaption}>
               E uma ajudinha<br />pra nós também.
+            </span>
+            <span className={styles.tagFooter}>
+              <span>Abrigo do Wlad<br />Abrigo Batalha Animal</span>
             </span>
           </div>
         </div>
