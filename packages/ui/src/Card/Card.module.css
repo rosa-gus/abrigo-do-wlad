@@ -2,6 +2,7 @@
   --card-body-surface: var(--accent-neutral);
   --card-accent: var(--primary);
   --card-border: var(--border);
+  --card-icon-size: 56px;
 
   display: flex;
   flex-direction: column;
@@ -56,13 +57,29 @@
 
 .cardHeader {
   display: flex;
+  align-items: flex-start;
   flex-direction: column;
   gap: 1.5rem;
   margin-bottom: 1.5rem;
 }
 
 .cardIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--card-icon-size);
+  height: var(--card-icon-size);
+  padding: 0.5rem;
+  border-radius: var(--radius);
+  background-color: var(--surface-card);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
   color: var(--card-accent);
+}
+
+.cardIcon svg {
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .cardTitle {
@@ -119,7 +136,7 @@
 }
 
 .callout .cardHeader {
-  align-items: flex-start;
+  align-items: center;
   flex-direction: row;
   text-transform: uppercase;
 }
@@ -152,6 +169,7 @@
   content: "";
 }
 
+.imageVariant .cardIcon,
 .imageVariant .cardHeader,
 .imageVariant .cardContent,
 .imageVariant .cardFooter {
@@ -180,6 +198,8 @@
 /* Sizes */
 
 .xs {
+  --card-icon-size: 36px;
+
   padding: 0.25rem;
 }
 
@@ -197,6 +217,8 @@
 }
 
 .sm {
+  --card-icon-size: 48px;
+
   border-radius: var(--radius-lg);
 }
 
@@ -212,6 +234,10 @@
 .sm .cardTitle,
 .sm .cardContent {
   font-size: 1rem;
+}
+
+.lg {
+  --card-icon-size: 64px;
 }
 
 .lg .cardBody {
@@ -234,17 +260,7 @@
 }
 
 .layoutInline .cardIcon {
-  display: flex;
   grid-row: span 2;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius);
-  background-color: var(--surface-card);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-  color: var(--text-primary);
-  flex-shrink: 0;
 }
 
 .layoutInline .cardTitle {
@@ -273,11 +289,6 @@
   column-gap: 0.75rem;
 }
 
-.layoutInline.xs .cardIcon {
-  width: 36px;
-  height: 36px;
-}
-
 .layoutInline.xs .cardTitle {
   font-size: 0.6875rem;
 }
@@ -294,10 +305,17 @@
 }
 
 @media (max-width: 768px) {
+  .callout {
+    --card-mobile-text-align: center;
+    --card-mobile-header-align: center;
+    --card-mobile-body-align: center;
+  }
+
   .cardFooter,
   .cardContent p,
+  .callout .cardContent p,
   .card {
-    text-align: var(--card-mobile-text-align, center);
+    text-align: var(--card-mobile-text-align, start);
   }
 
   .cardContent {
@@ -314,10 +332,10 @@
   }
 
   .layoutInline .cardBody {
-    align-items: var(--card-mobile-body-align, stretch);
+    align-items: var(--card-mobile-body-align, flex-start);
     display: flex;
     flex-direction: column;
-    text-align: var(--card-mobile-text-align, center);
+    text-align: var(--card-mobile-text-align, start);
   }
 
   .layoutInline .cardIcon {
@@ -327,6 +345,6 @@
   .layoutInline .cardTitle,
   .layoutInline .cardContent,
   .layoutInline .cardContent p {
-    text-align: var(--card-mobile-text-align, center);
+    text-align: var(--card-mobile-text-align, start);
   }
 }

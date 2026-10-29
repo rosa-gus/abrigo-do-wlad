@@ -5,9 +5,9 @@
   padding: 0.45rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
-  background: var(--glass);
+  background: var(--surface-card);
+  color: var(--text-primary);
   box-shadow: var(--shadow-sm);
-  backdrop-filter: var(--blur);
 }
 
 .md {

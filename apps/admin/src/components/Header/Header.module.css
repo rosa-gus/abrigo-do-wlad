@@ -44,15 +44,6 @@
   background-color: var(--border);
 }
 
-.adminTag {
-  border-color: var(--control-border) !important;
-  background-color: var(--surface-water) !important;
-  color: var(--secondary) !important;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
 .mockTag {
   font-weight: 700;
   white-space: nowrap;
@@ -120,10 +111,6 @@
   .divider,
   .userInfo {
     display: none;
-  }
-
-  .adminTag {
-    padding-inline: 0.5rem !important;
   }
 
   .mockTag {

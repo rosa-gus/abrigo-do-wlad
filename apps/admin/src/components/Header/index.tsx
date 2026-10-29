@@ -23,9 +23,8 @@ export function Header() {
           <img src={logoImg} alt="Abrigo do Wlad" className={styles.logo} />
           <div className={styles.divider}></div>
           <Badge
-            className={styles.adminTag}
             leftIcon={<ShieldCheck size={18} />}
-            variant="outline"
+            variant="primary"
             size="sm"
           >
             Painel Admin

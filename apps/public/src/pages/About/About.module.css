@@ -16,14 +16,14 @@
   color: var(--text-secondary);
 }
 
-.historyText h2,
-h3 {
+.historyText > h2,
+.historyText > h3 {
   color: var(--text-primary);
   margin-top: 40px;
   margin-bottom: 15px;
 }
 
-.historyText h3 {
+.historyText > h3 {
   font-size: 1.8rem;
   letter-spacing: var(--tracking-heading);
 }
