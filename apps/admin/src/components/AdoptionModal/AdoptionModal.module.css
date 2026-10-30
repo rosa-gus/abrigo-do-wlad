@@ -1,4 +1,9 @@
 .actionButtons {
-  display: grid;
-  gap: 0.75rem;
+  flex-direction: column;
+}
+
+.actionButtons > button {
+  width: 100%;
+  white-space: normal;
+  line-height: 1.4;
 }

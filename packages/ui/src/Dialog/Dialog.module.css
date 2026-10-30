@@ -295,6 +295,16 @@
   margin-top: auto;
 }
 
+.sizeSm:has(> .header > .icon) > .body {
+  text-align: center;
+}
+
+.sizeSm:has(> .header > .icon) > .footer {
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
 @keyframes overlayShow {
   from {
     opacity: 0;

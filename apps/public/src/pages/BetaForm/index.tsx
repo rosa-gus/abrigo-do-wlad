@@ -13,6 +13,7 @@ import {
 } from "@jaci/ui/Card";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -80,16 +81,16 @@ export default function BetaForm() {
             <DialogHeading>
               <DialogTitle>
                 {formError?.kind === "storage" ? "Não foi possível salvar o preenchimento"
-                    : "Não foi possível enviar o formulário"}
+                    : "Não foi possível enviar"}
               </DialogTitle>
               <DialogDescription>{formError?.message}</DialogDescription>
             </DialogHeading>
           </DialogHeader>
-          <div className={styles.modalContent}>
-            {formError?.kind === "submission" && (
-              <p>Suas respostas continuam disponíveis nesta aba. Você pode voltar ao formulário e tentar novamente.</p>
-            )}
-          </div>
+          {formError?.kind === "submission" && (
+            <DialogBody>
+              <p>Suas respostas continuam disponíveis nesta aba.</p>
+            </DialogBody>
+          )}
           <DialogFooter>
             <Button variant="secondary" onClick={() => {
               setFormError(null);
@@ -292,7 +293,7 @@ export default function BetaForm() {
                 variant="secondary"
                 leftIcon={<Lucide.CircleAlert size={18} aria-hidden="true" />}
                 onClick={() => {
-                  setSubmissionError("Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.");
+                  setSubmissionError("Não conseguimos conectar ao servidor. Verifique sua conexão e tente novamente.");
                 }}
               >
                 Pré-visualizar falha

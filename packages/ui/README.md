@@ -232,6 +232,9 @@ formulários, mapas e visualização de dados.
 ```
 
 Em `sm`, ícone, título e descrição ficam empilhados e centralizados. Nos
+diálogos semânticos que usam `DialogIcon`, o texto de `DialogBody` e as ações
+de `DialogFooter` também são centralizados, mantendo um único eixo de leitura.
+Use esses componentes para o conteúdo de apoio e as ações, sem alinhamentos locais. Nos
 demais tamanhos, o ícone fica à esquerda do conjunto de título e descrição.
 Os tons disponíveis são `neutral`, `primary`, `info`, `success`, `warning` e
 `danger`. O ícone é decorativo por padrão e não substitui um título descritivo.

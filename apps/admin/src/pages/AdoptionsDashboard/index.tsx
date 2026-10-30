@@ -979,6 +979,7 @@ export default function AdoptionsDashboard() {
         confirmingText="Atualizando..."
         isConfirming={isUpdatingStatus}
         isDestructive={actionModal.type === "rejected"}
+        tone={actionModal.type === "approved" ? "success" : "neutral"}
         message={
           <>
             Tem certeza que deseja{" "}

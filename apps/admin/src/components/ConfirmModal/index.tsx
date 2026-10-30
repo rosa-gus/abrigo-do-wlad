@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle, CircleHelp } from "lucide-react";
 import { Button } from "@jaci/ui/Button";
 import {
   Dialog,
@@ -10,7 +10,6 @@ import {
   DialogIcon,
   DialogTitle,
 } from "@jaci/ui/Dialog";
-import styles from "./ConfirmModal.module.css";
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -23,6 +22,7 @@ interface ConfirmModalProps {
   confirmingText?: string;
   isConfirming?: boolean;
   isDestructive?: boolean;
+  tone?: "neutral" | "success" | "warning" | "danger";
 }
 
 export function ConfirmModal({
@@ -36,7 +36,15 @@ export function ConfirmModal({
   confirmingText = "Confirmando...",
   isConfirming = false,
   isDestructive = false,
+  tone = "neutral",
 }: ConfirmModalProps) {
+  const resolvedTone = isDestructive ? "danger" : tone;
+  const Icon = resolvedTone === "danger" || resolvedTone === "warning"
+    ? AlertTriangle
+    : resolvedTone === "success" ? CheckCircle : CircleHelp;
+  const confirmVariant = resolvedTone === "danger" ? "danger"
+    : resolvedTone === "success" ? "success" : "secondary";
+
   return (
     <Dialog
       open={isOpen}
@@ -44,20 +52,20 @@ export function ConfirmModal({
     >
       <DialogContent size="sm">
         <DialogHeader>
-          <DialogIcon tone={isDestructive ? "danger" : "success"}>
-            {isDestructive ? <AlertTriangle /> : <CheckCircle />}
+          <DialogIcon tone={resolvedTone}>
+            <Icon />
           </DialogIcon>
           <DialogHeading>
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>{message}</DialogDescription>
           </DialogHeading>
         </DialogHeader>
-        <DialogFooter className={styles.actions}>
+        <DialogFooter>
           <Button variant="outline" disabled={isConfirming} onClick={onClose}>
             {cancelText}
           </Button>
           <Button
-            variant={isDestructive ? "danger" : "success"}
+            variant={confirmVariant}
             disabled={isConfirming}
             onClick={onConfirm}
           >
