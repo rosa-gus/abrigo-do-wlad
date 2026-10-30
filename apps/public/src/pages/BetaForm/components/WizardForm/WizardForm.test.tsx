@@ -209,6 +209,21 @@ describe("WizardForm", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("revalida etapas anteriores antes de enviar e leva à primeira resposta inválida", async () => {
+    prepareLastStep();
+    sessionStorage.setItem(WIZARD_STORAGE_KEYS.formData, JSON.stringify({ ...VALID_ADOPTION_APPLICATION, nome_adotante: "   " }));
+    const { execute } = installRecaptcha();
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    renderWizard("/beta/formulario/step/10");
+    await user.click(screen.getByRole("button", { name: /Enviar Respostas/ }));
+    expect(await screen.findByLabelText(/Nome do adotante/)).toHaveFocus();
+    expect(screen.getByText("Etapa 1 de 10")).toBeInTheDocument();
+    expect(execute).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("informa quando o reCAPTCHA não está disponível", async () => {
     prepareLastStep();
     vi.stubGlobal("grecaptcha", undefined);

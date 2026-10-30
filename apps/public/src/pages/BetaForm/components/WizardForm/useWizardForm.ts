@@ -1,6 +1,6 @@
 import * as React from "react";
 import { z } from "zod";
-import { stepSchemas, type FormData } from "./schema";
+import { adoptionFormSchema, stepSchemas, type FormData } from "./schema";
 import { useNavigate, useParams } from "react-router";
 
 import * as Lucide from "lucide-react";
@@ -137,6 +137,26 @@ export function useWizardForm() {
     return true;
   }, [currentStep, formData]);
 
+  const validateAllSteps = React.useCallback(() => {
+    const result = adoptionFormSchema.safeParse(formData);
+    if (result.success) {
+      setErrors({});
+      return result.data;
+    }
+    const firstField = String(result.error.issues[0]?.path[0]);
+    const firstStep = Math.max(0, stepSchemas.findIndex((schema) => firstField in schema.shape));
+    const fields = stepSchemas[firstStep].shape;
+    const fieldErrors: FieldError = {};
+    for (const issue of result.error.issues) {
+      const field = String(issue.path[0]);
+      if (field in fields) fieldErrors[field] = issue.message;
+    }
+    setErrors(fieldErrors);
+    setValidationAttempt((attempt) => attempt + 1);
+    navigate(`/beta/formulario/step/${firstStep + 1}`);
+    return null;
+  }, [formData, navigate]);
+
   const updateField = React.useCallback(
     (field: keyof FormData, value: string | number) => {
       setFormData((prev) => ({ ...prev, [field]: value }));
@@ -247,6 +267,7 @@ export function useWizardForm() {
     prevStep,
     goToStep,
     validateCurrentStep,
+    validateAllSteps,
     setErrors,
     highestCompletedStep,
     resetForm,

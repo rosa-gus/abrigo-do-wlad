@@ -197,7 +197,7 @@ export function WizardForm({ onSubmitSuccess, onSubmitError, onStorageError }: W
     nextStep,
     prevStep,
     goToStep,
-    validateCurrentStep,
+    validateAllSteps,
     highestCompletedStep,
     resetForm,
     completeForm,
@@ -226,7 +226,7 @@ export function WizardForm({ onSubmitSuccess, onSubmitError, onStorageError }: W
       'input:not([type="hidden"]), textarea, button, [role="radio"], [tabindex="0"]',
     );
     if (field && control) focusAndScroll(control, field);
-  }, [validationAttempt]);
+  }, [validationAttempt, currentStep]);
 
   React.useEffect(() => {
     if (isAdoptionRecaptchaBypassed()) return;
@@ -281,7 +281,8 @@ export function WizardForm({ onSubmitSuccess, onSubmitError, onStorageError }: W
   const onSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
     if (submissionLockedRef.current) return;
-    if (!validateCurrentStep()) return;
+    const validatedData = validateAllSteps();
+    if (!validatedData) return;
     submissionLockedRef.current = true;
     setIsSubmitting(true);
     setSubmitError(null);
@@ -294,7 +295,7 @@ export function WizardForm({ onSubmitSuccess, onSubmitError, onStorageError }: W
         submissionKeyRef.current ?? getOrCreateIdempotencyKey();
       submissionKeyRef.current = idempotencyKey;
 
-      const submissionResult = await sendAdoptionApplication({ ...formData, captchaToken: token }, idempotencyKey);
+      const submissionResult = await sendAdoptionApplication({ ...validatedData, captchaToken: token }, idempotencyKey);
       submissionSucceededRef.current = true;
       const cleared = completeForm();
       submissionKeyRef.current = null;
