@@ -1,9 +1,10 @@
-import { Heart, LogOut } from "lucide-react";
+import { Archive, Heart, LogOut } from "lucide-react";
 import { Button } from "@jaci/ui/Button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogHeading,
   DialogIcon,
@@ -31,36 +32,37 @@ export function AdoptionModal({
       open={isOpen}
       onOpenChange={(open) => !open && !isSubmitting && onClose()}
     >
-      <DialogContent size="md">
+      <DialogContent size="sm">
         <DialogHeader>
-          <DialogIcon tone="primary">
-            <Heart />
+          <DialogIcon tone="neutral">
+            <Archive />
           </DialogIcon>
           <DialogHeading>
-            <DialogTitle>O destino de {dogName}</DialogTitle>
+            <DialogTitle>Arquivar {dogName}?</DialogTitle>
             <DialogDescription>
-              Ficamos felizes em ver um animal saindo do abrigo. Informe o que
-              aconteceu para manter as métricas atualizadas.
+              Informe o motivo para manter as métricas atualizadas. O animal
+              sairá da lista de disponíveis e poderá ser restaurado na página Arquivado.
             </DialogDescription>
           </DialogHeading>
         </DialogHeader>
-        <div className={styles.actionButtons}>
+        <DialogFooter className={styles.actionButtons}>
           <Button
             variant="success"
+            leftIcon={<Heart size={20} aria-hidden="true" />}
             disabled={isSubmitting}
             onClick={() => onConfirm(true)}
           >
-            <Heart size={20} />
             {isSubmitting ? "Finalizando..." : "Adotado pelo site"}
           </Button>
           <Button
             variant="outline"
+            leftIcon={<LogOut size={20} aria-hidden="true" />}
             disabled={isSubmitting}
             onClick={() => onConfirm(false)}
           >
-            <LogOut size={20} /> Adotado por fora ou outro motivo
+            Adotado por fora ou outro motivo
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

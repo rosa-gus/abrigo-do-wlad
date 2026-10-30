@@ -4,6 +4,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogHeading,
   DialogIcon,
@@ -35,9 +36,11 @@ export function ErrorModal({
             <DialogDescription>{message}</DialogDescription>
           </DialogHeading>
         </DialogHeader>
-        <Button variant="danger" onClick={onClose}>
-          Fechar
-        </Button>
+        <DialogFooter>
+          <Button variant="secondary" onClick={onClose}>
+            Fechar
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

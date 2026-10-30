@@ -1,5 +1,3 @@
-import { fetchJsonWithCache } from '@/lib/cache';
-
 export interface SystemSettings {
   acceptingApplications: boolean;
 }
@@ -13,10 +11,15 @@ export async function getSystemSettings(): Promise<SystemSettings> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15_000);
   try {
-    return await fetchJsonWithCache(
-      '/api/system/settings', 'system_settings', isSystemSettings, 60 * 60 * 1000,
-      { signal: controller.signal, allowStaleOnError: false },
-    );
+    const response = await fetch('/api/system/settings', {
+      headers: { Accept: 'application/json' },
+      signal: controller.signal,
+      cache: 'no-store',
+    });
+    if (!response.ok) throw new Error(`Falha ao carregar disponibilidade (HTTP ${response.status}).`);
+    const settings: unknown = await response.json();
+    if (!isSystemSettings(settings)) throw new Error('A API retornou uma disponibilidade inválida.');
+    return settings;
   } catch (error) {
     console.error('Error fetching system settings:', error);
     throw new Error(controller.signal.aborted

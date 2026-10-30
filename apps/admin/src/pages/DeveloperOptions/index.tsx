@@ -388,6 +388,7 @@ export default function DeveloperOptions() {
         onClose={() => setConfirming(false)}
         onConfirm={() => void handleRotate()}
         title="Rotacionar a chave ativa?"
+        tone="warning"
         message="Novos dados passarão a usar uma nova chave. As chaves anteriores serão preservadas para leitura dos registros já armazenados."
         confirmText="Rotacionar"
       />

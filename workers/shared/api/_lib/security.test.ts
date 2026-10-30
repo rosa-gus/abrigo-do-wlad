@@ -1,7 +1,19 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { verifyRecaptcha } from "./security";
+import { getClientIp, verifyRecaptcha } from "./security";
+
+test("uses Cloudflare's client IP rather than a client-controlled forwarded header", () => {
+  assert.equal(getClientIp(new Request("https://abrigo.test", {
+    headers: { "CF-Connecting-IP": "203.0.113.27", "X-Forwarded-For": "198.51.100.42" },
+  })), "203.0.113.0");
+});
+
+test("does not treat an untrusted forwarded header as a verified client IP", () => {
+  assert.equal(getClientIp(new Request("https://abrigo.test", {
+    headers: { "X-Forwarded-For": "198.51.100.42" },
+  })), "unknown");
+});
 
 const env = { RECAPTCHA_SECRET_KEY: "secret" };
 

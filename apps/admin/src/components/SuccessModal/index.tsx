@@ -4,6 +4,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogHeading,
   DialogIcon,
@@ -35,9 +36,11 @@ export function SuccessModal({
             <DialogDescription>{message}</DialogDescription>
           </DialogHeading>
         </DialogHeader>
-        <Button variant="success" onClick={onClose}>
-          Continuar
-        </Button>
+        <DialogFooter>
+          <Button variant="success" onClick={onClose}>
+            Continuar
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

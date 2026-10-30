@@ -34,12 +34,13 @@ test("returns only the form availability setting and preserves false", async () 
   const response = await getPublicDataResponse(new Request("https://abrigo.test/api/system/settings"), {}, () => rest);
   expect(await response.json()).toEqual({ acceptingApplications: false });
 });
-test("defaults to an open form when the settings document is absent", async () => {
+test("returns unavailable when the settings document is absent", async () => {
   const rest = new FirestoreRestClient("test", {
     fetcher: async () => new Response("missing", { status: 404 }), tokenProvider: async () => "synthetic-token",
   });
   const response = await getPublicDataResponse(new Request("https://abrigo.test/api/system/settings"), {}, () => rest);
-  expect(await response.json()).toEqual({ acceptingApplications: true });
+  expect(response.status).toBe(503);
+  expect(await response.json()).toEqual({ message: "Adoption availability is not configured." });
 });
 test("rejects writes and arbitrary document paths before accessing Firestore", async () => {
   const createClient = vi.fn(() => { throw new Error("must not be called"); });

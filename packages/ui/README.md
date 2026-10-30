@@ -67,6 +67,7 @@ Os componentes são exportados por subcaminho:
 
 ```tsx
 import { Button } from "@jaci/ui/Button";
+import { Toggle } from "@jaci/ui/Toggle";
 import { Field, Input, NativeSelect, Textarea } from "@jaci/ui/Field";
 import {
   Dialog,
@@ -94,6 +95,17 @@ import { Button, ButtonLink } from "@jaci/ui/Button";
 </ButtonLink>
 ```
 
+`Toggle` é um switch controlado. `thumbContent` aceita um ícone ou outro
+conteúdo visual para o indicador:
+
+```tsx
+<Toggle
+  checked={enabled}
+  onCheckedChange={setEnabled}
+  aria-label="Ativar notificações"
+/>
+```
+
 Nas variantes de cor (`primary`, `secondary`, `success` e `danger`), a propriedade
 `emphasis` controla a presença visual sem adicionar bordas, gradientes ou sombras:
 
@@ -111,6 +123,32 @@ claro e texto escuro sobre cores luminosas no tema escuro. As variantes utilitá
 </ButtonLink>
 <Button variant="primary" emphasis="minimal">Ver detalhes</Button>
 ```
+
+### Estados vazios e indisponibilidade
+
+`EmptyState` apresenta ausência de resultados, falhas de carregamento e
+indisponibilidade temporária. O componente fornece o fundo tonal do ícone
+(`--surface-water`), sua cor, tamanho e espaçamento, além de marcá-lo como
+decorativo. Passe o ícone diretamente em `icon`, sem contêiner, cor ou tamanho
+local. O tamanho do conjunto é controlado por `size` (`sm`, `md` ou `lg`).
+
+```tsx
+import { SearchX } from "lucide-react";
+import { EmptyState } from "@jaci/ui/EmptyState";
+
+<EmptyState
+  icon={<SearchX />}
+  title="Nenhum resultado por aqui"
+  description="Tente remover alguns filtros ou buscar por outro nome."
+  headingLevel={2}
+  size="lg"
+  actions={<Button variant="outline">Limpar filtros</Button>}
+/>
+```
+
+Use `actions` para as ações disponíveis, sem margens locais para separar o botão
+do conteúdo. Em falhas anunciadas dinamicamente, use `role="alert"` no
+`EmptyState`. O ícone não substitui o título descritivo.
 
 ### Campos de formulário
 
@@ -194,6 +232,9 @@ formulários, mapas e visualização de dados.
 ```
 
 Em `sm`, ícone, título e descrição ficam empilhados e centralizados. Nos
+diálogos semânticos que usam `DialogIcon`, o texto de `DialogBody` e as ações
+de `DialogFooter` também são centralizados, mantendo um único eixo de leitura.
+Use esses componentes para o conteúdo de apoio e as ações, sem alinhamentos locais. Nos
 demais tamanhos, o ícone fica à esquerda do conjunto de título e descrição.
 Os tons disponíveis são `neutral`, `primary`, `info`, `success`, `warning` e
 `danger`. O ícone é decorativo por padrão e não substitui um título descritivo.

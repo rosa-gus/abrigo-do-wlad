@@ -1,0 +1,120 @@
+.switch {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  box-sizing: border-box;
+  width: 64px;
+  height: 44px;
+  padding: 0 6px;
+  border: var(--toggle-border-width, 1px) solid var(--toggle-border, var(--border));
+  border-radius: var(--radius-lg);
+  background: var(--surface-muted);
+  color: var(--text-on-secondary);
+  cursor: pointer;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.switch:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+  background-color: var(--surface-card);
+}
+
+.thumb {
+  display: flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xl);
+  background-color: var(--text-muted);
+  color: var(--surface-card);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.thumb > svg {
+  width: 18px;
+  height: 18px;
+}
+
+.switch[data-state="on"] {
+  border-color: var(--toggle-active-border, color-mix(in srgb, var(--primary) 35%, var(--border)));
+  background-color: var(--toggle-active-bg, var(--accent-primary));
+  box-shadow: var(--toggle-active-shadow, none);
+}
+
+.switch[data-state="on"]:hover:not(:disabled) {
+  border-color: var(--toggle-active-border, color-mix(in srgb, var(--primary) 50%, var(--border)));
+  background-color: var(--toggle-active-hover-bg, color-mix(in srgb, var(--primary) 12%, var(--surface-card)));
+}
+
+.switch[data-state="on"] .thumb {
+  background-color: var(--toggle-active-thumb-bg, var(--primary));
+  color: var(--toggle-active-thumb-color, var(--text-on-primary));
+}
+
+.switch[data-size="sm"] {
+  width: 52px;
+  height: 32px;
+  padding-inline: 6px;
+}
+
+.switch[data-size="sm"] .thumb {
+  width: 20px;
+  height: 20px;
+}
+
+.switch[data-size="sm"] .thumb > svg {
+  width: 14px;
+  height: 14px;
+}
+
+.subtle {
+  --toggle-border: transparent;
+  --toggle-active-border: transparent;
+  padding-inline: 6px;
+  background-color: var(--surface-muted);
+  transition: var(--transition);
+}
+
+.subtle:hover:not(:disabled) {
+  border-color: transparent;
+  background-color: var(--accent-primary);
+}
+
+.subtle .thumb {
+  background-color: var(--accent-primary);
+  color: var(--primary);
+}
+
+:global(body:not(.dark-mode)) .subtle {
+  --toggle-active-bg: var(--surface-water);
+  --toggle-active-thumb-bg: var(--surface-card);
+  --toggle-active-thumb-color: var(--primary);
+  background-color: var(--surface-water);
+}
+
+:global(body:not(.dark-mode)) .subtle:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--primary) 6%, var(--surface-water));
+}
+
+:global(body:not(.dark-mode)) .subtle .thumb {
+  background-color: var(--surface-card);
+}
+
+.switch:focus-visible {
+  outline: 3px solid var(--focus-ring, var(--primary));
+  outline-offset: 3px;
+}
+
+.switch:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch,
+  .thumb {
+    transition: none;
+  }
+}

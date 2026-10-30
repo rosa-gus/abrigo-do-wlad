@@ -11,6 +11,7 @@ const blockedFetch = vi.fn<typeof fetch>(async () => {
 function createEnv(): AppEnv {
   return {
     KV: env.KV,
+    ADOPTION_RATE_LIMITER: { limit: async () => ({ success: true }) },
     APP_ENV: "production",
     ALLOWED_ORIGIN: "https://abrigo.test",
     RECAPTCHA_SECRET_KEY: "synthetic-recaptcha-secret",
@@ -108,7 +109,7 @@ function adoptionRequest(
     headers: {
       "Content-Type": "application/json",
       Origin: "https://abrigo.test",
-      "X-Forwarded-For": "203.0.113.42",
+      "CF-Connecting-IP": "203.0.113.42",
       ...headers,
     },
     body,
@@ -117,7 +118,6 @@ function adoptionRequest(
 
 describe("Worker app runtime", () => {
   beforeEach(async () => {
-    await env.KV.delete("rate-limit:203.0.113.0");
     await env.KV.delete("dogs-feed:current");
     await env.KV.delete("dogs-tombstone:dog-1");
     await env.KV.delete("dogs-public-slug:slug:pacoca");
@@ -300,8 +300,8 @@ describe("Worker app runtime", () => {
     });
   });
 
-  it("enforces the rate limit with the local KV binding", async () => {
-    const appEnv = createEnv();
+  it("enforces the rate limit with the native binding", async () => {
+    const appEnv = { ...createEnv(), ADOPTION_RATE_LIMITER: env.ADOPTION_RATE_LIMITER };
 
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const response = await worker.fetch(adoptionRequest(), appEnv);
@@ -311,8 +311,9 @@ describe("Worker app runtime", () => {
     const response = await worker.fetch(adoptionRequest(), appEnv);
 
     expect(response.status).toBe(429);
+    expect(response.headers.get("Retry-After")).toBe("60");
     await expect(response.json()).resolves.toEqual({
-      message: "Too many requests. Please try again later.",
+      message: "Muitas tentativas de envio. Aguarde um minuto e tente novamente.",
     });
   });
 

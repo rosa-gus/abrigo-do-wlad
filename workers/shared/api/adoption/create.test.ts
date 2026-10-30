@@ -30,19 +30,14 @@ test("rejects an invalid idempotency key before processing", async () => {
         "Content-Type": "application/json",
         "Idempotency-Key": "not-a-uuid",
         Origin: "https://abrigo.test",
-        "X-Forwarded-For": "203.0.113.43",
+        "CF-Connecting-IP": "203.0.113.43",
       },
       body: "{}",
     }),
     env: {
       ALLOWED_ORIGIN: "https://abrigo.test",
       APP_ENV: "production",
-      KV: {
-        async get(): Promise<null> {
-          return null;
-        },
-        async put(): Promise<void> {},
-      },
+      ADOPTION_RATE_LIMITER: { limit: async () => ({ success: true }) },
     },
   });
 
@@ -59,24 +54,19 @@ test("applies the shared rate limit before processing an application", async () 
       headers: {
         "Content-Type": "application/json",
         Origin: "https://abrigo.test",
-        "X-Forwarded-For": "203.0.113.42",
+        "CF-Connecting-IP": "203.0.113.42",
       },
       body: "{}",
     }),
     env: {
       ALLOWED_ORIGIN: "https://abrigo.test",
       APP_ENV: "production",
-      KV: {
-        async get(): Promise<string> {
-          return "5";
-        },
-        async put(): Promise<void> {},
-      },
+      ADOPTION_RATE_LIMITER: { limit: async () => ({ success: false }) },
     },
   });
 
   assert.equal(response.status, 429);
   assert.deepEqual(await response.json(), {
-    message: "Too many requests. Please try again later.",
+    message: "Muitas tentativas de envio. Aguarde um minuto e tente novamente.",
   });
 });

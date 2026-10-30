@@ -57,15 +57,31 @@
 }
 
 .stepReview {
-  margin-top: 1rem;
+  flex: 1 1 240px;
   color: var(--text-secondary);
   font-size: 0.875rem;
 }
 
 .stepReview summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  list-style: none;
   width: fit-content;
   padding-block: 0.75rem;
   cursor: pointer;
+}
+
+.stepReview summary::-webkit-details-marker {
+  display: none;
+}
+
+.stepReview summary > svg {
+  flex-shrink: 0;
+}
+
+.stepReview[open] summary > svg {
+  transform: rotate(180deg);
 }
 
 .stepReview summary:focus-visible {
@@ -91,13 +107,14 @@
 .formActions {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   justify-content: flex-end;
-  gap: 0.5rem 1rem;
+  gap: 0.25rem 1rem;
   margin-top: 1rem;
 }
 
 .formActions > button {
+  margin-left: auto;
   min-height: 44px;
   white-space: normal;
   text-align: left;
@@ -107,8 +124,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  flex: 1 1 240px;
-  margin: 0;
+  margin: 0.5rem 0 0;
   color: var(--text-secondary);
   font-size: 0.875rem;
   line-height: 1.5;

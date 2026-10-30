@@ -1,3 +1,4 @@
+import { withUpstreamTimeout } from "./timeout";
 import { importPKCS8, SignJWT } from "jose";
 
 import {
@@ -374,17 +375,21 @@ async function requestGoogleAccessToken(
     .setExpirationTime(issuedAt + TOKEN_EXPIRATION_SECONDS)
     .sign(signingKey);
 
-  const response = await fetcher(GOOGLE_TOKEN_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: new URLSearchParams({
-      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-      assertion,
-    }),
-  });
-  const payload = (await response.json()) as GoogleTokenResponse;
+  const { response, payload } = await withUpstreamTimeout(async (signal) => {
+    const response = await fetcher(GOOGLE_TOKEN_URL, {
+      signal,
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+        assertion,
+      }),
+    });
+    const payload = (await response.json()) as GoogleTokenResponse;
+    return { response, payload };
+  }, "A autenticação do banco de dados");
 
   if (!response.ok || !payload.access_token) {
     const reason =
@@ -440,48 +445,51 @@ export class FirestoreRestClient {
   }
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const token = await this.tokenProvider();
-    const response = await this.fetcher(
-      `https://firestore.googleapis.com/v1/${path}`,
-      {
-        ...init,
-        headers: {
-          Authorization: `Bearer ${token}`,
-          ...(init.body ? { "Content-Type": "application/json" } : {}),
-          ...init.headers,
+    return withUpstreamTimeout(async (signal) => {
+      const token = await this.tokenProvider();
+      const response = await this.fetcher(
+        `https://firestore.googleapis.com/v1/${path}`,
+        {
+          ...init,
+          signal: init.signal ? AbortSignal.any([signal, init.signal]) : signal,
+          headers: {
+            Authorization: `Bearer ${token}`,
+            ...(init.body ? { "Content-Type": "application/json" } : {}),
+            ...init.headers,
+          },
         },
-      },
-    );
+      );
 
-    if (!response.ok) {
-      const rawDetails = await response.text();
-      let details: unknown = rawDetails;
+      if (!response.ok) {
+        const rawDetails = await response.text();
+        let details: unknown = rawDetails;
 
-      try {
-        details = JSON.parse(rawDetails) as unknown;
-      } catch {
-        // The API occasionally returns a plain-text error response.
+        try {
+          details = JSON.parse(rawDetails) as unknown;
+        } catch {
+          // The API occasionally returns a plain-text error response.
+        }
+
+        const apiMessage =
+          typeof details === "object" &&
+          details !== null &&
+          "error" in details &&
+          typeof details.error === "object" &&
+          details.error !== null &&
+          "message" in details.error &&
+          typeof details.error.message === "string"
+            ? details.error.message
+            : response.statusText;
+
+        throw new FirestoreRestError(
+          `Firestore request failed (${response.status}): ${apiMessage}`,
+          response.status,
+          details,
+        );
       }
 
-      const apiMessage =
-        typeof details === "object" &&
-        details !== null &&
-        "error" in details &&
-        typeof details.error === "object" &&
-        details.error !== null &&
-        "message" in details.error &&
-        typeof details.error.message === "string"
-          ? details.error.message
-          : response.statusText;
-
-      throw new FirestoreRestError(
-        `Firestore request failed (${response.status}): ${apiMessage}`,
-        response.status,
-        details,
-      );
-    }
-
-    return (await response.json()) as T;
+      return (await response.json()) as T;
+    }, "O banco de dados");
   }
 
   private async runPaginatedQuery<T extends Record<string, unknown>>(
@@ -947,7 +955,7 @@ export class FirestoreRestClient {
     documentName: string,
     data: Record<string, unknown>,
     options: UpdateDocumentOptions = {},
-  ): Promise<{ commitTime?: string }> {
+  ): Promise<{ commitTime?: string; updateTime?: string }> {
     assertDocumentName(documentName, this.documentsRoot);
     const fieldPaths = Object.keys(data);
 
@@ -974,13 +982,15 @@ export class FirestoreRestClient {
       ...(updateTransforms.length > 0 ? { updateTransforms } : {}),
     };
 
-    return this.request<{ commitTime?: string }>(
+    const result = await this.request<{ commitTime?: string; writeResults?: Array<{ updateTime?: string }> }>(
       `${this.databaseRoot}/documents:commit`,
       {
         method: "POST",
         body: JSON.stringify({ writes: [write] }),
       },
     );
+    const updateTime = result.writeResults?.[0]?.updateTime;
+    return { commitTime: result.commitTime, ...(updateTime ? { updateTime } : {}) };
   }
 
   async updateDocumentAndIncrementField(

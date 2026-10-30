@@ -461,7 +461,7 @@ function StatusScene() {
       <section className="status-grid">
         <div className="specimen-panel status-card">
           <EmptyState
-            icon={<SearchX size={38} />}
+            icon={<SearchX />}
             title="Nenhum resultado por aqui"
             description="Tente remover alguns filtros ou buscar por outro nome."
             actions={<Button variant="outline">Limpar filtros</Button>}

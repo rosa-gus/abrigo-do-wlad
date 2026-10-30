@@ -530,50 +530,56 @@ export function WizardForm({ onSubmitSuccess, onSubmitError, onStorageError }: W
           >
             <div className={styles.progressFill} style={{ width: `${progress}%` }} />
           </div>
-          {highestCompletedStep > 0 && (
-            <details key={currentStep} className={styles.stepReview}>
-              <summary>Navegar pelas etapas</summary>
-              <nav aria-label="Etapas do formulário de adoção">
-                {STEP_TITLES.map(({ label }, index) => (
-                  <Button
-                    key={label}
-                    type="button"
-                    size="sm"
-                    variant={index === currentStep ? "secondary" : "ghost"}
-                    disabled={index > highestCompletedStep}
-                    aria-current={index === currentStep ? "step" : undefined}
-                    onClick={() => goToStep(index)}
-                    leftIcon={
-                      index < highestCompletedStep && index !== currentStep
-                        ? <Lucide.Check size={16} />
-                        : undefined
-                    }
-                  >
-                    {index + 1}. {label}
-                  </Button>
-                ))}
-              </nav>
-            </details>
-          )}
-          {hasAnswers && (
+          {(highestCompletedStep > 0 || hasAnswers) && (
             <div className={styles.formActions}>
-              {showResumeNotice && (
-                <p role="status" className={styles.resumeNotice}>
-                  <Lucide.RotateCcw size={16} aria-hidden="true" />
-                  Retomamos seu preenchimento nesta aba.
-                </p>
+              {highestCompletedStep > 0 && (
+                <details key={currentStep} className={styles.stepReview}>
+                  <summary>
+                    <Lucide.ChevronDown size={16} aria-hidden="true" />
+                    Navegar pelas etapas
+                  </summary>
+                  <nav aria-label="Etapas do formulário de adoção">
+                    {STEP_TITLES.map(({ label }, index) => (
+                      <Button
+                        key={label}
+                        type="button"
+                        size="sm"
+                        variant={index === currentStep ? "secondary" : "ghost"}
+                        disabled={index > highestCompletedStep}
+                        aria-current={index === currentStep ? "step" : undefined}
+                        onClick={() => goToStep(index)}
+                        leftIcon={
+                          index < highestCompletedStep && index !== currentStep
+                            ? <Lucide.Check size={16} />
+                            : undefined
+                        }
+                      >
+                        {index + 1}. {label}
+                      </Button>
+                    ))}
+                  </nav>
+                </details>
               )}
-              <DialogComponent.DialogTrigger asChild>
-                <Button
-                  type="button"
-                  variant="text"
-                  size="sm"
-                  disabled={isSubmitting || isSubmitted}
-                >
-                  Começar novo formulário
-                </Button>
-              </DialogComponent.DialogTrigger>
+              {hasAnswers && (
+                <DialogComponent.DialogTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    leftIcon={<Lucide.RotateCcw size={16} aria-hidden="true" />}
+                    disabled={isSubmitting || isSubmitted}
+                  >
+                    Começar novo formulário
+                  </Button>
+                </DialogComponent.DialogTrigger>
+              )}
             </div>
+          )}
+          {hasAnswers && showResumeNotice && (
+            <p role="status" className={styles.resumeNotice}>
+              <Lucide.RotateCcw size={16} aria-hidden="true" />
+              Retomamos seu preenchimento nesta aba.
+            </p>
           )}
         </header>
         <section key={currentStep} aria-labelledby="wizard-step-heading">

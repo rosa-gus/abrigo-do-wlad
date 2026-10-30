@@ -1,13 +1,12 @@
 import { Moon, Sun } from "lucide-react";
-import styles from "./ThemeToggle.module.css";
 import { useTheme } from "@/hooks/useTheme";
+import { Toggle } from "@jaci/ui/Toggle";
 import {
   TooltipProvider,
   Tooltip,
   TooltipTrigger,
   TooltipContent,
 } from "@jaci/ui/Tooltip";
-import { motion } from "motion/react";
 
 export function ThemeToggle({ variant = "default" }: { variant?: "default" | "subtle" }) {
   const { isDark, toggleTheme } = useTheme();
@@ -16,33 +15,17 @@ export function ThemeToggle({ variant = "default" }: { variant?: "default" | "su
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className={`${styles.switchContainer} ${variant === "subtle" ? styles.subtle : ""}`}>
-            <button
-              className={`${styles.switch} ${isDark ? styles.dark : ""}`}
-              onClick={toggleTheme}
-              role="switch"
-              aria-checked={isDark}
-              aria-label={
-                isDark ? "Mudar para modo claro" : "Mudar para modo escuro"
-              }
-            >
-              <motion.div
-                className={styles.thumb}
-                animate={{ x: isDark ? 20 : 0 }}
-                transition={{
-                  type: "spring",
-                  stiffness: 700,
-                  damping: 30,
-                }}
-              >
-                {isDark ? (
-                  <Moon className={styles.icon} />
-                ) : (
-                  <Sun className={styles.icon} />
-                )}
-              </motion.div>
-            </button>
-          </div>
+          <Toggle
+            checked={isDark}
+            onCheckedChange={toggleTheme}
+            variant={variant}
+            aria-label={
+              isDark ? "Mudar para modo claro" : "Mudar para modo escuro"
+            }
+            thumbContent={
+              isDark ? <Moon aria-hidden="true" /> : <Sun aria-hidden="true" />
+            }
+          />
         </TooltipTrigger>
         <TooltipContent>
           <p>

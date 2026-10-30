@@ -101,9 +101,10 @@
   /* Feedback and status */
   --success: #41612f;
   --error: #b42318;
-  --warning-bg: #fef3c7;
-  --warning-text: #92400e;
-  --warning-border: #fde68a;
+  /* Straw surfaces and ochre accents */
+  --warning-bg: #efe6cf;
+  --warning-text: #806127;
+  --warning-border: #d5c49b;
 
   /* Overlays and transparency */
   --overlay-dark: rgba(0, 0, 0, 0.6);
@@ -186,9 +187,9 @@ body.dark-mode {
   --badge-outline-border: rgba(255, 255, 255, 0.18);
   --success: #b5d48b;
   --error: #ff9a89;
-  --warning-bg: #4a2c10;
-  --warning-text: #ffd18a;
-  --warning-border: #70451c;
+  --warning-bg: #3b3020;
+  --warning-text: #d8bd80;
+  --warning-border: #655337;
   --header-bg-scrolled: rgba(27, 16, 11, 0.94);
   --glass: rgba(64, 39, 27, 0.58);
   --glass-secondary: rgba(20, 10, 6, 0.8);

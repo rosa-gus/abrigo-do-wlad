@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import * as Lucide from "lucide-react";
 
 import { Button } from "@jaci/ui/Button";
+import { EmptyState } from "@jaci/ui/EmptyState";
 import {
   Card,
   CardBody,
@@ -12,6 +13,7 @@ import {
 } from "@jaci/ui/Card";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -31,19 +33,18 @@ import beetleSticker from "@/assets/stickers/fluent-emoji/beetle.svg";
 
 import styles from "./Form.module.css";
 
-type FormError = { kind: "submission" | "settings" | "storage"; message: string };
+type FormError = { kind: "submission" | "storage"; message: string };
 
 export default function BetaForm() {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [formError, setFormError] = useState<FormError | null>(null);
   const setSubmissionError = useCallback((message: string) => setFormError({ kind: "submission", message }), []);
-  const reportSettingsError = useCallback((message: string) => setFormError({ kind: "settings", message }), []);
   const reportStorageError = useCallback((message: string) => setFormError({ kind: "storage", message }), []);
   const [successId, setSuccessId] = useState<string>("");
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
   const [successWarning, setSuccessWarning] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { settings, loading: loadingSettings, error: settingsError, retry: retrySettings } = useSystemSettings(reportSettingsError);
+  const { settings, loading: loadingSettings, error: settingsError, retry: retrySettings } = useSystemSettings();
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -79,25 +80,22 @@ export default function BetaForm() {
             </DialogIcon>
             <DialogHeading>
               <DialogTitle>
-                {formError?.kind === "settings" ? "Não foi possível carregar o formulário"
-                  : formError?.kind === "storage" ? "Não foi possível salvar o preenchimento"
-                    : "Não foi possível enviar o formulário"}
+                {formError?.kind === "storage" ? "Não foi possível salvar o preenchimento"
+                    : "Não foi possível enviar"}
               </DialogTitle>
               <DialogDescription>{formError?.message}</DialogDescription>
             </DialogHeading>
           </DialogHeader>
-          <div className={styles.modalContent}>
-            {formError?.kind === "submission" && (
-              <p>Suas respostas continuam disponíveis nesta aba. Você pode voltar ao formulário e tentar novamente.</p>
-            )}
-          </div>
+          {formError?.kind === "submission" && (
+            <DialogBody>
+              <p>Suas respostas continuam disponíveis nesta aba.</p>
+            </DialogBody>
+          )}
           <DialogFooter>
             <Button variant="secondary" onClick={() => {
-              if (formError?.kind === "settings") retrySettings();
               setFormError(null);
             }}>
-              {formError?.kind === "settings" ? "Tentar novamente"
-                : formError?.kind === "storage" ? "Continuar nesta aba" : "Voltar ao formulário"}
+              {formError?.kind === "storage" ? "Continuar nesta aba" : "Voltar ao formulário"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -204,31 +202,40 @@ export default function BetaForm() {
         {showSuccessDialog ? null : loadingSettings ? (
           <WizardFormSkeleton />
         ) : settingsError ? (
-          <div className={styles.notAcceptingContainer}>
-            <Lucide.CircleAlert size={48} aria-hidden="true" />
-            <h2>Não foi possível carregar o formulário</h2>
-            <p>{settingsError}</p>
-            <Button onClick={retrySettings} leftIcon={<Lucide.RotateCcw size={18} />}>
-              Tentar novamente
-            </Button>
-          </div>
+          <EmptyState
+            icon={<Lucide.CircleAlert />}
+            title="Não foi possível carregar o formulário"
+            description={settingsError}
+            headingLevel={2}
+            size="lg"
+            role="alert"
+            actions={(
+              <Button onClick={retrySettings} leftIcon={<Lucide.RotateCcw size={18} />}>
+                Tentar novamente
+              </Button>
+            )}
+          />
         ) : settings?.acceptingApplications === false ? (
-          <div className={styles.notAcceptingContainer}>
-            <Lucide.Info size={48} color="var(--primary)" />
-            <h2>Solicitações temporariamente pausadas</h2>
-            <p>
-              No momento não estamos recebendo novas solicitações de adoção.
-              Por favor, acompanhe nossas redes sociais para saber quando
-              voltaremos a receber candidaturas!
-            </p>
-            <div style={{ marginTop: "1rem" }}>
+          <EmptyState
+            icon={<Lucide.Info />}
+            title="Solicitações temporariamente pausadas"
+            description={(
+              <>
+                No momento não estamos recebendo novas solicitações de adoção.
+                Por favor, acompanhe nossas redes sociais para saber quando
+                voltaremos a receber candidaturas!
+              </>
+            )}
+            headingLevel={2}
+            size="lg"
+            actions={(
               <ExternalLink href={SHELTER_INSTAGRAM_URL}>
                 <Button variant="secondary" leftIcon={<Lucide.Instagram />}>
                   Acompanhar no Instagram
                 </Button>
               </ExternalLink>
-            </div>
-          </div>
+            )}
+          />
         ) : (
           <WizardForm
             onSubmitError={setSubmissionError}
@@ -286,7 +293,7 @@ export default function BetaForm() {
                 variant="secondary"
                 leftIcon={<Lucide.CircleAlert size={18} aria-hidden="true" />}
                 onClick={() => {
-                  setSubmissionError("Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.");
+                  setSubmissionError("Não conseguimos conectar ao servidor. Verifique sua conexão e tente novamente.");
                 }}
               >
                 Pré-visualizar falha
