@@ -20,10 +20,11 @@ export async function getPublicDataResponse(
     const firestore = createClient(env);
     if (pathname === "/api/system/settings") {
       const document = await firestore.getDocument("system/settings");
+      if (typeof document?.data.acceptingApplications !== "boolean") {
+        return jsonResponse(503, { message: "Adoption availability is not configured." });
+      }
       return jsonResponse(200, {
-        acceptingApplications: typeof document?.data.acceptingApplications === "boolean"
-          ? document.data.acceptingApplications
-          : true,
+        acceptingApplications: document.data.acceptingApplications,
       });
     }
 

@@ -18,6 +18,7 @@ const blockedFetch = vi.fn<typeof fetch>(async () => {
 function createEnv(overrides: Partial<CloudflareEnv> = {}): CloudflareEnv {
   return {
     KV: env.KV,
+    ADOPTION_RATE_LIMITER: { limit: async () => ({ success: true }) },
     APP_ENV: "test",
     ALLOWED_ORIGIN: "https://abrigo.test",
     RECAPTCHA_SECRET_KEY: "synthetic-recaptcha-secret",
@@ -35,7 +36,7 @@ function createRequest(
       "Content-Type": "application/json",
       "Idempotency-Key": IDEMPOTENCY_KEY,
       Origin: "https://abrigo.test",
-      "X-Forwarded-For": "198.51.100.27",
+      "CF-Connecting-IP": "198.51.100.27",
       ...headers,
     },
     body,
@@ -68,6 +69,7 @@ function createHarness(
   const sendNotification = vi.fn(async () => true);
 
   const dependencies: AdoptionApplicationDependencies = {
+    isAcceptingApplications: async () => true,
     createFirestoreClient: () => ({ createDocument }),
     verifyRecaptcha,
     encryptData,
@@ -86,8 +88,7 @@ function createHarness(
 }
 
 describe("adoption application runtime", () => {
-  beforeEach(async () => {
-    await env.KV.delete("rate-limit:198.51.100.0");
+  beforeEach(() => {
     blockedFetch.mockClear();
     vi.stubGlobal("fetch", blockedFetch);
   });
@@ -215,6 +216,7 @@ describe("adoption application runtime", () => {
     const harness = createHarness();
     // Use the real notification implementation, with mocked persistence and HTTP.
     const handler = createAdoptionApplicationHandler({
+      isAcceptingApplications: async () => true,
       createFirestoreClient: () => ({ createDocument: harness.createDocument }),
       encryptData: harness.encryptData,
       verifyRecaptcha: harness.verifyRecaptcha,

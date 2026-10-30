@@ -6,6 +6,7 @@ import { encryptData } from "../_lib/encryption";
 import { sendEmail, generateAdoptionApplicationEmail } from "../_lib/email";
 import { fullFormSchema } from "../../../../apps/public/src/pages/BetaForm/components/WizardForm/schema";
 import { z } from "zod";
+import { isAcceptingApplications } from "./availability";
 import { sanitizeFormFields, verifyRecaptcha } from "../_lib/security";
 import {
   ADOPTION_EXPIRATION_DAYS,
@@ -38,6 +39,7 @@ type AdoptionApplicationRepository = Pick<
 >;
 
 export interface AdoptionApplicationDependencies {
+  isAcceptingApplications: typeof isAcceptingApplications;
   createFirestoreClient: (env?: CloudflareEnv) => AdoptionApplicationRepository;
   encryptData: typeof encryptData;
   verifyRecaptcha: typeof verifyRecaptcha;
@@ -99,6 +101,7 @@ const SENSITIVE_FIELDS = [
 ];
 
 const defaultDependencies: AdoptionApplicationDependencies = {
+  isAcceptingApplications,
   createFirestoreClient,
   encryptData,
   verifyRecaptcha,
@@ -150,6 +153,21 @@ export function createAdoptionApplicationHandler(
       }
 
       const data: AdoptionApplicationData = validationResult.data;
+      // Read current settings on every submission, including from already-open tabs.
+      let acceptingApplications: boolean;
+      try {
+        acceptingApplications = await dependencies.isAcceptingApplications(env);
+      } catch {
+        return jsonResponse(HTTP_STATUS.SERVICE_UNAVAILABLE, {
+          message: "Não foi possível verificar a disponibilidade das candidaturas. Tente novamente mais tarde.",
+        });
+      }
+      if (!acceptingApplications) {
+        return jsonResponse(HTTP_STATUS.FORBIDDEN, {
+          message: "O recebimento de candidaturas está temporariamente pausado. Suas respostas continuam nesta aba.",
+        });
+      }
+
       if (!isAdoptionRecaptchaBypassed()) {
         const recaptchaSecret = getEnvValue(env, "RECAPTCHA_SECRET_KEY");
         if (!recaptchaSecret) {

@@ -1,11 +1,8 @@
 import crypto from "crypto";
 import net from "net";
 import type { IncomingMessage } from "http";
-import { getKvStore } from "./kv";
 import {
   getAllowedOrigins,
-  RATE_LIMIT_WINDOW,
-  MAX_REQUESTS_PER_WINDOW,
   MAX_REQUEST_SIZE,
 } from "./constants";
 import { getEnvValue, type CloudflareEnv } from "./env";
@@ -23,13 +20,13 @@ function getHeaderValue(
 }
 
 export function getClientIp(req: Request | IncomingMessage): string {
-  const forwardedFor = getHeaderValue(req.headers, "x-forwarded-for");
+  // Cloudflare supplies this header; the first forwarded-for value is client-controlled.
   const clientIp =
-    forwardedFor?.split(",")[0].trim() ||
+    getHeaderValue(req.headers, "cf-connecting-ip")?.trim() ||
     ("socket" in req ? req.socket.remoteAddress : undefined) ||
     "unknown";
 
-  if (clientIp === "unknown") return clientIp;
+  if (!net.isIP(clientIp)) return "unknown";
 
   return truncateIp(clientIp);
 }
@@ -73,22 +70,24 @@ export async function checkRateLimit(
   clientIp: string,
   env?: CloudflareEnv,
 ): Promise<boolean> {
-  if (clientIp === "unknown") return true;
-
-  const key = `rate-limit:${clientIp}`;
-  const kvStore = getKvStore(env);
-
+  // Local requests may not pass through Cloudflare's edge headers.
+  if (clientIp === "unknown" && getEnvValue(env, "APP_ENV") === "local") return true;
   try {
-    const current = await kvStore.incr(key);
-
-    if (current === 1) {
-      await kvStore.expire(key, RATE_LIMIT_WINDOW);
+    if (clientIp === "unknown" || !env?.ADOPTION_RATE_LIMITER) {
+      throw new Error("Rate limiting is unavailable.");
     }
-
-    return current <= MAX_REQUESTS_PER_WINDOW;
+    const { success } = await env.ADOPTION_RATE_LIMITER.limit({ key: `adoption:${clientIp}` });
+    return success;
   } catch (err) {
     console.error("Error checking rate limit:", err);
-    return true;
+    throw new RateLimitUnavailableError();
+  }
+}
+
+export class RateLimitUnavailableError extends Error {
+  constructor() {
+    super("A proteção de envio está temporariamente indisponível. Tente novamente mais tarde.");
+    this.name = "RateLimitUnavailableError";
   }
 }
 

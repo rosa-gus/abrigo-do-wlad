@@ -1,7 +1,8 @@
-import { HTTP_STATUS, MAX_REQUEST_SIZE } from "./constants";
+import { HTTP_STATUS, MAX_REQUEST_SIZE, RATE_LIMIT_WINDOW } from "./constants";
 import {
   getClientIp,
   checkRateLimit,
+  RateLimitUnavailableError,
   validateOrigin,
   validateContentType,
   validateRequestSize,
@@ -87,12 +88,18 @@ export async function validateRequest(
   const clientIp = getClientIp(req);
 
   if (!options?.skipRateLimit) {
-    const isAllowed = await checkRateLimit(clientIp, env);
-    if (!isAllowed) {
-      return sendError(
-        HTTP_STATUS.TOO_MANY_REQUESTS,
-        "Too many requests. Please try again later.",
-      );
+    try {
+      const isAllowed = await checkRateLimit(clientIp, env);
+      if (!isAllowed) {
+        const response = sendError(HTTP_STATUS.TOO_MANY_REQUESTS, "Muitas tentativas de envio. Aguarde um minuto e tente novamente.");
+        response.headers.set("Retry-After", String(RATE_LIMIT_WINDOW));
+        return response;
+      }
+    } catch (error) {
+      if (error instanceof RateLimitUnavailableError) {
+        return sendError(HTTP_STATUS.SERVICE_UNAVAILABLE, error.message);
+      }
+      throw error;
     }
   }
 
