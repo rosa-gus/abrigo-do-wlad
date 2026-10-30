@@ -30,6 +30,9 @@ import {
   SelectValue,
 } from "@jaci/ui/Select";
 import { Skeleton } from "@jaci/ui/Skeleton";
+import { Toggle } from "@jaci/ui/Toggle";
+import { getSystemSettings, updateSystemSettings } from "../../services/systemSettings";
+import { ApiError } from "../../services/api";
 import {
   ADOPTION_REVIEW_STEPS,
   AdoptionDetailsSection,
@@ -195,6 +198,11 @@ function getExpirationPresentation(
 }
 
 export default function AdoptionsDashboard() {
+  const [allowsNewRequests, setAllowsNewRequests] = useState<boolean | null>(null);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
+  const [settingsReloadToken, setSettingsReloadToken] = useState(0);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const settingsSaveLock = useRef(false);
   const [requests, setRequests] = useState<AdoptionRequestSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
@@ -232,6 +240,37 @@ export default function AdoptionsDashboard() {
 
   useEffect(() => {
     let active = true;
+    setSettingsError(null);
+    void getSystemSettings().then((settings) => {
+      if (active) setAllowsNewRequests(settings.acceptingApplications);
+    }).catch((error: unknown) => {
+      if (active) setSettingsError(error instanceof ApiError
+        ? error.message
+        : "Não foi possível carregar a disponibilidade das solicitações.");
+    });
+    return () => { active = false; };
+  }, [settingsReloadToken]);
+
+  async function handleAvailabilityChange(acceptingApplications: boolean) {
+    if (allowsNewRequests === null || settingsSaveLock.current) return;
+    settingsSaveLock.current = true;
+    setIsSavingSettings(true);
+    setSettingsError(null);
+    try {
+      const settings = await updateSystemSettings(acceptingApplications);
+      setAllowsNewRequests(settings.acceptingApplications);
+    } catch (error: unknown) {
+      setSettingsError(error instanceof ApiError
+        ? error.message
+        : "Não foi possível salvar a disponibilidade. Tente novamente.");
+    } finally {
+      settingsSaveLock.current = false;
+      setIsSavingSettings(false);
+    }
+  }
+
+  useEffect(() => {
+    let active = true;
 
     async function fetchRequests() {
       try {
@@ -266,7 +305,10 @@ export default function AdoptionsDashboard() {
 
     try {
       const update = await updateAdoptionStatus(id, type);
-      const updatedFields = { status: update.status, expiresAt: update.expiresAt };
+      const updatedFields = {
+        status: update.status,
+        expiresAt: update.expiresAt,
+      };
 
       setRequests((prev) =>
         prev.map((r) => (r.id === id ? { ...r, ...updatedFields } : r)),
@@ -284,17 +326,25 @@ export default function AdoptionsDashboard() {
       setSuccessInfo({
         isOpen: true,
         title:
-          type === "pending" ? "Solicitação reaberta" : type === "approved" ? "Adoção Aprovada!" : "Solicitação Reprovada",
+          type === "pending"
+            ? "Solicitação reaberta"
+            : type === "approved"
+              ? "Adoção Aprovada!"
+              : "Solicitação Reprovada",
         message:
           type === "pending"
             ? `A solicitação de ${nome_adotante} voltou para Pendente. O prazo de exclusão foi mantido: ${formatDate(update.expiresAt)}.`
             : type === "approved"
-            ? `O status de ${nome_adotante} foi alterado para Aprovado.`
-            : `O status de ${nome_adotante} foi alterado para Reprovado.`,
+              ? `O status de ${nome_adotante} foi alterado para Aprovado.`
+              : `O status de ${nome_adotante} foi alterado para Reprovado.`,
       });
     } catch (error: unknown) {
       setActionModal({ isOpen: false, type: "approved", req: null });
-      setOperationError(error instanceof Error ? error.message : "Não foi possível atualizar o status da solicitação.");
+      setOperationError(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível atualizar o status da solicitação.",
+      );
     } finally {
       setIsUpdatingStatus(false);
     }
@@ -421,6 +471,40 @@ export default function AdoptionsDashboard() {
             Gerencie e avalie os formulários dos candidatos a adotantes.
           </p>
         </div>
+        <div className={styles.requestSettingGroup}>
+          <div className={styles.requestSetting}>
+            <label
+              id="allow-new-requests-label"
+              htmlFor="allow-new-requests-toggle"
+              className={styles.requestSettingLabel}
+            >
+              Permitir novas solicitações
+            </label>
+            <Toggle
+              id="allow-new-requests-toggle"
+              checked={allowsNewRequests ?? false}
+              onCheckedChange={(checked) => void handleAvailabilityChange(checked)}
+              disabled={allowsNewRequests === null || isSavingSettings}
+              aria-busy={isSavingSettings || (allowsNewRequests === null && !settingsError)}
+              size="sm"
+              aria-labelledby="allow-new-requests-label"
+            />
+          </div>
+          {settingsError ? (
+            <div className={styles.requestSettingError} role="alert">
+              <p>{settingsError}</p>
+              {allowsNewRequests === null && (
+                <Button size="sm" variant="text" onClick={() => setSettingsReloadToken((token) => token + 1)}>
+                  Tentar novamente
+                </Button>
+              )}
+            </div>
+          ) : (
+            <span className={styles.requestSettingStatus} role="status">
+              {isSavingSettings ? "Salvando..." : allowsNewRequests === null ? "Carregando..." : null}
+            </span>
+          )}
+        </div>
       </div>
 
       {loading ? (
@@ -431,17 +515,21 @@ export default function AdoptionsDashboard() {
           size="lg"
           icon={<Lucide.CircleAlert />}
           title={listError}
-          actions={<Button
-            type="button"
-            variant="outline"
-            size="sm"
-            leftIcon={<Lucide.RefreshCw size={16} aria-hidden="true" />}
-            onClick={() => {
-              setLoading(true);
-              setListError(null);
-              setReloadToken(token => token + 1);
-            }}
-          >Tentar novamente</Button>}
+          actions={
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              leftIcon={<Lucide.RefreshCw size={16} aria-hidden="true" />}
+              onClick={() => {
+                setLoading(true);
+                setListError(null);
+                setReloadToken((token) => token + 1);
+              }}
+            >
+              Tentar novamente
+            </Button>
+          }
         />
       ) : requests.length === 0 ? (
         <EmptyState
@@ -550,7 +638,9 @@ export default function AdoptionsDashboard() {
                       size="sm"
                       leftIcon={<Lucide.Undo2 size={16} />}
                       disabled={isUpdatingStatus}
-                      onClick={() => setActionModal({ isOpen: true, type: "pending", req })}
+                      onClick={() =>
+                        setActionModal({ isOpen: true, type: "pending", req })
+                      }
                     >
                       Reconsiderar
                     </Button>
@@ -848,7 +938,13 @@ export default function AdoptionsDashboard() {
                       size="sm"
                       leftIcon={<Lucide.Undo2 size={16} />}
                       disabled={isUpdatingStatus}
-                      onClick={() => setActionModal({ isOpen: true, type: "pending", req: selectedSummary })}
+                      onClick={() =>
+                        setActionModal({
+                          isOpen: true,
+                          type: "pending",
+                          req: selectedSummary,
+                        })
+                      }
                     >
                       Reconsiderar
                     </Button>
@@ -870,11 +966,15 @@ export default function AdoptionsDashboard() {
           actionModal.type === "pending"
             ? "Reconsiderar decisão"
             : actionModal.type === "approved"
-            ? "Aprovar Solicitação"
-            : "Reprovar Solicitação"
+              ? "Aprovar Solicitação"
+              : "Reprovar Solicitação"
         }
         confirmText={
-          actionModal.type === "pending" ? "Sim, reconsiderar" : actionModal.type === "approved" ? "Sim, Aprovar" : "Sim, Reprovar"
+          actionModal.type === "pending"
+            ? "Sim, reconsiderar"
+            : actionModal.type === "approved"
+              ? "Sim, Aprovar"
+              : "Sim, Reprovar"
         }
         confirmingText="Atualizando..."
         isConfirming={isUpdatingStatus}
@@ -883,7 +983,11 @@ export default function AdoptionsDashboard() {
           <>
             Tem certeza que deseja{" "}
             <strong>
-              {actionModal.type === "pending" ? "RECONSIDERAR" : actionModal.type === "approved" ? "APROVAR" : "REPROVAR"}
+              {actionModal.type === "pending"
+                ? "RECONSIDERAR"
+                : actionModal.type === "approved"
+                  ? "APROVAR"
+                  : "REPROVAR"}
             </strong>{" "}
             a solicitação de <strong>{actionModal.req?.nome_adotante}</strong>?
             {actionModal.type === "pending"

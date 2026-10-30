@@ -7,6 +7,7 @@ const AUDIT_COLLECTION = "admin_audit_log";
 const AUDIT_LIST_LIMIT = 100;
 
 export const adminAuditActionSchema = z.enum([
+  "adoption.availability.updated",
   "adoption.status.updated",
   "dog.created",
   "dog.archived",

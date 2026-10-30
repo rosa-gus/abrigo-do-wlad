@@ -1,4 +1,5 @@
 import type { DogProps } from "../types/dogs";
+import { systemSettingsSchema, type SystemSettings } from "../../shared/system-settings";
 import { adoptionStatusUpdate, AdoptionTransitionError } from "../../shared/adoption-retention";
 import type {
   AdminNotification,
@@ -30,6 +31,7 @@ interface MockAdoption {
 }
 
 interface MockState {
+  systemSettings: SystemSettings;
   dogs: DogProps[];
   recyclePoints: RecyclePoint[];
   adoptions: MockAdoption[];
@@ -53,6 +55,7 @@ function hoursFromNow(hours: number): string {
 
 function createInitialState(): MockState {
   return {
+    systemSettings: { acceptingApplications: true },
     dogs: [
       {
         id: 103,
@@ -529,6 +532,16 @@ export async function handleMockAdminRequest(request: Request): Promise<Response
 
   const url = new URL(request.url);
   const segments = url.pathname.split("/").filter(Boolean);
+
+  if (url.pathname === "/api/admin/system/settings") {
+    if (request.method === "GET") return jsonResponse(state.systemSettings);
+    if (request.method !== "PATCH") return methodNotAllowed(["GET", "PATCH"]);
+    const input = systemSettingsSchema.safeParse(await request.json().catch(() => null));
+    if (!input.success) return jsonResponse({ error: "Configuração inválida." }, 400);
+    state.systemSettings = input.data;
+    recordMutation(request, "system/settings");
+    return jsonResponse(state.systemSettings);
+  }
 
   if (url.pathname === "/api/session") {
     if (request.method !== "GET") return methodNotAllowed(["GET"]);

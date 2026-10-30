@@ -8,7 +8,45 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1.5rem;
   margin-bottom: 2rem;
+}
+
+.requestSetting {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  flex: 0 0 auto;
+}
+
+.requestSettingGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  max-width: 20rem;
+  flex: 0 0 auto;
+}
+
+.requestSettingStatus,
+.requestSettingError {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.requestSettingError {
+  color: var(--error);
+}
+
+.requestSettingError p {
+  margin: 0 0 0.35rem;
+}
+
+.requestSettingLabel {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .title {

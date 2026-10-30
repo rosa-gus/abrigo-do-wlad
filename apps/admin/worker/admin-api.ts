@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { systemSettingsSchema } from "../shared/system-settings";
 import { adoptionStatusUpdate, AdoptionTransitionError } from "../shared/adoption-retention";
 
 import {
@@ -194,6 +195,10 @@ function describeAuditedMutation(request: Request): AuditDescriptor | null {
   const method = request.method as AuditDescriptor["method"];
   const { pathname } = new URL(request.url);
   const segments = pathname.split("/").filter(Boolean);
+
+  if (pathname === "/api/admin/system/settings" && method === "PATCH") {
+    return { action: "adoption.availability.updated", method, target: "system/settings" };
+  }
 
   if (pathname === "/api/admin/dogs" && method === "POST") {
     return { action: "dog.created", method, target: "dogs" };
@@ -643,6 +648,34 @@ async function routeAdminApi(
     assertSameOrigin(request);
     const url = new URL(request.url);
     const segments = url.pathname.split("/").filter(Boolean);
+
+    if (url.pathname === "/api/admin/system/settings") {
+      if (request.method !== "GET" && request.method !== "PATCH") {
+        return methodNotAllowed(["GET", "PATCH"]);
+      }
+      const input = request.method === "PATCH"
+        ? systemSettingsSchema.parse(await parseJson(request))
+        : null;
+      const firestore = createFirestoreClient(env);
+      const document = await firestore.getDocument("system/settings");
+      if (input) {
+        if (document) {
+          await firestore.updateDocument(document.name, input, {
+            expectedUpdateTime: document.updateTime,
+          });
+        } else {
+          await firestore.createDocument("system", input, { documentId: "settings" });
+        }
+        return jsonResponse(200, input);
+      }
+      if (!document || document.data.acceptingApplications === undefined) {
+        return jsonResponse(200, { acceptingApplications: false });
+      }
+      if (typeof document.data.acceptingApplications !== "boolean") {
+        throw new ApiError(503, "O campo acceptingApplications de system/settings precisa ser um booleano (true ou false).");
+      }
+      return jsonResponse(200, { acceptingApplications: document.data.acceptingApplications });
+    }
 
     if (url.pathname === "/api/admin/dashboard" && request.method === "GET") {
       return handleDashboard(env, dependencies);

@@ -5,6 +5,7 @@ import styles from "./EmptyState.module.css";
 
 export interface EmptyStateProps
   extends Omit<React.ComponentProps<"div">, "title"> {
+  /** Decorative icon. EmptyState provides its tonal background, color and size. */
   icon?: React.ReactNode;
   title: React.ReactNode;
   description?: React.ReactNode;
