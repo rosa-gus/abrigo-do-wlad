@@ -4,6 +4,7 @@ import * as RadioComponent from "@jaci/ui/RadioGroup";
 import * as SelectComponent from "@jaci/ui/Select";
 
 import { useFieldContext } from "./FieldContext";
+import styles from "./WizardForm.module.css";
 
 export const FieldRadioGroup = React.forwardRef<
   React.ComponentRef<typeof RadioComponent.RadioGroup>,
@@ -34,6 +35,7 @@ export const FieldSelectTrigger = React.forwardRef<
   return (
     <SelectComponent.SelectTrigger
       {...props}
+      className={[styles.selectTrigger, props.className].filter(Boolean).join(" ")}
       ref={ref}
       id={name}
       aria-labelledby={labelId}

@@ -1,8 +1,22 @@
+.modalHeader {
+  flex: 0 0 auto;
+  align-items: center;
+  padding-bottom: 1.25rem;
+}
+
+.modalHeader .modalIcon {
+  width: 64px;
+  height: 64px;
+}
+
+.modalHeader .modalHeading {
+  margin-bottom: 0;
+}
+
 .headerSticker {
   display: block;
-  width: 56px;
-  height: 56px;
-  margin-bottom: 0.75rem;
+  width: 48px;
+  height: 48px;
   object-fit: contain;
 }
 
@@ -150,8 +164,47 @@
 }
 
 @media (max-width: 768px) {
+  .modalHeader.modalHeader {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    row-gap: 0.5rem;
+    padding-right: 0;
+    padding-bottom: 0.75rem;
+  }
+
+  .modalHeader .modalIcon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .headerSticker {
+    width: 36px;
+    height: 36px;
+  }
+
+  .modalHeader .modalIcon,
+  .modalHeader .modalHeading {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+
+  .modalHeader .modalHeading {
+    align-items: center;
+  }
+
+  .modalHeading h2,
+  .modalHeading p {
+    text-align: center;
+  }
+
+  .modalHeading p {
+    font-size: 0.875rem;
+    line-height: 1.45;
+  }
+
   .pixScrollArea {
-    height: min(52vh, 520px);
+    flex: 1 1 0;
+    height: 0;
   }
 
   .beneficiaryData li {

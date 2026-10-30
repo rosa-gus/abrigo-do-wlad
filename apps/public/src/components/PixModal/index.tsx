@@ -27,21 +27,23 @@ export default function PixModal() {
 
   return (
     <Dialog.DialogContent size="fullscreen-mobile">
-      <Dialog.DialogHeader>
-        <Dialog.DialogHeading>
+      <Dialog.DialogHeader className={styles.modalHeader}>
+        <Dialog.DialogIcon className={styles.modalIcon}>
           <img
             className={styles.headerSticker}
             src={giftSticker}
             alt=""
-            width={56}
-            height={56}
+            width={48}
+            height={48}
           />
+        </Dialog.DialogIcon>
+        <Dialog.DialogHeading className={styles.modalHeading}>
           <Dialog.DialogTitle>
-            Faça uma doação via Pix. Qualquer valor é bem-vindo!
+            Faça uma doação via Pix
           </Dialog.DialogTitle>
           <Dialog.DialogDescription>
-            Para doar, escaneie o QR Code com o app do seu banco ou copie a chave
-            Pix abaixo.
+            Sua contribuição ajuda a garantir ração, medicamentos e cuidados
+            para os cães do abrigo.
           </Dialog.DialogDescription>
         </Dialog.DialogHeading>
       </Dialog.DialogHeader>

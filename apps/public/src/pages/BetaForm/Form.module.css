@@ -1,3 +1,32 @@
+.confirmationModal {
+  overflow-y: auto;
+}
+
+.confirmationHeader .confirmationDescription {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.modalContact {
+  display: flex;
+  gap: 0.8rem;
+}
+
+.confirmationHeader {
+  align-items: center;
+  padding-bottom: 1.25rem;
+}
+
+.confirmationHeader .confirmationIcon {
+  width: 64px;
+  height: 64px;
+}
+
+.confirmationHeader .confirmationHeading {
+  margin-bottom: 0;
+}
+
 .calloutSticker {
   display: block;
   width: 32px;
@@ -62,9 +91,8 @@
 
 .confirmationSticker {
   display: block;
-  width: 56px;
-  height: 56px;
-  margin-bottom: 0.75rem;
+  width: 48px;
+  height: 48px;
   object-fit: contain;
 }
 
@@ -100,6 +128,64 @@
 }
 
 @media (max-width: 768px) {
+  .confirmationHeader.confirmationHeader {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    row-gap: 0.5rem;
+    padding-right: 0;
+    padding-bottom: 0.75rem;
+  }
+
+  .confirmationHeader .confirmationIcon,
+  .confirmationHeader .confirmationHeading {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+
+  .confirmationHeader .confirmationIcon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .confirmationSticker {
+    width: 36px;
+    height: 36px;
+  }
+
+  .confirmationHeader .confirmationHeading {
+    width: 100%;
+    align-items: center;
+  }
+
+  .confirmationHeading h2,
+  .confirmationHeading p,
+  .applicationIdLabel {
+    text-align: center;
+  }
+
+  .confirmationFooter.confirmationFooter {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding-top: 1.25rem;
+    text-align: center;
+  }
+
+  .modalContact {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  }
+
+  .modalContact a {
+    min-width: 0;
+  }
+
+  .modalContact button {
+    width: 100%;
+    padding-inline: 0.5rem;
+    white-space: nowrap;
+  }
+
   .formContainer {
     padding-top: 1.5rem;
   }
@@ -130,6 +216,10 @@
 }
 
 .betaTestAction {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
   margin-top: 1rem;
   text-align: center;
 }

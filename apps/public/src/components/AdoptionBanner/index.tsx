@@ -28,7 +28,7 @@ export function AdoptionBanner({ context = "home" }: AdoptionBannerProps) {
             </h2>
             <p className={styles.introduction}>
               {isCatalog
-                ? "Você pode preencher o formulário mesmo sem escolher um cão. Nossa equipe pode sugerir quem combina com sua rotina e com as preferências que você compartilhar."
+                ? "Você pode preencher o formulário mesmo sem escolher um cão. Nossos voluntários poderão sugerir quem combina com sua rotina com base nas preferências que você compartilhar."
                 : "Vamos conhecer você e encontrar uma boa companhia."}
             </p>
             {!isCatalog && (

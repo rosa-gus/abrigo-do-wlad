@@ -11,6 +11,27 @@ export interface FieldError {
   [key: string]: string;
 }
 
+export const WIZARD_STORAGE_ERROR = "Não foi possível recuperar ou salvar o preenchimento neste navegador. As respostas que aparecem na tela continuam nesta aba, mas podem ser perdidas se você recarregar ou fechar a página.";
+
+function readSavedWizard() {
+  try {
+    const saved = sessionStorage.getItem(WIZARD_STORAGE_KEYS.formData);
+    const data: unknown = saved ? JSON.parse(saved) : {};
+    if (typeof data !== "object" || data === null || Array.isArray(data)
+      || Object.values(data).some((value) => typeof value !== "string" && typeof value !== "number")) {
+      throw new Error("Invalid saved form");
+    }
+    const savedStep = Number(sessionStorage.getItem(WIZARD_STORAGE_KEYS.highestStep) ?? 0);
+    return {
+      formData: data as Partial<FormData>,
+      highestStep: Number.isInteger(savedStep) && savedStep >= 0 && savedStep < stepSchemas.length ? savedStep : 0,
+      storageError: null as string | null,
+    };
+  } catch {
+    return { formData: {} as Partial<FormData>, highestStep: 0, storageError: WIZARD_STORAGE_ERROR };
+  }
+}
+
 export const STEP_TITLES = [
   { label: "Dados Pessoais", icon: Lucide.User },
   { label: "Família e Renda", icon: Lucide.Users },
@@ -38,30 +59,14 @@ export function useWizardForm() {
     stepSchemas.length - 1,
   );
 
-  const [formData, setFormData] = React.useState<Partial<FormData>>(() => {
-    try {
-      const saved = sessionStorage.getItem(WIZARD_STORAGE_KEYS.formData);
-      return saved ? (JSON.parse(saved) as Partial<FormData>) : {};
-    } catch {
-      return {};
-    }
-  });
+  const [savedWizard] = React.useState(readSavedWizard);
+  const [formData, setFormData] = React.useState(savedWizard.formData);
+  const [storageError, setStorageError] = React.useState(savedWizard.storageError);
+  const submittedRef = React.useRef(false);
+  const [isSubmitted, setIsSubmitted] = React.useState(false);
   const [validationAttempt, setValidationAttempt] = React.useState(0);
   const [errors, setErrors] = React.useState<FieldError>({});
-  const [highestCompletedStep, setHighestCompletedStep] =
-    React.useState<number>(() => {
-      try {
-        const saved = sessionStorage.getItem(WIZARD_STORAGE_KEYS.highestStep);
-        const parsed = saved ? parseInt(saved, 10) : 0;
-        return Number.isInteger(parsed) &&
-          parsed >= 0 &&
-          parsed < stepSchemas.length
-          ? parsed
-          : 0;
-      } catch {
-        return 0;
-      }
-    });
+  const [highestCompletedStep, setHighestCompletedStep] = React.useState(savedWizard.highestStep);
 
   React.useEffect(() => {
     const stepNumber = parsedStep;
@@ -76,24 +81,26 @@ export function useWizardForm() {
   }, [step, navigate, parsedStep]);
 
   React.useEffect(() => {
+    if (submittedRef.current) return;
     try {
       sessionStorage.setItem(
         WIZARD_STORAGE_KEYS.formData,
         JSON.stringify(formData),
       );
     } catch {
-      /* sem suporte a sessionStorage */
+      setStorageError(WIZARD_STORAGE_ERROR);
     }
   }, [formData]);
 
   React.useEffect(() => {
+    if (submittedRef.current) return;
     try {
       sessionStorage.setItem(
         WIZARD_STORAGE_KEYS.highestStep,
         String(highestCompletedStep),
       );
     } catch {
-      /* sem suporte a sessionStorage */
+      setStorageError(WIZARD_STORAGE_ERROR);
     }
   }, [highestCompletedStep]);
 
@@ -103,6 +110,7 @@ export function useWizardForm() {
   const progress = ((currentStep + 1) / totalSteps) * 100;
 
   React.useEffect(() => {
+    if (submittedRef.current) return;
     if (currentStep > highestCompletedStep) {
       navigate(`/beta/formulario/step/${highestCompletedStep + 1}`, {
         replace: true,
@@ -167,6 +175,8 @@ export function useWizardForm() {
   );
 
   const resetForm = React.useCallback(() => {
+    submittedRef.current = false;
+    setIsSubmitted(false);
     [
       WIZARD_STORAGE_KEYS.formData,
       WIZARD_STORAGE_KEYS.highestStep,
@@ -175,7 +185,7 @@ export function useWizardForm() {
       try {
         sessionStorage.removeItem(key);
       } catch {
-        /* sem suporte a sessionStorage */
+        setStorageError(WIZARD_STORAGE_ERROR);
       }
     });
     setFormData({});
@@ -183,6 +193,33 @@ export function useWizardForm() {
     setHighestCompletedStep(0);
     navigate(`/beta/formulario/step/1`, { replace: true });
   }, [navigate]);
+
+  const completeForm = React.useCallback((): boolean => {
+    // Mark completion before changing state so persistence effects cannot recreate the draft.
+    submittedRef.current = true;
+    setIsSubmitted(true);
+    setFormData({});
+    setErrors({});
+    setHighestCompletedStep(0);
+    setValidationAttempt(0);
+    let cleared = true;
+    for (const key of Object.values(WIZARD_STORAGE_KEYS)) {
+      try {
+        sessionStorage.removeItem(key);
+      } catch {
+        cleared = false;
+      }
+    }
+    // If draft removal fails, retain its idempotency key to protect a later retry.
+    if (cleared) {
+      try {
+        sessionStorage.removeItem(ADOPTION_IDEMPOTENCY_STORAGE_KEY);
+      } catch {
+        cleared = false;
+      }
+    }
+    return cleared;
+  }, []);
 
   const fillFormWithSampleData = React.useCallback(
     (sampleData: Omit<FormData, "captchaToken">) => {
@@ -199,8 +236,10 @@ export function useWizardForm() {
     totalSteps,
     isFirstStep,
     isLastStep,
+    isSubmitted,
     progress,
     formData,
+    storageError,
     errors,
     validationAttempt,
     updateField,
@@ -211,6 +250,7 @@ export function useWizardForm() {
     setErrors,
     highestCompletedStep,
     resetForm,
+    completeForm,
     fillFormWithSampleData,
   };
 }

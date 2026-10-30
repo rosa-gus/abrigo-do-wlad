@@ -1,0 +1,94 @@
+.content {
+  min-width: 0;
+}
+
+.introTitle,
+.stepTitle,
+.cardTitle {
+  max-width: 100%;
+  margin-bottom: 0.75rem;
+}
+
+.introTitle {
+  width: 170px;
+  height: 25px;
+}
+
+.stepTitle {
+  width: 260px;
+  height: 38px;
+}
+
+.description {
+  width: 90%;
+  height: 20px;
+}
+
+.stepCount {
+  width: 160px;
+  max-width: 100%;
+  height: 16px;
+  margin-bottom: 0.5rem;
+}
+
+.progress {
+  width: 100%;
+  height: 6px;
+  margin-top: 1.25rem;
+}
+
+.cardTitle {
+  width: 70%;
+  height: 32px;
+}
+
+.paragraph {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-block: 0.25rem;
+}
+
+.line,
+.shortLine {
+  height: 17px;
+}
+
+.shortLine {
+  width: 78%;
+}
+
+.paragraph:nth-child(even) .shortLine {
+  width: 90%;
+}
+
+.label {
+  width: 45%;
+  height: 22px;
+}
+
+.input {
+  width: 100%;
+  height: 48px;
+  border-radius: var(--radius-sm);
+}
+
+.button {
+  width: 160px;
+  max-width: 100%;
+  height: 56px;
+  border-radius: var(--radius-lg);
+}
+
+@media (max-width: 768px) {
+  .button {
+    width: 100%;
+    height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .content div {
+    animation: none;
+  }
+}
