@@ -8,6 +8,18 @@ import {
   FirestoreRestError,
 } from "./firestore.ts";
 
+test("updateDocument returns the actual write version for a conditional follow-up", async () => {
+  const client = new FirestoreRestClient("test-project", {
+    fetcher: mockFetch(() => Response.json({ commitTime: "commit-time", writeResults: [{ updateTime: "document-version" }] })),
+    tokenProvider: async () => "synthetic-token",
+  });
+  const result = await client.updateDocument(
+    "projects/test-project/databases/(default)/documents/adoption_application/test",
+    { notificationStatus: "pending" },
+  );
+  assert.equal(result.updateTime, "document-version");
+});
+
 function mockFetch(
   handler: (url: string, init?: RequestInit) => Response | Promise<Response>,
 ): typeof fetch {

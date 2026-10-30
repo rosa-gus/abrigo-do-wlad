@@ -1,3 +1,4 @@
+import { withUpstreamTimeout, UpstreamTimeoutError } from "./timeout";
 import crypto from "crypto";
 import net from "net";
 import type { IncomingMessage } from "http";
@@ -181,29 +182,34 @@ export async function verifyRecaptcha(
       response: token,
     });
 
-    const response = await fetcher(
-      "https://www.google.com/recaptcha/api/siteverify",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
+    const data = await withUpstreamTimeout(async (signal) => {
+      const response = await fetcher(
+        "https://www.google.com/recaptcha/api/siteverify",
+        {
+          signal,
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: params.toString(),
         },
-        body: params.toString(),
-      },
-    );
+      );
 
-    if (!response.ok) {
-      console.error("reCAPTCHA validation failed: Unexpected response status.");
-      return false;
-    }
+      if (!response.ok) {
+        console.error("reCAPTCHA validation failed: Unexpected response status.");
+        throw new Error("Unexpected verification status");
+      }
 
-    const data = (await response.json()) as {
-      success: boolean;
-      score?: number;
-      action?: string;
-      hostname?: string;
-      "error-codes"?: string[];
-    };
+      const data = (await response.json()) as {
+        success: boolean;
+        score?: number;
+        action?: string;
+        hostname?: string;
+        "error-codes"?: string[];
+      };
+
+      return data;
+    }, "A verificação de segurança");
 
     if (getEnvValue(env, "APP_ENV") === "local") {
       console.log("reCAPTCHA Google Response:", data);
@@ -221,6 +227,7 @@ export async function verifyRecaptcha(
     );
   } catch (err) {
     console.error("Error verifying reCAPTCHA:", err);
+    if (err instanceof UpstreamTimeoutError) throw err;
     return false;
   }
 }

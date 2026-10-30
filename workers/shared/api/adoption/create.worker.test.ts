@@ -2,10 +2,11 @@ import { env } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { buildValidAdoptionApplication } from "../../../../apps/public/src/test/fixtures/adoption";
-import { FirestoreRestError } from "../_lib/firestore";
+import { FirestoreRestError, type FirestoreDocument } from "../_lib/firestore";
 import type { CloudflareEnv } from "../_lib/env";
 import {
   createAdoptionApplicationHandler,
+  fingerprintApplication,
   type AdoptionApplicationDependencies,
 } from "./create";
 
@@ -46,6 +47,12 @@ function createRequest(
 function createHarness(
   overrides: Partial<AdoptionApplicationDependencies> = {},
 ) {
+  let savedDocument: FirestoreDocument<Record<string, unknown>> | null = null;
+  const getDocument = vi.fn(async () => savedDocument);
+  const updateDocument = vi.fn(async (_name: string, data: Record<string, unknown>) => {
+    if (savedDocument) savedDocument = { ...savedDocument, data: { ...savedDocument.data, ...data } };
+    return { commitTime: NOW.toISOString(), updateTime: NOW.toISOString() };
+  });
   const createDocument = vi.fn(
     async (
       _collectionId: string,
@@ -56,8 +63,8 @@ function createHarness(
       },
     ) => {
       void _collectionId;
-      void _data;
       void _options;
+      savedDocument = { id: IDEMPOTENCY_KEY, name: `projects/test/databases/(default)/documents/adoption_application/${IDEMPOTENCY_KEY}`, data: _data, updateTime: NOW.toISOString() };
       return { id: IDEMPOTENCY_KEY };
     },
   );
@@ -70,7 +77,7 @@ function createHarness(
 
   const dependencies: AdoptionApplicationDependencies = {
     isAcceptingApplications: async () => true,
-    createFirestoreClient: () => ({ createDocument }),
+    createFirestoreClient: () => ({ createDocument, getDocument, updateDocument }),
     verifyRecaptcha,
     encryptData,
     sendNotification,
@@ -81,6 +88,8 @@ function createHarness(
   return {
     handler: createAdoptionApplicationHandler(dependencies),
     createDocument,
+    getDocument,
+    updateDocument,
     verifyRecaptcha,
     encryptData,
     sendNotification,
@@ -183,8 +192,9 @@ describe("adoption application runtime", () => {
     const createDocument = vi.fn(async () => {
       throw new FirestoreRestError("Already exists", 409);
     });
+    const requestFingerprint = await fingerprintApplication(buildValidAdoptionApplication());
     const harness = createHarness({
-      createFirestoreClient: () => ({ createDocument }),
+      createFirestoreClient: () => ({ createDocument, getDocument: async () => ({ id: IDEMPOTENCY_KEY, name: "saved", data: { requestFingerprint, notificationStatus: "sent" } }), updateDocument: async () => ({}) }),
     });
 
     const response = await harness.handler({
@@ -195,9 +205,33 @@ describe("adoption application runtime", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       message: "Application already submitted",
-      data: { id: IDEMPOTENCY_KEY, duplicate: true },
+      data: { id: IDEMPOTENCY_KEY, duplicate: true, notificationEmailSent: true },
     });
     expect(harness.sendNotification).not.toHaveBeenCalled();
+  });
+
+  it("rejects changed answers under an already-saved idempotency key", async () => {
+    const harness = createHarness();
+    expect((await harness.handler({ request: createRequest(), env: createEnv() })).status).toBe(201);
+    harness.createDocument.mockRejectedValueOnce(new FirestoreRestError("Already exists", 409));
+    const changed = buildValidAdoptionApplication({ nome_adotante: "Outra pessoa candidata" });
+    const response = await harness.handler({ request: createRequest(JSON.stringify(changed)), env: createEnv() });
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ code: "IDEMPOTENCY_CONTENT_MISMATCH" });
+    expect(harness.sendNotification).toHaveBeenCalledOnce();
+  });
+
+  it("preserves a recorded notification failure on an identical retry", async () => {
+    const sendNotification = vi.fn(async () => false);
+    const harness = createHarness({ sendNotification });
+    const first = await harness.handler({ request: createRequest(), env: createEnv() });
+    const body = await first.json<{ warning: string }>();
+    harness.createDocument.mockRejectedValueOnce(new FirestoreRestError("Already exists", 409));
+    const retry = await harness.handler({ request: createRequest(), env: createEnv() });
+    expect(retry.status).toBe(200);
+    expect(await retry.json()).toMatchObject({ warning: body.warning, data: { duplicate: true, notificationEmailSent: false } });
+    expect(sendNotification).toHaveBeenCalledOnce();
+    expect(harness.updateDocument).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ notificationStatus: "failed" }), expect.any(Object));
   });
 
   it("rejects an unauthorized origin before processing the application", async () => {
@@ -223,7 +257,7 @@ describe("adoption application runtime", () => {
       throw new FirestoreRestError("Service account permission denied", status);
     });
     const harness = createHarness({
-      createFirestoreClient: () => ({ createDocument }),
+      createFirestoreClient: () => ({ createDocument, getDocument: async () => null, updateDocument: async () => ({}) }),
     });
     const response = await harness.handler({
       request: createRequest(),
@@ -247,7 +281,7 @@ describe("adoption application runtime", () => {
     // Use the real notification implementation, with mocked persistence and HTTP.
     const handler = createAdoptionApplicationHandler({
       isAcceptingApplications: async () => true,
-      createFirestoreClient: () => ({ createDocument: harness.createDocument }),
+      createFirestoreClient: () => ({ createDocument: harness.createDocument, getDocument: harness.getDocument, updateDocument: harness.updateDocument }),
       encryptData: harness.encryptData,
       verifyRecaptcha: harness.verifyRecaptcha,
       now: () => NOW,
@@ -264,7 +298,7 @@ describe("adoption application runtime", () => {
     await expect(response.json()).resolves.toEqual({
       message: "Application submitted successfully",
       data: { id: IDEMPOTENCY_KEY, notificationEmailSent: false },
-      warning: "A candidatura foi salva, mas a notificação automática falhou. Guarde o ID e entre em contato com o abrigo.",
+      warning: "A candidatura foi salva, mas a notificação automática ainda não foi confirmada. Guarde o ID e entre em contato com o abrigo se necessário.",
     });
     expect(harness.createDocument).toHaveBeenCalledOnce();
     expect(webhookFetch).toHaveBeenCalledOnce();
@@ -392,7 +426,7 @@ describe("adoption application runtime", () => {
       throw new FirestoreRestError("Unavailable", 503);
     });
     const harness = createHarness({
-      createFirestoreClient: () => ({ createDocument }),
+      createFirestoreClient: () => ({ createDocument, getDocument: async () => null, updateDocument: async () => ({}) }),
     });
 
     const response = await harness.handler({
