@@ -13,7 +13,7 @@ import { Skeleton } from "@jaci/ui/Skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@jaci/ui/ToggleGroup";
 import * as Lucide from "lucide-react";
 
-import leavesSticker from "@/assets/stickers/fluent-emoji/leaves.svg";
+import recyclingSticker from "@/assets/stickers/fluent-emoji/recycling-symbol.svg";
 
 import Banner from "@/components/Banner";
 import { PageFeedback } from "@/components/PageFeedback";
@@ -242,7 +242,7 @@ export default function Recycle() {
           <div className={styles.recycleTextContainer}>
             <img
               className={styles.introSticker}
-              src={leavesSticker}
+              src={recyclingSticker}
               alt=""
               width={64}
               height={64}

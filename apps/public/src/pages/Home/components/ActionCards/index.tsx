@@ -10,7 +10,7 @@ import * as Dialog from "@jaci/ui/Dialog";
 import PixModal from "@/components/PixModal";
 import heartsSticker from "@/assets/stickers/fluent-emoji/hearts.svg";
 import giftSticker from "@/assets/stickers/fluent-emoji/gift.svg";
-import leavesSticker from "@/assets/stickers/fluent-emoji/leaves.svg";
+import recyclingSticker from "@/assets/stickers/fluent-emoji/recycling-symbol.svg";
 
 
 export function ActionCards() {
@@ -98,7 +98,7 @@ export function ActionCards() {
           <Card.CardHeader>
             <img
               className={styles.sticker}
-              src={leavesSticker}
+              src={recyclingSticker}
               alt=""
               width={80}
               height={80}
