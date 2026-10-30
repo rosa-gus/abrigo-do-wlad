@@ -17,9 +17,9 @@ test('loads recycling points and closed form settings from fixed API routes', as
   expect(await getSystemSettings()).toEqual({ acceptingApplications: false });
   expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(['/api/recycle-points', '/api/system/settings']);
 });
-test('preserves existing defaults when both API and cache are unavailable', async () => {
+test('keeps the recycling fallback but rejects unavailable form settings', async () => {
   vi.spyOn(console, 'error').mockImplementation(() => {});
   vi.stubGlobal('fetch', vi.fn<typeof fetch>(async () => new Response(null, { status: 503 })));
   expect(await getRecyclePoints()).toEqual([]);
-  expect(await getSystemSettings()).toEqual({ acceptingApplications: true });
+  await expect(getSystemSettings()).rejects.toThrow('Não foi possível verificar a disponibilidade');
 });
