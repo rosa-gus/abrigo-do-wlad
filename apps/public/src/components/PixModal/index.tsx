@@ -8,6 +8,7 @@ import { ScrollArea } from "@jaci/ui/ScrollArea";
 import { analytics } from "@/utils/analytics";
 
 import qrCodePix from "@/assets/images/pix-qr-code.png";
+import giftSticker from "@/assets/stickers/fluent-emoji/gift.svg";
 import styles from "./PixModal.module.css";
 
 export default function PixModal() {
@@ -26,14 +27,25 @@ export default function PixModal() {
 
   return (
     <Dialog.DialogContent size="fullscreen-mobile">
-      <Dialog.DialogHeader>
-        <Dialog.DialogTitle>
-          Faça uma doação via Pix. Qualquer valor é bem-vindo!
-        </Dialog.DialogTitle>
-        <Dialog.DialogDescription>
-          Para doar, escaneie o QR Code com o app do seu banco ou copie a chave
-          Pix abaixo.
-        </Dialog.DialogDescription>
+      <Dialog.DialogHeader className={styles.modalHeader}>
+        <Dialog.DialogIcon className={styles.modalIcon}>
+          <img
+            className={styles.headerSticker}
+            src={giftSticker}
+            alt=""
+            width={48}
+            height={48}
+          />
+        </Dialog.DialogIcon>
+        <Dialog.DialogHeading className={styles.modalHeading}>
+          <Dialog.DialogTitle>
+            Faça uma doação via Pix
+          </Dialog.DialogTitle>
+          <Dialog.DialogDescription>
+            Sua contribuição ajuda a garantir ração, medicamentos e cuidados
+            para os cães do abrigo.
+          </Dialog.DialogDescription>
+        </Dialog.DialogHeading>
       </Dialog.DialogHeader>
       <ScrollArea className={styles.pixScrollArea} showScrollShadows>
         <div className={styles.pixModalContainer}>

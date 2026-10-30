@@ -159,6 +159,22 @@ describe.each(STEP_CASES)("$name", ({ schema, valid, optionalOrDefault }) => {
 });
 
 describe("fronteiras dos schemas", () => {
+  it.each([
+    { nome_adotante: "   " }, { telefone: "abcdefghijklmno" },
+    { idade: 18.5 }, { estado_civil: "opção inventada" },
+  ])("rejeita respostas incompatíveis com o campo: %j", (override) => {
+    expect(step1Schema.safeParse({ ...VALID_STEP_1, ...override }).success).toBe(false);
+  });
+  it("normaliza espaços antes de validar o conteúdo", () => {
+    expect(step1Schema.parse({ ...VALID_STEP_1, nome_adotante: "  Nome Completo  " }).nome_adotante).toBe("Nome Completo");
+  });
+  it("rejeita uma quantidade fracionária de adultos e alternativas forjadas", () => {
+    expect(step2Schema.safeParse({ ...VALID_STEP_2, qtd_adultos: 1.5 }).success).toBe(false);
+    expect(step2Schema.safeParse({ ...VALID_STEP_2, qtd_adultos: true }).success).toBe(false);
+    expect(step1Schema.safeParse({ ...VALID_STEP_1, redes_sociais: "javascript://example.com" }).success).toBe(false);
+    expect(step6Schema.safeParse({ ...VALID_STEP_6, vacinas: "qualquer coisa" }).success).toBe(false);
+  });
+
   it("aceita idade mínima e converte uma idade textual", () => {
     const result = step1Schema.parse({ ...VALID_STEP_1, idade: "18" });
 

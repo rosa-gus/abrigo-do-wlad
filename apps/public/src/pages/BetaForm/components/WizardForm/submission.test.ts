@@ -1,12 +1,35 @@
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { test, vi } from "vitest";
 
 import {
   ADOPTION_IDEMPOTENCY_STORAGE_KEY,
   clearIdempotencyKey,
   getAdoptionApplicationId,
   getOrCreateIdempotencyKey,
+  sendAdoptionApplication,
 } from "./submission";
+
+test("aborts an unconfirmed submission after 30 seconds and releases its timer", async () => {
+  vi.useFakeTimers();
+  let requestSignal: AbortSignal | null | undefined;
+  vi.stubGlobal("fetch", vi.fn<typeof fetch>((_url, init) => {
+    requestSignal = init?.signal;
+    return new Promise((_resolve, reject) => {
+      requestSignal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")), { once: true });
+    });
+  }));
+  try {
+    const result = sendAdoptionApplication({ captchaToken: "synthetic" }, "retry-key");
+    const rejected = assert.rejects(result, /demorou para confirmar/);
+    await vi.advanceTimersByTimeAsync(30_000);
+    await rejected;
+    assert.equal(requestSignal?.aborted, true);
+    assert.equal(vi.getTimerCount(), 0);
+  } finally {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  }
+});
 
 function createMemoryStorage(): Storage {
   const values = new Map<string, string>();

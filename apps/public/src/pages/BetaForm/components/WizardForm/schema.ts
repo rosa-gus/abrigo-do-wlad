@@ -19,19 +19,25 @@ const ALLOWED_SOCIAL_DOMAINS = [
   "flickr.com",
 ];
 
+const numericInput = (value: unknown) =>
+  typeof value === "string" && value.trim() !== "" ? Number(value) : value;
+
 export const step1Schema = z.object({
   nome_adotante: z
     .string({
       error: (issue) =>
         issue.input === undefined ? "Informe o nome." : "Nome inválido.",
     })
+    .trim()
     .min(3, { message: "Nome deve ter pelo menos 3 caracteres." }),
-  idade: z.coerce
-    .number({
+  idade: z.preprocess(numericInput,
+    z.number({
       error: (issue) =>
         issue.input === undefined ? "Informe a sua idade." : "Idade inválida.",
     })
-    .min(18, "Deve ter pelo menos 18 anos"),
+    .int("Informe um número inteiro.")
+    .min(18, "Deve ter pelo menos 18 anos")
+  ),
   estado_civil: z
     .string({
       error: (issue) =>
@@ -39,7 +45,9 @@ export const step1Schema = z.object({
           ? "Selecione o estado civil."
           : "Estado civil inválido.",
     })
-    .min(1, "Selecione o estado civil"),
+    .trim()
+    .min(1, "Selecione o estado civil")
+    .refine((value) => ["Solteiro", "Casado/Uniao", "Separado", "Viuvo"].includes(value), "Selecione uma opção válida."),
   profissao: z
     .string({
       error: (issue) =>
@@ -47,12 +55,14 @@ export const step1Schema = z.object({
           ? "Informe sua profissão."
           : "Profissão inválida.",
     })
+    .trim()
     .min(2, "Informe sua profissão"),
   empresa: z
     .string({
       error: (issue) =>
         issue.input === undefined ? "Informe a empresa." : "Empresa inválida.",
     })
+    .trim()
     .min(2, "Informe a empresa"),
   endereco: z
     .string({
@@ -61,6 +71,7 @@ export const step1Schema = z.object({
           ? "Informe o endereço completo."
           : "Endereço inválido.",
     })
+    .trim()
     .min(5, "Informe o endereço completo"),
   telefone: z
     .string({
@@ -69,12 +80,14 @@ export const step1Schema = z.object({
           ? "Informe o telefone."
           : "Telefone inválido.",
     })
-    .min(14, "Telefone inválido"),
+    .trim()
+    .regex(/^(?:\([1-9]\d\)|[1-9]\d)\s?\d{4,5}-?\d{4}$/, "Informe um telefone válido com DDD."),
   email: z
     .string({
       error: (issue) =>
         issue.input === undefined ? "Informe o e-mail." : "E-mail inválido.",
     })
+    .trim()
     .email("E-mail inválido"),
   redes_sociais: z
     .string({
@@ -83,6 +96,7 @@ export const step1Schema = z.object({
           ? "Informe ao menos uma rede social."
           : "Rede social inválida.",
     })
+    .trim()
     .min(2, "Informe ao menos uma rede social")
     .refine(
       (val) => {
@@ -114,6 +128,7 @@ export const step1Schema = z.object({
                 ? s
                 : `https://${s}`;
             const url = new URL(input);
+            if (!["http:", "https:"].includes(url.protocol)) return false;
             const host = url.hostname.toLowerCase().replace(/^www\./, "");
 
             // whitelist match
@@ -145,14 +160,16 @@ export const step1Schema = z.object({
 });
 
 export const step2Schema = z.object({
-  qtd_adultos: z.coerce
-    .number({
+  qtd_adultos: z.preprocess(numericInput,
+    z.number({
       error: (issue) =>
         issue.input === undefined
           ? "Informe a quantidade de adultos."
           : "Quantidade inválida.",
     })
-    .min(1, "Informe a quantidade de adultos"),
+    .int("Informe um número inteiro.")
+    .min(1, "Informe a quantidade de adultos")
+  ),
   criancas: z
     .string({
       error: (issue) =>
@@ -160,6 +177,7 @@ export const step2Schema = z.object({
           ? "Informe sobre crianças na casa."
           : "Valor inválido.",
     })
+    .trim()
     .min(1, "Informe sobre crianças na casa"),
   renda_mensal: z
     .string({
@@ -168,13 +186,16 @@ export const step2Schema = z.object({
           ? "Informe a renda mensal."
           : "Valor inválido.",
     })
+    .trim()
     .min(1, "Informe a renda mensal"),
   acordo: z
     .string({
       error: (issue) =>
         issue.input === undefined ? "Selecione uma opção." : "Opção inválida.",
     })
-    .min(1, "Selecione uma opção"),
+    .trim()
+    .min(1, "Selecione uma opção")
+    .refine((value) => ["Sim", "Não", "Talvez"].includes(value), "Selecione uma opção válida."),
   alergia: z
     .string({
       error: (issue) =>
@@ -182,6 +203,7 @@ export const step2Schema = z.object({
           ? "Responda sobre alergias."
           : "Valor inválido.",
     })
+    .trim()
     .min(1, "Responda sobre alergias"),
 });
 
@@ -191,6 +213,7 @@ export const step3Schema = z.object({
       error: (issue) =>
         issue.input === undefined ? "Descreva o motivo." : "Valor inválido.",
     })
+    .trim()
     .min(5, "Descreva o motivo"),
   animal_especifico: z.preprocess(
     (value) => (value === "" ? undefined : value),
@@ -199,7 +222,8 @@ export const step3Schema = z.object({
         error: (issue) =>
           issue.input === undefined ? "Informe o animal." : "Valor inválido.",
       })
-      .min(1, "Informe o animal")
+      .trim()
+    .min(1, "Informe o animal")
       .optional(),
   ),
   porte: z
@@ -207,14 +231,19 @@ export const step3Schema = z.object({
       error: (issue) =>
         issue.input === undefined ? "Selecione o porte." : "Opção inválida.",
     })
-    .min(1, "Selecione o porte"),
-  sexo: z.string().default("Não importa"),
+    .trim()
+    .min(1, "Selecione o porte")
+    .refine((value) => ["Nao Importa", "Mini", "Pequeno", "Pequeno Médio", "Medio", "Grande"].includes(value), "Selecione uma opção válida."),
+  sexo: z.string().trim().default("Não importa")
+    .refine((value) => ["Fêmea", "Macho", "Não importa"].includes(value), "Selecione uma opção válida."),
   idade_animal: z
     .string({
       error: (issue) =>
         issue.input === undefined ? "Selecione a idade." : "Opção inválida.",
     })
-    .min(1, "Selecione a idade"),
+    .trim()
+    .min(1, "Selecione a idade")
+    .refine((value) => ["Nao importa", "Filhote", "Adulto Jovem", "Adulto Maduro", "Idoso"].includes(value), "Selecione uma opção válida."),
   personalidade: z
     .string({
       error: (issue) =>
@@ -222,7 +251,9 @@ export const step3Schema = z.object({
           ? "Selecione a personalidade."
           : "Opção inválida.",
     })
-    .min(1, "Selecione a personalidade"),
+    .trim()
+    .min(1, "Selecione a personalidade")
+    .refine((value) => ["Brincalhao", "Super Ativo", "Independente", "Carente", "Grudinho", "Para Correr"].includes(value), "Selecione uma opção válida."),
   atividade: z
     .string({
       error: (issue) =>
@@ -230,7 +261,9 @@ export const step3Schema = z.object({
           ? "Selecione a atividade."
           : "Opção inválida.",
     })
-    .min(1, "Selecione a atividade"),
+    .trim()
+    .min(1, "Selecione a atividade")
+    .refine((value) => ["Companhia", "Guarda"].includes(value), "Selecione uma opção válida."),
 });
 
 export const step4Schema = z.object({
@@ -241,12 +274,14 @@ export const step4Schema = z.object({
           ? "Informe o responsável."
           : "Valor inválido.",
     })
+    .trim()
     .min(2, "Informe o responsável"),
   horas_sozinho: z
     .string({
       error: (issue) =>
         issue.input === undefined ? "Informe as horas." : "Valor inválido.",
     })
+    .trim()
     .min(1, "Informe as horas"),
   passeios: z
     .string({
@@ -255,6 +290,7 @@ export const step4Schema = z.object({
           ? "Informe sobre passeios."
           : "Valor inválido.",
     })
+    .trim()
     .min(1, "Informe sobre passeios"),
   tipo_moradia: z
     .string({
@@ -263,8 +299,11 @@ export const step4Schema = z.object({
           ? "Selecione o tipo de moradia."
           : "Opção inválida.",
     })
-    .min(1, "Selecione o tipo de moradia"),
-  proprietario_permite: z.string().default("Nao aplica"),
+    .trim()
+    .min(1, "Selecione o tipo de moradia")
+    .refine((value) => ["Propria", "Alugada"].includes(value), "Selecione uma opção válida."),
+  proprietario_permite: z.string().trim().default("Nao aplica")
+    .refine((value) => ["Sim", "Não", "Nao sei", "Nao aplica"].includes(value), "Selecione uma opção válida."),
   detalhes_moradia: z
     .string({
       error: (issue) =>
@@ -272,24 +311,29 @@ export const step4Schema = z.object({
           ? "Selecione os detalhes."
           : "Opção inválida.",
     })
-    .min(1, "Selecione os detalhes"),
+    .trim()
+    .min(1, "Selecione os detalhes")
+    .refine((value) => ["Casa quintal", "Casa quintal compartilhado", "Casa sem quintal", "Muros altos", "Com Telas", "Portao Fechado", "Tudo fechado", "Ap telas total", "Ap telas parcial", "Ap sem telas", "Ap colocarei", "Ap varanda fechada", "Ap varanda aberta"].includes(value), "Selecione uma opção válida."),
   moradores: z
     .string({
       error: (issue) =>
         issue.input === undefined ? "Informe os moradores." : "Valor inválido.",
     })
+    .trim()
     .min(1, "Informe os moradores"),
   areas_frequentar: z
     .string({
       error: (issue) =>
         issue.input === undefined ? "Informe as áreas." : "Valor inválido.",
     })
+    .trim()
     .min(1, "Informe as áreas"),
   periodos: z
     .string({
       error: (issue) =>
         issue.input === undefined ? "Informe os períodos." : "Valor inválido.",
     })
+    .trim()
     .min(1, "Informe os períodos"),
   dormir: z
     .string({
@@ -298,13 +342,16 @@ export const step4Schema = z.object({
           ? "Informe onde o animal dormirá."
           : "Valor inválido.",
     })
+    .trim()
     .min(1, "Informe onde o animal dormirá"),
   acesso: z
     .string({
       error: (issue) =>
         issue.input === undefined ? "Selecione o acesso." : "Opção inválida.",
     })
-    .min(1, "Selecione o acesso"),
+    .trim()
+    .min(1, "Selecione o acesso")
+    .refine((value) => ["Total", "Parcial", "Restrito", "Outro"].includes(value), "Selecione uma opção válida."),
 });
 
 export const step5Schema = z.object({
@@ -315,6 +362,7 @@ export const step5Schema = z.object({
           ? "Responda sobre outros animais."
           : "Valor inválido.",
     })
+    .trim()
     .min(1, "Responda sobre outros animais"),
   castrados: z
     .string({
@@ -323,6 +371,7 @@ export const step5Schema = z.object({
           ? "Responda sobre castração."
           : "Valor inválido.",
     })
+    .trim()
     .min(1, "Responda sobre castração"),
   ja_teve: z
     .string({
@@ -331,6 +380,7 @@ export const step5Schema = z.object({
           ? "Responda sobre animais anteriores."
           : "Valor inválido.",
     })
+    .trim()
     .min(1, "Responda sobre animais anteriores"),
   destino_antigos: z
     .string({
@@ -339,6 +389,7 @@ export const step5Schema = z.object({
           ? "Responda sobre os animais anteriores."
           : "Valor inválido.",
     })
+    .trim()
     .min(1, "Responda sobre os animais anteriores"),
   veterinario: z
     .string({
@@ -347,12 +398,14 @@ export const step5Schema = z.object({
           ? "Informe o veterinário."
           : "Valor inválido.",
     })
+    .trim()
     .min(1, "Informe o veterinário"),
   racao: z
     .string({
       error: (issue) =>
         issue.input === undefined ? "Informe a ração." : "Valor inválido.",
     })
+    .trim()
     .min(1, "Informe a ração"),
 });
 
@@ -362,50 +415,66 @@ export const step6Schema = z.object({
       error: (issue) =>
         issue.input === undefined ? "Selecione uma opção." : "Opção inválida.",
     })
-    .min(1, "Selecione uma opção"),
+    .trim()
+    .min(1, "Selecione uma opção")
+    .refine((value) => ["Sim", "Não", "Talvez"].includes(value), "Selecione uma opção válida."),
   ciencia_adaptacao: z
     .string({
       error: (issue) =>
         issue.input === undefined ? "Selecione uma opção." : "Opção inválida.",
     })
-    .min(1, "Selecione uma opção"),
+    .trim()
+    .min(1, "Selecione uma opção")
+    .refine((value) => ["Sim", "Não", "Talvez"].includes(value), "Selecione uma opção válida."),
   tempo_adaptacao: z
     .string({
       error: (issue) =>
         issue.input === undefined ? "Informe o tempo." : "Valor inválido.",
     })
+    .trim()
     .min(1, "Informe o tempo"),
   adestrador: z
     .string({
       error: (issue) =>
         issue.input === undefined ? "Selecione uma opção." : "Opção inválida.",
     })
-    .min(1, "Selecione uma opção"),
-  motivo_nao_adestrar: z.string().optional(),
+    .trim()
+    .min(1, "Selecione uma opção")
+    .refine((value) => ["Sim", "Não"].includes(value), "Selecione uma opção válida."),
+  motivo_nao_adestrar: z.string().trim().optional()
+    .refine((value) => value === undefined || value === "" || ["Nao se aplica", "Eu ensinarei", "Muito caro", "Nao acredito", "Outro"].includes(value), "Selecione uma opção válida."),
   carro: z
     .string({
       error: (issue) =>
         issue.input === undefined ? "Selecione uma opção." : "Opção inválida.",
     })
-    .min(1, "Selecione uma opção"),
+    .trim()
+    .min(1, "Selecione uma opção")
+    .refine((value) => ["Sim", "Não"].includes(value), "Selecione uma opção válida."),
   financeiro_vet: z
     .string({
       error: (issue) =>
         issue.input === undefined ? "Selecione uma opção." : "Opção inválida.",
     })
-    .min(1, "Selecione uma opção"),
+    .trim()
+    .min(1, "Selecione uma opção")
+    .refine((value) => ["Sim", "Nao", "Plano", "Publico", "Outro"].includes(value), "Selecione uma opção válida."),
   vacinas: z
     .string({
       error: (issue) =>
         issue.input === undefined ? "Selecione uma opção." : "Opção inválida.",
     })
-    .min(1, "Selecione uma opção"),
+    .trim()
+    .min(1, "Selecione uma opção")
+    .refine((value) => ["Sim", "Não", "Talvez"].includes(value), "Selecione uma opção válida."),
   gasto_mensal: z
     .string({
       error: (issue) =>
         issue.input === undefined ? "Selecione uma opção." : "Opção inválida.",
     })
-    .min(1, "Selecione uma opção"),
+    .trim()
+    .min(1, "Selecione uma opção")
+    .refine((value) => ["100-150", "150-250", "250-300", "acima 300", "Outro"].includes(value), "Selecione uma opção válida."),
 });
 
 export const step7Schema = z.object({
@@ -414,37 +483,48 @@ export const step7Schema = z.object({
       error: (issue) =>
         issue.input === undefined ? "Informe onde viu." : "Valor inválido.",
     })
+    .trim()
     .min(1, "Informe onde viu"),
   noticias: z
     .string({
       error: (issue) =>
         issue.input === undefined ? "Selecione uma opção." : "Opção inválida.",
     })
-    .min(1, "Selecione uma opção"),
+    .trim()
+    .min(1, "Selecione uma opção")
+    .refine((value) => ["Sim", "Não", "Talvez"].includes(value), "Selecione uma opção válida."),
   visitas: z
     .string({
       error: (issue) =>
         issue.input === undefined ? "Selecione uma opção." : "Opção inválida.",
     })
-    .min(1, "Selecione uma opção"),
+    .trim()
+    .min(1, "Selecione uma opção")
+    .refine((value) => ["Sim", "Não"].includes(value), "Selecione uma opção válida."),
   fotos_adocao: z
     .string({
       error: (issue) =>
         issue.input === undefined ? "Selecione uma opção." : "Opção inválida.",
     })
-    .min(1, "Selecione uma opção"),
+    .trim()
+    .min(1, "Selecione uma opção")
+    .refine((value) => ["Sim", "Não"].includes(value), "Selecione uma opção válida."),
   contribuicao: z
     .string({
       error: (issue) =>
         issue.input === undefined ? "Selecione uma opção." : "Opção inválida.",
     })
-    .min(1, "Selecione uma opção"),
+    .trim()
+    .min(1, "Selecione uma opção")
+    .refine((value) => ["Sim", "Não"].includes(value), "Selecione uma opção válida."),
   compromisso_vida: z
     .string({
       error: (issue) =>
         issue.input === undefined ? "Selecione uma opção." : "Opção inválida.",
     })
-    .min(1, "Selecione uma opção"),
+    .trim()
+    .min(1, "Selecione uma opção")
+    .refine((value) => ["Sim", "Não", "Talvez"].includes(value), "Selecione uma opção válida."),
 });
 
 export const step8Schema = z.object({
@@ -455,6 +535,7 @@ export const step8Schema = z.object({
           ? "Responda com detalhes."
           : "Valor inválido.",
     })
+    .trim()
     .min(3, "Responda com detalhes"),
   viagem: z
     .string({
@@ -463,6 +544,7 @@ export const step8Schema = z.object({
           ? "Responda com detalhes."
           : "Valor inválido.",
     })
+    .trim()
     .min(3, "Responda com detalhes"),
   mudanca_menor: z
     .string({
@@ -471,6 +553,7 @@ export const step8Schema = z.object({
           ? "Responda com detalhes."
           : "Valor inválido.",
     })
+    .trim()
     .min(3, "Responda com detalhes"),
   mudanca_longe: z
     .string({
@@ -479,6 +562,7 @@ export const step8Schema = z.object({
           ? "Responda com detalhes."
           : "Valor inválido.",
     })
+    .trim()
     .min(3, "Responda com detalhes"),
   separacao: z
     .string({
@@ -487,6 +571,7 @@ export const step8Schema = z.object({
           ? "Responda com detalhes."
           : "Valor inválido.",
     })
+    .trim()
     .min(3, "Responda com detalhes"),
   falecimento: z
     .string({
@@ -495,6 +580,7 @@ export const step8Schema = z.object({
           ? "Responda com detalhes."
           : "Valor inválido.",
     })
+    .trim()
     .min(3, "Responda com detalhes"),
 });
 
@@ -504,30 +590,35 @@ export const step9Schema = z.object({
       error: (issue) =>
         issue.input === undefined ? "Responda a questão." : "Valor inválido.",
     })
+    .trim()
     .min(3, "Responda a questão"),
   doenca: z
     .string({
       error: (issue) =>
         issue.input === undefined ? "Responda a questão." : "Valor inválido.",
     })
+    .trim()
     .min(3, "Responda a questão"),
   morder: z
     .string({
       error: (issue) =>
         issue.input === undefined ? "Responda a questão." : "Valor inválido.",
     })
+    .trim()
     .min(3, "Responda a questão"),
   destruicao: z
     .string({
       error: (issue) =>
         issue.input === undefined ? "Responda a questão." : "Valor inválido.",
     })
+    .trim()
     .min(3, "Responda a questão"),
   xixi_errado: z
     .string({
       error: (issue) =>
         issue.input === undefined ? "Responda a questão." : "Valor inválido.",
     })
+    .trim()
     .min(3, "Responda a questão"),
 });
 
@@ -537,20 +628,24 @@ export const step10Schema = z.object({
       error: (issue) =>
         issue.input === undefined ? "Responda a questão." : "Valor inválido.",
     })
+    .trim()
     .min(3, "Responda a questão"),
   devolucao: z
     .string({
       error: (issue) =>
         issue.input === undefined ? "Responda a questão." : "Valor inválido.",
     })
+    .trim()
     .min(3, "Responda a questão"),
   termo_nao_repassar: z
     .string({
       error: (issue) =>
         issue.input === undefined ? "Selecione uma opção." : "Opção inválida.",
     })
-    .min(1, "Selecione uma opção"),
-  obs: z.string().optional(),
+    .trim()
+    .min(1, "Selecione uma opção")
+    .refine((value) => ["Sim", "Não"].includes(value), "Selecione uma opção válida."),
+  obs: z.string().trim().optional(),
 });
 
 export const stepSchemas = [
@@ -566,7 +661,7 @@ export const stepSchemas = [
   step10Schema,
 ] as const;
 
-export const fullFormSchema = z.object({
+export const adoptionFormSchema = z.object({
   ...step1Schema.shape,
   ...step2Schema.shape,
   ...step3Schema.shape,
@@ -577,8 +672,9 @@ export const fullFormSchema = z.object({
   ...step8Schema.shape,
   ...step9Schema.shape,
   ...step10Schema.shape,
-  captchaToken: z.string(),
 });
+
+export const fullFormSchema = adoptionFormSchema.extend({ captchaToken: z.string().trim() });
 
 export type FormData = z.infer<typeof fullFormSchema>;
 

@@ -18,6 +18,7 @@ export function FieldWrapper({
   errors,
   children,
 }: FieldWrapperProps) {
+  const number = label.match(/^\d+\.\d+\.\s*/)?.[0];
   const error = errors[name];
   const labelId = `${name}-label`;
   const errorId = `${name}-error`;
@@ -29,7 +30,8 @@ export function FieldWrapper({
         data-field-error={error ? true : undefined}
       >
         <label id={labelId} htmlFor={name}>
-          {label} {required && <span className={styles.required}>*</span>}
+          {number && <span className={styles.fieldNumber}>{number}</span>}
+          {number ? label.slice(number.length) : label} {required && <span className={styles.required}>*</span>}
         </label>
         {children}
         {error && (

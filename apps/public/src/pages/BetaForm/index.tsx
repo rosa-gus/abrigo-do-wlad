@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import * as Lucide from "lucide-react";
 
@@ -22,47 +22,127 @@ import {
 } from "@jaci/ui/Dialog";
 import { SHELTER_FALLBACK_FORM_URL, SHELTER_INSTAGRAM_URL } from "@/utils/links";
 import { WizardForm } from "./components/WizardForm";
+import { WizardFormSkeleton } from "./components/WizardForm/WizardFormSkeleton";
 import { ExternalLink } from "@/components/common/ExternalLink";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
-import { Skeleton } from "@jaci/ui/Skeleton";
+import dogSticker from "@/assets/stickers/fluent-emoji/dog.svg";
+import starsSticker from "@/assets/stickers/fluent-emoji/stars.svg";
+import beetleSticker from "@/assets/stickers/fluent-emoji/beetle.svg";
 
 import styles from "./Form.module.css";
 
+type FormError = { kind: "submission" | "settings" | "storage"; message: string };
+
 export default function BetaForm() {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [formError, setFormError] = useState<FormError | null>(null);
+  const setSubmissionError = useCallback((message: string) => setFormError({ kind: "submission", message }), []);
+  const reportSettingsError = useCallback((message: string) => setFormError({ kind: "settings", message }), []);
+  const reportStorageError = useCallback((message: string) => setFormError({ kind: "storage", message }), []);
   const [successId, setSuccessId] = useState<string>("");
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
   const [successWarning, setSuccessWarning] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { settings, loading: loadingSettings } = useSystemSettings();
+  const { settings, loading: loadingSettings, error: settingsError, retry: retrySettings } = useSystemSettings(reportSettingsError);
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
+  useEffect(() => {
+    if (copyStatus !== "copied") return;
+    const timeout = window.setTimeout(() => setCopyStatus("idle"), 2000);
+    return () => window.clearTimeout(timeout);
+  }, [copyStatus]);
+
+  const copyApplicationId = async () => {
+    try {
+      await navigator.clipboard.writeText(successId);
+      setCopyStatus("copied");
+    } catch {
+      setCopyStatus("error");
+    }
+  };
+
   return (
     <main>
+      <Dialog
+        open={formError !== null}
+        onOpenChange={(open) => {
+          if (!open) setFormError(null);
+        }}
+      >
+        <DialogContent size="sm" className={styles.confirmationModal}>
+          <DialogHeader>
+            <DialogIcon tone="danger">
+              <Lucide.CircleAlert />
+            </DialogIcon>
+            <DialogHeading>
+              <DialogTitle>
+                {formError?.kind === "settings" ? "Não foi possível carregar o formulário"
+                  : formError?.kind === "storage" ? "Não foi possível salvar o preenchimento"
+                    : "Não foi possível enviar o formulário"}
+              </DialogTitle>
+              <DialogDescription>{formError?.message}</DialogDescription>
+            </DialogHeading>
+          </DialogHeader>
+          <div className={styles.modalContent}>
+            {formError?.kind === "submission" && (
+              <p>Suas respostas continuam disponíveis nesta aba. Você pode voltar ao formulário e tentar novamente.</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => {
+              if (formError?.kind === "settings") retrySettings();
+              setFormError(null);
+            }}>
+              {formError?.kind === "settings" ? "Tentar novamente"
+                : formError?.kind === "storage" ? "Continuar nesta aba" : "Voltar ao formulário"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={showSuccessDialog}
         onOpenChange={(open) => {
           if (!open) navigate("/");
         }}
       >
-        <DialogContent size="md">
-          <DialogHeader>
-            <DialogIcon tone="success">
-              <Lucide.CheckCircle />
+        <DialogContent size="md" className={styles.confirmationModal}>
+          <DialogHeader className={styles.confirmationHeader}>
+            <DialogIcon tone="success" className={styles.confirmationIcon}>
+              <img
+                className={styles.confirmationSticker}
+                src={starsSticker}
+                alt=""
+                width={48}
+                height={48}
+              />
             </DialogIcon>
-            <DialogHeading>
+            <DialogHeading className={styles.confirmationHeading}>
               <DialogTitle>Formulário enviado com sucesso!</DialogTitle>
-              <DialogDescription>
+              <DialogDescription className={styles.confirmationDescription}>
                 {successId && (
-                  <span
-                    style={{
-                      color: "var(--text-muted)",
-                      fontSize: "0.8em",
-                    }}
-                  >
-                    ID da sua candidatura: {successId}
+                  <span className={styles.applicationId}>
+                    <span className={styles.applicationIdLabel}>ID da sua candidatura</span>
+                    <button
+                      type="button"
+                      className={styles.copyApplicationId}
+                      onClick={copyApplicationId}
+                      aria-label={`Copiar ID da candidatura: ${successId}`}
+                      title={successId}
+                    >
+                      <span>{successId}</span>
+                      {copyStatus === "copied" ? (
+                        <Lucide.Check size={16} aria-hidden="true" />
+                      ) : (
+                        <Lucide.Copy size={16} aria-hidden="true" />
+                      )}
+                    </button>
+                    <span className={styles.copyStatus} role="status">
+                      {copyStatus === "copied" && "ID copiado!"}
+                      {copyStatus === "error" && "Não foi possível copiar. Selecione o ID e copie manualmente."}
+                    </span>
                   </span>
                 )}
                 {successWarning && (
@@ -79,17 +159,14 @@ export default function BetaForm() {
               com carinho. Entraremos em contato caso o perfil seja compatível.
             </p>
           </div>
-          <DialogFooter>
+          <DialogFooter className={styles.confirmationFooter}>
             <div>
               <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
                 Em caso de dúvidas
               </span>
               <p>Estamos disponíveis em</p>
             </div>
-            <div
-              style={{ display: "flex", gap: "0.8rem" }}
-              className={styles.modalContact}
-            >
+            <div className={styles.modalContact}>
               <ExternalLink href={SHELTER_INSTAGRAM_URL}>
                 <Button
                   size="md"
@@ -114,13 +191,26 @@ export default function BetaForm() {
       </Dialog>
       <div className={`container ${styles.formContainer}`}>
         <header className={styles.pageHeader}>
+          <img
+            className={styles.introSticker}
+            src={dogSticker}
+            alt=""
+            width={64}
+            height={64}
+          />
           <h1>Intenção de adoção</h1>
           <p>Vamos conhecer você e sua rotina. Responda com atenção e sinceridade.</p>
         </header>
-        {loadingSettings ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginTop: "2rem" }}>
-            <Skeleton style={{ width: "100%", height: "150px" }} />
-            <Skeleton style={{ width: "100%", height: "400px" }} />
+        {showSuccessDialog ? null : loadingSettings ? (
+          <WizardFormSkeleton />
+        ) : settingsError ? (
+          <div className={styles.notAcceptingContainer}>
+            <Lucide.CircleAlert size={48} aria-hidden="true" />
+            <h2>Não foi possível carregar o formulário</h2>
+            <p>{settingsError}</p>
+            <Button onClick={retrySettings} leftIcon={<Lucide.RotateCcw size={18} />}>
+              Tentar novamente
+            </Button>
           </div>
         ) : settings?.acceptingApplications === false ? (
           <div className={styles.notAcceptingContainer}>
@@ -141,7 +231,10 @@ export default function BetaForm() {
           </div>
         ) : (
           <WizardForm
+            onSubmitError={setSubmissionError}
+            onStorageError={reportStorageError}
             onSubmitSuccess={({ applicationId, warning }) => {
+              setFormError(null);
               setSuccessId(applicationId);
               setSuccessWarning(warning ?? null);
               setShowSuccessDialog(true);
@@ -152,7 +245,13 @@ export default function BetaForm() {
           <Card variant="callout" tone="info" size="xs" layout="inline">
             <CardBody>
               <CardIcon>
-                <Lucide.Sparkles size={20} aria-hidden="true" />
+                <img
+                  className={styles.calloutSticker}
+                  src={beetleSticker}
+                  alt=""
+                  width={32}
+                  height={32}
+                />
               </CardIcon>
               <CardTitle>Estamos aprimorando este formulário</CardTitle>
               <CardContent>
@@ -169,6 +268,29 @@ export default function BetaForm() {
 
           {import.meta.env.PUBLIC_DEV_TOOLS && (
             <div className={styles.betaTestAction}>
+              <Button
+                size="sm"
+                variant="secondary"
+                leftIcon={<Lucide.Eye size={18} aria-hidden="true" />}
+                onClick={() => {
+                  setSuccessId("00000000-0000-4000-8000-000000000000");
+                  setSuccessWarning(null);
+                  setCopyStatus("idle");
+                  setShowSuccessDialog(true);
+                }}
+              >
+                Pré-visualizar confirmação
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                leftIcon={<Lucide.CircleAlert size={18} aria-hidden="true" />}
+                onClick={() => {
+                  setSubmissionError("Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.");
+                }}
+              >
+                Pré-visualizar falha
+              </Button>
               <Button
                 size="sm"
                 variant="success"

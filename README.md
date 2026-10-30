@@ -129,3 +129,7 @@ réplica da identidade visual sem autorização prévia é vedada. Todos os dire
 reservados, exceto pelo pacote [Jaci UI](packages/ui), disponibilizado sob a
 [Licença MIT](packages/ui/LICENSE.txt), com autoria de Luis Gustavo R.C. e Alan
 Climaco.
+
+Recursos de terceiros mantêm suas próprias licenças. As ilustrações
+[Fluent Emoji da Microsoft](apps/public/src/assets/stickers/fluent-emoji/README.md)
+são distribuídas sob a [licença MIT](apps/public/src/assets/stickers/fluent-emoji/LICENSE.txt).

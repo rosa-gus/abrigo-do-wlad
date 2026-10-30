@@ -15,6 +15,7 @@ import { Badge } from "@jaci/ui/Badge";
 
 import { useMediaQuery } from "@uidotdev/usehooks";
 import { PageFeedback } from "@/components/PageFeedback";
+import bookSticker from "@/assets/stickers/fluent-emoji/book.svg";
 
 import heroImage from "@/assets/images/wlad.jpg"
 
@@ -44,7 +45,6 @@ export default function About() {
       />
       <Banner
         image={heroImage}
-        badge="Nossa trajetória"
         title="Como nasceu o Abrigo do Wlad"
         description="Conheça a história do abrigo e das pessoas que dedicam sua vida ao cuidado de cães resgatados."
       />
@@ -54,6 +54,13 @@ export default function About() {
           style={{ gridTemplateColumns: "1.5fr 1fr", alignItems: "start" }}
         >
           <div className={styles.historyText}>
+            <img
+              className={styles.historySticker}
+              src={bookSticker}
+              alt=""
+              width={64}
+              height={64}
+            />
             <h2 className="section-title" data-subsection="Como tudo começou">
               Como tudo começou
             </h2>

@@ -33,6 +33,7 @@ export async function fetchJsonWithCache<T>(
   cacheKey: string,
   validate: Validator<T>,
   ttlMs: number = DEFAULT_TTL_MS,
+  options: { signal?: AbortSignal; allowStaleOnError?: boolean } = {},
 ): Promise<T> {
   const key = STORAGE_KEYS.CACHE.DATA(cacheKey);
   const cached = readCache(key, validate);
@@ -44,7 +45,7 @@ export async function fetchJsonWithCache<T>(
   }
 
   try {
-    const response = await fetch(url, { headers: { Accept: 'application/json' } });
+    const response = await fetch(url, { headers: { Accept: 'application/json' }, signal: options.signal });
     if (!response.ok) throw new Error(`Falha ao carregar dados (HTTP ${response.status}).`);
     const data: unknown = await response.json();
     if (!validate(data)) throw new Error('A API retornou dados públicos inválidos.');
@@ -55,7 +56,7 @@ export async function fetchJsonWithCache<T>(
     }
     return data;
   } catch (error) {
-    if (cached) return cached.data;
+    if (cached && options.allowStaleOnError !== false) return cached.data;
     throw error;
   }
 }

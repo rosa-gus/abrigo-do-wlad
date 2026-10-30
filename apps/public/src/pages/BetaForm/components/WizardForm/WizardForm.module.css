@@ -4,20 +4,125 @@
   margin: 2rem auto;
   padding: 2rem;
   width: 100%;
+  max-width: 840px;
+  box-sizing: border-box;
   background-color: var(--surface-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
 }
 
+.stepHeader {
+  margin-bottom: 2rem;
+  text-align: left;
+}
+
+.stepEyebrow {
+  margin: 0 0 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
 .stepHeading {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
+  margin: 0;
+  color: var(--text-primary);
+  font-size: clamp(1.5rem, 3vw, 1.875rem);
+  line-height: 1.25;
+  letter-spacing: var(--tracking-heading);
+}
+
+.stepHeading:focus {
+  outline: none;
+}
+
+.stepDescription {
+  margin: 0.5rem 0 1.25rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.progressTrack {
+  height: 6px;
   overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
+  border-radius: var(--radius-xl);
+  background: var(--accent-secondary);
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--secondary);
+  transition: width 0.3s ease;
+}
+
+.stepReview {
+  margin-top: 1rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.stepReview summary {
+  width: fit-content;
+  padding-block: 0.75rem;
+  cursor: pointer;
+}
+
+.stepReview summary:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.stepReview nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.stepReview nav button {
+  min-height: 44px;
+  height: auto;
+  white-space: normal;
+  text-align: left;
+}
+
+.formActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem 1rem;
+  margin-top: 1rem;
+}
+
+.formActions > button {
+  min-height: 44px;
+  white-space: normal;
+  text-align: left;
+}
+
+.resumeNotice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 240px;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.resumeNotice svg {
+  flex-shrink: 0;
+}
+
+.fieldNumber {
+  font-size: 0.8em;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-right: 0.25rem;
 }
 
 /* ========== Step Content ========== */
@@ -35,7 +140,7 @@
 .stepContent {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1.5rem;
 }
 
 .helperText {
@@ -66,7 +171,7 @@
   background: var(--surface-card);
   color: var(--text-primary);
   transition: var(--transition);
-  height: 40px;
+  height: 48px;
   width: 100%;
   box-sizing: border-box;
 }
@@ -81,6 +186,17 @@
 .field textarea {
   resize: vertical;
   min-height: 60px;
+}
+
+.field .selectTrigger {
+  min-height: 48px;
+  width: 100%;
+  border-color: var(--border);
+  font-size: 0.95rem;
+}
+
+.fieldError .selectTrigger[aria-invalid="true"] {
+  border-color: var(--error);
 }
 
 .fieldError input,
@@ -106,7 +222,7 @@
 .fieldRow {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 2rem;
+  gap: 1.5rem;
 }
 
 .fieldRow > * {
@@ -119,10 +235,6 @@
     border: 0;
     background: transparent;
     box-shadow: none;
-  }
-
-  .warningCard .warningCardBody {
-    padding: 1rem;
   }
 
   .fieldRow {
@@ -259,30 +371,23 @@
 
 /* ========== Warning screen ========== */
 .warningHeader {
-  margin-bottom: 1.75rem;
-  text-align: center;
+  margin-bottom: 1.5rem;
+  text-align: left;
 }
 
 .warningHeader h2 {
-  margin: 0.35rem 0 0.5rem;
-  color: var(--text-primary);
-  font-size: clamp(1.75rem, 4vw, 2.35rem);
-  line-height: 1.1;
+  margin: 0 0 0.5rem;
+  color: var(--text-secondary);
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .warningHeader p {
-  max-width: 620px;
-  margin: 0 auto;
+  margin: 0;
   color: var(--text-secondary);
+  font-size: 0.925rem;
   line-height: 1.6;
-}
-
-.warningEyebrow {
-  color: var(--warning-text);
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
 }
 
 .warningProgress {
@@ -308,13 +413,30 @@
 .warningProgressFill {
   height: 100%;
   border-radius: inherit;
-  background: var(--warning-text);
+  background: var(--secondary);
   transition: width 0.3s ease;
 }
 
-.warningCard {
-  min-height: 380px;
+.wizardContainer .warningCard {
+  --card-mobile-text-align: left;
+  --card-mobile-header-align: flex-start;
   animation: fadeIn 0.25s ease;
+}
+
+.warningCard .warningCardBody {
+  padding: 2rem;
+}
+
+.warningCard .warningCardHeader {
+  margin-bottom: 1.25rem;
+  text-transform: none;
+}
+
+.warningCard .warningCardTitle {
+  text-transform: none;
+  color: var(--text-primary);
+  font-size: clamp(1.25rem, 3vw, 1.5rem);
+  line-height: 1.3;
 }
 
 .warningList {
@@ -333,9 +455,24 @@
 
 .warningActions {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.warningNavigation {
+  display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
-  margin-top: 2rem;
+  margin-left: auto;
+}
+
+.warningNavigation button {
+  min-height: 44px;
+  height: auto;
+  white-space: normal;
+  line-height: 1.4;
 }
 
 .privacyDisclaimer {
@@ -346,7 +483,7 @@
 
 .privacyDisclaimer p {
   color: var(--text-muted);
-  font-size: 0.6rem;
+  font-size: 0.75rem;
   margin-top: 1rem;
   max-width: 250px;
   text-align: end;
@@ -367,17 +504,26 @@
   }
 
   .warningActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .warningNavigation {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    justify-content: stretch;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    width: 100%;
+    margin-left: 0;
   }
 
-  .warningActions > :last-child {
-    grid-column: 1 / -1;
+  .warningExit {
+    order: 2;
+    align-self: flex-start;
   }
+}
 
-  .warningCard {
-    min-height: 0;
+@media (max-width: 600px) {
+  .warningCard .warningCardBody {
+    padding: 1rem;
   }
 }
 
@@ -386,12 +532,14 @@
     margin-bottom: 1.25rem;
   }
 
-  .warningActions {
+  .warningNavigation {
     grid-template-columns: 1fr;
   }
+}
 
-  .warningActions > :last-child {
-    grid-column: auto;
+@media (prefers-reduced-motion: reduce) {
+  .wizardContainer .warningCard {
+    animation: none;
   }
 }
 
@@ -401,4 +549,17 @@
   justify-content: flex-end;
   gap: 1rem;
   margin-top: 1.5rem;
+}
+
+@media (max-width: 600px) {
+  .dialogFooter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dialogFooter button {
+    height: auto;
+    min-height: 44px;
+    white-space: normal;
+  }
 }

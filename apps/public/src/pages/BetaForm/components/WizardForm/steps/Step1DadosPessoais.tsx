@@ -35,6 +35,7 @@ export function Step1DadosPessoais({
         <input
           type="text"
           id="nome_adotante"
+          autoComplete="name"
           value={formData.nome_adotante || ""}
           onChange={(e) => updateField("nome_adotante", e.target.value)}
           placeholder="Seu nome completo"
@@ -94,6 +95,7 @@ export function Step1DadosPessoais({
           <input
             type="text"
             id="profissao"
+            autoComplete="organization-title"
             value={formData.profissao || ""}
             onChange={(e) => updateField("profissao", e.target.value)}
           />
@@ -108,6 +110,7 @@ export function Step1DadosPessoais({
           <input
             type="text"
             id="empresa"
+            autoComplete="organization"
             value={formData.empresa || ""}
             onChange={(e) => updateField("empresa", e.target.value)}
           />
@@ -123,6 +126,7 @@ export function Step1DadosPessoais({
         <input
           type="text"
           id="endereco"
+          autoComplete="street-address"
           value={formData.endereco || ""}
           onChange={(e) => updateField("endereco", e.target.value)}
           placeholder="Rua, Número, Bairro, Cidade..."
@@ -137,8 +141,10 @@ export function Step1DadosPessoais({
           errors={errors}
         >
           <input
-            type="text"
+            type="tel"
             id="telefone"
+            inputMode="tel"
+            autoComplete="tel"
             value={formData.telefone || ""}
             onChange={handlePhoneChange}
             placeholder="(XX) XXXXX-XXXX"
@@ -150,6 +156,7 @@ export function Step1DadosPessoais({
           <input
             type="email"
             id="email"
+            autoComplete="email"
             value={formData.email || ""}
             onChange={(e) => updateField("email", e.target.value)}
           />

@@ -2,6 +2,8 @@ import { useEffect, useState, useRef } from "react";
 import * as Lucide from "lucide-react";
 import * as CardComponent from "@jaci/ui/Card";
 import { ContactLink } from "@/components/common/ContactLink";
+import folderSticker from "@/assets/stickers/fluent-emoji/folder.svg";
+
 import Banner from "../../components/Banner";
 import { ScrollIndicators } from "@/components/ScrollIndicators";
 
@@ -68,7 +70,6 @@ export default function PrivacyPolicy() {
       />
       <Banner
         image={heroImage as string}
-        badge={data.badge}
         title={data.title}
         description={data.description}
       />
@@ -80,8 +81,17 @@ export default function PrivacyPolicy() {
             </p>
 
             <div ref={containerRef} className={styles.privacySections}>
-              {data.sections.map((section) => (
+              {data.sections.map((section, index) => (
                 <div key={section.id}>
+                  {index === 0 && (
+                    <img
+                      className={styles.introSticker}
+                      src={folderSticker}
+                      alt=""
+                      width={64}
+                      height={64}
+                    />
+                  )}
                   <h2 className="section-title">{section.title}</h2>
 
                   {section.type === "card" ? (

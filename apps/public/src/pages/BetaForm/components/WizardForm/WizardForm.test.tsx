@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router";
@@ -54,6 +54,7 @@ function prepareLastStep() {
 describe("WizardForm", () => {
   beforeEach(() => {
     sessionStorage.clear();
+    vi.stubEnv("VITE_RECAPTCHA_PUBLIC_KEY", "synthetic-public-key");
     sessionStorage.setItem(WIZARD_STORAGE_KEYS.showWarning, "false");
     sessionStorage.setItem(WIZARD_STORAGE_KEYS.dialogShown, "true");
     vi.mocked(useIsDesktop).mockReturnValue(false);
@@ -62,6 +63,7 @@ describe("WizardForm", () => {
 
   afterEach(() => {
     document.getElementById(RECAPTCHA_SCRIPT_ID)?.remove();
+    vi.unstubAllEnvs();
   });
 
   it("remove o reCAPTCHA ao sair do wizard e o recarrega ao voltar", () => {
@@ -96,7 +98,7 @@ describe("WizardForm", () => {
     renderWizard();
 
     expect(screen.getByText("Uma decisão para toda a vida")).toBeInTheDocument();
-    expect(screen.getByText("Aviso 1 de 4")).toBeInTheDocument();
+    expect(screen.getByText("Antes de começar · 1 de 4")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Próximo" }));
     expect(screen.getByText("Como funciona o processo")).toBeInTheDocument();
@@ -123,54 +125,30 @@ describe("WizardForm", () => {
     );
   });
 
-  it("permite continuar um preenchimento salvo", async () => {
-    sessionStorage.setItem(
-      WIZARD_STORAGE_KEYS.formData,
-      JSON.stringify(VALID_ADOPTION_APPLICATION),
-    );
-    sessionStorage.removeItem(WIZARD_STORAGE_KEYS.dialogShown);
-    const user = userEvent.setup();
-
+  it("retoma o preenchimento salvo sem interromper com um modal", () => {
+    sessionStorage.setItem(WIZARD_STORAGE_KEYS.formData, JSON.stringify(VALID_ADOPTION_APPLICATION));
     renderWizard();
-
-    expect(screen.getByText("Continuar preenchimento?")).toBeInTheDocument();
-    await user.click(
-      screen.getByRole("button", { name: "Continuar preenchimento" }),
-    );
-
-    await waitFor(() =>
-      expect(
-        screen.queryByText("Continuar preenchimento?"),
-      ).not.toBeInTheDocument(),
-    );
-    expect(sessionStorage.getItem(WIZARD_STORAGE_KEYS.dialogShown)).toBe(
-      "true",
-    );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Retomamos seu preenchimento nesta aba.");
+    expect(screen.getByLabelText(/Nome do adotante/)).toHaveValue(VALID_ADOPTION_APPLICATION.nome_adotante);
   });
 
-  it("permite descartar o preenchimento salvo e começar novamente", async () => {
-    sessionStorage.setItem(
-      WIZARD_STORAGE_KEYS.formData,
-      JSON.stringify(VALID_ADOPTION_APPLICATION),
-    );
+  it("só descarta as respostas após a confirmação explícita", async () => {
+    sessionStorage.setItem(WIZARD_STORAGE_KEYS.formData, JSON.stringify(VALID_ADOPTION_APPLICATION));
     sessionStorage.setItem(ADOPTION_IDEMPOTENCY_STORAGE_KEY, "saved-key");
-    sessionStorage.removeItem(WIZARD_STORAGE_KEYS.dialogShown);
     const user = userEvent.setup();
-
     renderWizard();
-    await user.click(
-      screen.getByRole("button", { name: "Começar um novo" }),
-    );
-
-    await waitFor(() =>
-      expect(
-        screen.queryByText("Continuar preenchimento?"),
-      ).not.toBeInTheDocument(),
-    );
+    await user.click(screen.getByRole("button", { name: "Começar novo formulário" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("Começar um novo formulário?");
+    await user.click(screen.getByRole("button", { name: "Continuar preenchendo" }));
+    expect(screen.getByLabelText(/Nome do adotante/)).toHaveValue(VALID_ADOPTION_APPLICATION.nome_adotante);
+    expect(sessionStorage.getItem(ADOPTION_IDEMPOTENCY_STORAGE_KEY)).toBe("saved-key");
+    await user.click(screen.getByRole("button", { name: "Começar novo formulário" }));
+    await user.click(screen.getByRole("button", { name: "Apagar respostas e recomeçar" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(screen.getByLabelText(/Nome do adotante/)).toHaveValue("");
-    expect(
-      sessionStorage.getItem(ADOPTION_IDEMPOTENCY_STORAGE_KEY),
-    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "Começar novo formulário" })).not.toBeInTheDocument();
+    expect(sessionStorage.getItem(ADOPTION_IDEMPOTENCY_STORAGE_KEY)).toBeNull();
   });
 
   it("pré-preenche o animal recebido pela URL", async () => {
@@ -231,6 +209,21 @@ describe("WizardForm", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("revalida etapas anteriores antes de enviar e leva à primeira resposta inválida", async () => {
+    prepareLastStep();
+    sessionStorage.setItem(WIZARD_STORAGE_KEYS.formData, JSON.stringify({ ...VALID_ADOPTION_APPLICATION, nome_adotante: "   " }));
+    const { execute } = installRecaptcha();
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    renderWizard("/beta/formulario/step/10");
+    await user.click(screen.getByRole("button", { name: /Enviar Respostas/ }));
+    expect(await screen.findByLabelText(/Nome do adotante/)).toHaveFocus();
+    expect(screen.getByText("Etapa 1 de 10")).toBeInTheDocument();
+    expect(execute).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("informa quando o reCAPTCHA não está disponível", async () => {
     prepareLastStep();
     vi.stubGlobal("grecaptcha", undefined);
@@ -242,8 +235,9 @@ describe("WizardForm", () => {
     renderWizard("/beta/formulario/step/10");
     await user.click(screen.getByRole("button", { name: /Enviar Respostas/ }));
 
+    fireEvent.error(document.getElementById(RECAPTCHA_SCRIPT_ID)!);
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "reCAPTCHA não carregou corretamente.",
+      "Não foi possível concluir a verificação de segurança.",
     );
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -307,6 +301,13 @@ describe("WizardForm", () => {
     expect(
       sessionStorage.getItem(ADOPTION_IDEMPOTENCY_STORAGE_KEY),
     ).toBeNull();
+    for (const key of Object.values(WIZARD_STORAGE_KEYS)) {
+      expect(sessionStorage.getItem(key)).toBeNull();
+    }
+    const submit = screen.getByRole("button", { name: /Enviar Respostas/ });
+    expect(submit).toBeDisabled();
+    await user.click(submit);
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 
   it("reutiliza a chave de idempotência ao tentar novamente após uma falha", async () => {
