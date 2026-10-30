@@ -12,7 +12,16 @@ vi.mock("@/components/PixModal", () => ({ default: () => null }));
 
 describe("MobileDock", () => {
   beforeEach(() => {
-    vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: true })));
+    vi.stubGlobal("matchMedia", vi.fn((query: string) => Object.assign(
+      new EventTarget(),
+      {
+        matches: true,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+      },
+    )));
   });
 
   it("avança as opções por seleção, ignora o arrasto lateral e expande com o vertical", async () => {
