@@ -149,6 +149,36 @@ describe("adoption application runtime", () => {
     expect(harness.sendNotification).toHaveBeenCalledOnce();
   });
 
+  it("rejects paused applications before verification, encryption or persistence", async () => {
+    const harness = createHarness({ isAcceptingApplications: async () => false });
+    const response = await harness.handler({ request: createRequest(), env: createEnv() });
+    expect(response.status).toBe(403);
+    expect(harness.verifyRecaptcha).not.toHaveBeenCalled();
+    expect(harness.encryptData).not.toHaveBeenCalled();
+    expect(harness.createDocument).not.toHaveBeenCalled();
+    expect(harness.sendNotification).not.toHaveBeenCalled();
+  });
+
+  it("does not accept an application when availability cannot be verified", async () => {
+    const harness = createHarness({ isAcceptingApplications: async () => { throw new Error("offline"); } });
+    const response = await harness.handler({ request: createRequest(), env: createEnv() });
+    expect(response.status).toBe(503);
+    expect(harness.createDocument).not.toHaveBeenCalled();
+    expect(harness.sendNotification).not.toHaveBeenCalled();
+  });
+
+  it("does not process an application if the rate limiter fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const harness = createHarness();
+    const response = await harness.handler({
+      request: createRequest(),
+      env: createEnv({ ADOPTION_RATE_LIMITER: { limit: async () => { throw new Error("unavailable"); } } }),
+    });
+    expect(response.status).toBe(503);
+    expect(harness.createDocument).not.toHaveBeenCalled();
+    expect(harness.verifyRecaptcha).not.toHaveBeenCalled();
+  });
+
   it("returns an idempotent success when Firestore reports a conflict", async () => {
     const createDocument = vi.fn(async () => {
       throw new FirestoreRestError("Already exists", 409);
