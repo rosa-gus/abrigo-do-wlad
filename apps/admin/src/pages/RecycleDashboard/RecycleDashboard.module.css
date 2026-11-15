@@ -117,29 +117,7 @@
 }
 
 .mapLink {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  background-color: var(--surface-water);
-  color: var(--primary);
-  border: 1px solid var(--control-border);
-  padding: 0.4rem 0.8rem;
-  border-radius: var(--radius-sm);
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 0.85rem;
-  margin-top: 0.5rem;
-  transition: all 0.2s ease;
-  width: fit-content;
-  box-shadow: var(--shadow-sm);
-}
-
-.mapLink:hover {
-  background-color: var(--surface-water);
-  border-color: var(--border);
-  color: var(--primary-hover);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
+  margin-right: auto;
 }
 
 /* Ações do Card */
@@ -153,7 +131,8 @@
   padding: 0.75rem 0.5rem 0.5rem;
 }
 
-.pointActions .editButton {
+.pointActions .editButton,
+.pointActions .mapLink {
   flex: 0 0 auto;
   height: 2.25rem;
   padding-block: 0;

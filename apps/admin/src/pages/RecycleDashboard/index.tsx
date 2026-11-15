@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { CircleAlert, Plus, MapPin, Pencil, Trash2, Map, RefreshCw } from "lucide-react";
 import { Badge } from "@jaci/ui/Badge";
-import { Button } from "@jaci/ui/Button";
+import { Button, ButtonLink } from "@jaci/ui/Button";
 import { Card, CardBody, CardContent, CardFooter } from "@jaci/ui/Card";
 import { Separator } from "@jaci/ui/Separator";
 import { EmptyState } from "@jaci/ui/EmptyState";
@@ -14,6 +14,7 @@ import { DeleteModal } from "../../components/DeleteModal";
 import { ErrorModal } from "../../components/ErrorModal";
 import { Pagination } from "@jaci/ui/Pagination";
 import styles from "./RecycleDashboard.module.css";
+import containerStyles from "../DashboardContainer.module.css";
 
 const ITEMS_PER_PAGE = 8;
 
@@ -94,7 +95,7 @@ export default function RecycleDashboard() {
   }
 
   return (
-    <div className="container" style={{ paddingTop: "2rem", paddingBottom: "4rem" }}>
+    <div className={containerStyles.container} style={{ paddingTop: "2rem", paddingBottom: "4rem" }}>
       <header className={styles.pageHeader}>
         <div className={styles.heading}>
           <h1 className={styles.title}>Pontos de Coleta</h1>
@@ -189,22 +190,24 @@ export default function RecycleDashboard() {
                         {point.address && <span className={styles.addressText}>{point.address}</span>}
                       </p>
                     )}
-
-                    {point.googleMapsUrl && (
-                      <a
-                        href={point.googleMapsUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={styles.mapLink}
-                        title="Abrir localização no Google Maps"
-                      >
-                        <Map size={16} /> Ver no Mapa
-                      </a>
-                    )}
                   </CardContent>
                 </CardBody>
 
                 <CardFooter className={styles.pointActions}>
+                  {point.googleMapsUrl && (
+                    <ButtonLink
+                      variant="primary"
+                      size="sm"
+                      leftIcon={<Map size={16} />}
+                      href={point.googleMapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.mapLink}
+                      title="Abrir localização no Google Maps"
+                    >
+                      Ver no Mapa
+                    </ButtonLink>
+                  )}
                   <Button
                     variant="secondary"
                     emphasis="soft"

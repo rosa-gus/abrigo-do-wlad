@@ -13,6 +13,7 @@ import { SuccessModal } from "../../components/SuccessModal";
 import { Pagination } from "@jaci/ui/Pagination";
 import type { DogProps } from "../../types/dogs";
 import styles from "./DogDashboard.module.css";
+import containerStyles from "../DashboardContainer.module.css";
 
 const ITEMS_PER_PAGE = 9; // Cachorros por página
 
@@ -123,7 +124,7 @@ export default function DogDashboard() {
   }
 
   return (
-    <div className="container" style={{ paddingTop: "2rem", paddingBottom: "4rem" }}>
+    <div className={containerStyles.container} style={{ paddingTop: "2rem", paddingBottom: "4rem" }}>
       <header className={styles.pageHeader}>
         <div className={styles.heading}>
           <h1 className={styles.title}>Cachorros</h1>

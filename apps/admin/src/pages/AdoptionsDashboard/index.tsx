@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import containerStyles from "../DashboardContainer.module.css";
 import * as Lucide from "lucide-react";
 import { Button } from "@jaci/ui/Button";
 import { Badge } from "@jaci/ui/Badge";
@@ -464,7 +465,7 @@ export default function AdoptionsDashboard() {
     ADOPTION_REVIEW_STEPS[activeReviewStep] ?? ADOPTION_REVIEW_STEPS[0];
 
   return (
-    <div className={styles.container}>
+    <div className={`${containerStyles.container} ${styles.container}`}>
       <div className={styles.topBar}>
         <div>
           <h1 className={styles.title}>Solicitações de Adoção</h1>

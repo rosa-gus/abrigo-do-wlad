@@ -22,6 +22,7 @@ import { apiRequest } from "../../services/api";
 import type { AdminNotification, NotificationType } from "../../types/notifications";
 
 import styles from "./Dashboard.module.css";
+import containerStyles from "../DashboardContainer.module.css";
 
 interface ExpiringAlert {
   id: string;
@@ -98,7 +99,7 @@ export default function Dashboard() {
     : null;
 
   return (
-    <div className={styles.container}>
+    <div className={`${containerStyles.container} ${styles.container}`}>
       <h1 className={styles.title}>Visão Geral</h1>
       <p className={styles.subtitle}>Acompanhe os números do Abrigo do Wlad em tempo real.</p>
 
