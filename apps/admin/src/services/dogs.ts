@@ -51,3 +51,7 @@ export async function updateDog(id: number, data: DogUpdate) {
   });
   return true;
 }
+
+export async function deleteDraftDog(id: number): Promise<void> {
+  await apiRequest(`/api/admin/dogs/${encodeURIComponent(id)}`, { method: "DELETE" });
+}

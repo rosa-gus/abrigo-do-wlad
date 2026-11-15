@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from "@jaci/ui/Select";
 import { Skeleton } from "@jaci/ui/Skeleton";
+import { Separator } from "@jaci/ui/Separator";
 import { Toggle } from "@jaci/ui/Toggle";
 import { getSystemSettings, updateSystemSettings } from "../../services/systemSettings";
 import { ApiError } from "../../services/api";
@@ -606,6 +607,7 @@ export default function AdoptionsDashboard() {
                   </CardContent>
                 </CardBody>
 
+                <Separator />
                 <CardFooter className={styles.cardActions}>
                   <div className={styles.utilityActions}>
                     <Button

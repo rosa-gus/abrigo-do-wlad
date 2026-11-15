@@ -1,10 +1,27 @@
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { afterEach, beforeEach, test, vi } from "vitest";
+
+import { FirestoreRestClient } from "../shared/api/_lib/firestore";
 
 import worker, { type AppEnv } from "./index";
 
+const publicDog = {
+  nome: "Bidu", idade: "2 anos", cateIdade: "adulto", sexo: "Macho",
+  temperamento: "Dócil", tags: ["docil"], status: "Vacinado e Castrado", fotos: [], cor: "caramelo",
+};
+beforeEach(() => {
+  vi.spyOn(FirestoreRestClient.prototype, "getDocument").mockImplementation(async path => ({
+    id: path.split("/").at(-1)!, name: path, data: { ...publicDog, publicationStatus: "published" },
+  }));
+  vi.spyOn(FirestoreRestClient.prototype, "listDocuments").mockResolvedValue([
+    { id: "dog-1", name: "dogs/dog-1", data: { publicationStatus: "published" } },
+  ]);
+});
+afterEach(() => vi.restoreAllMocks());
+
 function createEnv(): AppEnv {
   return {
+    FIREBASE_PROJECT_ID: "test",
     ASSETS: {
       async fetch(request: Request): Promise<Response> {
         return new Response(`asset:${new URL(request.url).pathname}`);
@@ -29,7 +46,7 @@ test("GET /api/hero-dog returns the current hero dog", async () => {
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), {
     message: "Hero dog fetched successfully.",
-    data: { id: "hero-123", nome: "Bidu" },
+    data: { ...publicDog, id: "hero-123", publicSlug: "bidu" },
   });
 });
 

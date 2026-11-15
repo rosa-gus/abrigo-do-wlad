@@ -32,6 +32,8 @@ interface ExpiringAlert {
 interface DashboardResponse {
   metrics: {
     dogs: number;
+    publishedDogs: number;
+    publishedRecycles: number;
     recycles: number;
     adoptions: number;
     adoptionsViaSite: number;
@@ -55,6 +57,8 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [metrics, setMetrics] = useState({
     dogs: 0,
+    publishedDogs: 0,
+    publishedRecycles: 0,
     recycles: 0,
     adoptions: 0,
     adoptionsViaSite: 0,

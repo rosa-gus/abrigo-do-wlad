@@ -63,16 +63,7 @@ async function renderDogPage(
 ): Promise<Response> {
   const asset = await env.ASSETS.fetch(request);
   const response = responseWithStatus(asset, status);
-  response.headers.set(
-    "Cache-Control",
-    status === 200
-      ? "public, max-age=60, s-maxage=300"
-      : status === 410
-        ? "public, max-age=300, s-maxage=3600"
-        : status === 404
-          ? "public, max-age=60, s-maxage=300"
-          : "no-store",
-  );
+  response.headers.set("Cache-Control", "no-store");
   if (status >= 400) {
     response.headers.set("X-Robots-Tag", metadata.robots);
   }

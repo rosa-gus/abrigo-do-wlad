@@ -63,7 +63,7 @@ export default function DogArchive() {
     <div className="container" style={{ paddingTop: "2rem", paddingBottom: "4rem" }}>
       <header className={styles.header}>
         <h1>Arquivo de cães</h1>
-        <p>Consulte os cães fora do catálogo e restaure seus registros quando necessário.</p>
+        <p>Consulte os cães fora do catálogo e restaure seus registros como rascunho quando necessário.</p>
       </header>
 
       <div className={styles.toolbar}>
@@ -125,7 +125,7 @@ export default function DogArchive() {
                 onClick={() => void restore(dog.id)}
               >
                 <ArchiveRestore size={18} />
-                {restoringId === dog.id ? "Restaurando..." : "Restaurar"}
+                {restoringId === dog.id ? "Restaurando..." : "Restaurar como rascunho"}
               </Button>
             </article>
           ))}

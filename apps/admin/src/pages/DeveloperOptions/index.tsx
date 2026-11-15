@@ -5,6 +5,7 @@ import { EmptyState } from "@jaci/ui/EmptyState";
 import { Textarea } from "@jaci/ui/Field";
 import { Label } from "@jaci/ui/Label";
 import { RadioGroup, RadioGroupItem } from "@jaci/ui/RadioGroup";
+import { Separator } from "@jaci/ui/Separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@jaci/ui/Select";
 import { KeyRound, RefreshCw, Save, ShieldCheck, Trash2 } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
@@ -205,6 +206,7 @@ export default function DeveloperOptions() {
       </header>
 
       <section className={styles.optionSection} aria-labelledby="admin-notification-title">
+        <Separator className={styles.optionSeparator} />
         <div className={styles.optionHeader}>
           <div>
             <h2 id="admin-notification-title" className={styles.optionTitle}>
@@ -309,6 +311,7 @@ export default function DeveloperOptions() {
       </section>
 
       <section className={styles.optionSection} aria-labelledby="system-keys-title">
+        <Separator className={styles.optionSeparator} />
         <div className={styles.optionHeader}>
           <div>
             <h2 id="system-keys-title" className={styles.optionTitle}>Chaves do sistema</h2>

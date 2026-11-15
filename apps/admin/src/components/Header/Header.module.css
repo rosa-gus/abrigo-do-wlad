@@ -38,10 +38,8 @@
   object-fit: contain;
 }
 
-.divider {
-  width: 1px;
+.brandArea .brandSeparator {
   height: 32px;
-  background-color: var(--border);
 }
 
 .mockTag {
@@ -108,7 +106,7 @@
     height: 52px;
   }
 
-  .divider,
+  .brandArea .brandSeparator,
   .userInfo {
     display: none;
   }

@@ -1,3 +1,6 @@
+import { createFirestoreClient } from "../_lib/firestore";
+import { isPublished } from "../../publication";
+import { isDogArchived } from "./archive";
 import type { CloudflareEnv } from "../_lib/env";
 import { jsonResponse } from "../_lib/env";
 import { getCurrentDogFeed, type DogFeed, type PublicDog } from "./feed";
@@ -30,7 +33,7 @@ function unavailableResponse(tombstone: DogTombstone): Response {
     state: "unavailable",
     tombstone,
   } satisfies DogProfilePayload, {
-    "Cache-Control": "public, max-age=300, s-maxage=3600",
+    "Cache-Control": "no-store",
   });
 }
 
@@ -38,7 +41,18 @@ export async function resolveDogProfile(
   env: CloudflareEnv,
   dogId: string,
 ): Promise<DogProfileResolution> {
+  const document = await createFirestoreClient(env).getDocument(`dogs/${dogId}`);
+  if (document && !isDogArchived(document.data) && !isPublished(document.data)) {
+    return { state: "not_found" };
+  }
+  if (document && isDogArchived(document.data) && (!isPublished(document.data) || !document.data.publishedAt)) {
+    return { state: "not_found" };
+  }
   const tombstone = await getDogTombstone(env, dogId);
+  if (!document && !tombstone) return { state: "not_found" };
+  if (document && isDogArchived(document.data)) {
+    return tombstone ? { state: "unavailable", tombstone } : { state: "not_found" };
+  }
   let feed: DogFeed;
   try {
     feed = await getCurrentDogFeed(env);
@@ -83,7 +97,7 @@ function profileResponse(profile: DogProfileResolution): Response {
       state: "available",
       dog: profile.dog,
     } satisfies DogProfilePayload, {
-      "Cache-Control": "public, max-age=60, s-maxage=300",
+      "Cache-Control": "no-store",
     });
   }
   return jsonResponse(404, { message: "Dog not found." });

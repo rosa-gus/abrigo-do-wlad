@@ -6,6 +6,9 @@ import {
 } from "../_lib/firestore";
 import { HTTP_STATUS } from "../_lib/constants";
 import type { CloudflareEnv } from "../_lib/env";
+import { toPublicDog } from "../dogs/feed";
+import { ensureDogPublicSlug } from "../dogs/public-slug";
+import { isPublished } from "../../publication";
 import { isDogArchived } from "../dogs/archive";
 
 const DOGS_COLLECTION = "dogs";
@@ -13,20 +16,24 @@ const DOGS_COLLECTION = "dogs";
 type HeroDog = {
   id: string;
   archivedAt?: unknown;
+  publicationStatus?: unknown;
   [key: string]: unknown;
 };
 
 async function getRandomDogFromServer(
   firestore: FirestoreRestClient,
+  env?: CloudflareEnv,
 ): Promise<HeroDog | null> {
   const randomKey = createFirestoreDocumentId();
   const documents = await firestore.listDocuments<HeroDog>(DOGS_COLLECTION);
-  const available = documents.filter((document) => !isDogArchived(document.data));
+  const available = documents.filter((document) => isPublished(document.data) && !isDogArchived(document.data));
   const selected = available.find((document) => document.id >= randomKey) ?? available[0];
 
-  return selected
-    ? { ...selected.data, id: selected.id }
-    : null;
+  if (!selected) return null;
+  const dog = toPublicDog(selected);
+  if (!dog) return null;
+  const { slug } = await ensureDogPublicSlug(env ?? {}, dog);
+  return { ...dog, publicSlug: slug };
 }
 
 export async function updateHeroDog(env?: CloudflareEnv) {
@@ -38,7 +45,7 @@ export async function updateHeroDog(env?: CloudflareEnv) {
     let attempts = 0;
 
     do {
-      newDog = await getRandomDogFromServer(firestore);
+      newDog = await getRandomDogFromServer(firestore, env);
       attempts++;
     } while (newDog && currentDog && newDog.id === currentDog.id && attempts < 3);
 

@@ -155,3 +155,30 @@ describe("admin entity contracts", () => {
     }).success).toBe(true);
   });
 });
+
+
+describe("publication contracts", () => {
+  test("drafts round-trip without inventing missing dog details", () => {
+    const draft = dogInputSchema.parse({ nome: "Nina" });
+    expect(draft.publicationStatus).toBe("draft");
+    expect(draft.status).toBe("");
+    expect(draft.sexo).toBe("");
+    expect(draft.cateIdade).toBe("");
+    expect(dogEntitySchema.array().parse([{ ...draft, id: 1 }])[0]).toEqual({ ...draft, id: 1 });
+    expect(dogInputSchema.safeParse({ ...draft, publicationStatus: "published" }).success).toBe(false);
+    expect(dogInputSchema.safeParse({ ...validDogInput, publicationStatus: "published" }).success).toBe(true);
+  });
+  test("recycle drafts require an identifier and can omit the address", () => {
+    const draft = recyclePointInputSchema.parse({ name: "Mercado" });
+    expect(draft.address).toBe("");
+    expect(recyclePointEntitySchema.parse({ ...draft, id: "p" }).publicationStatus).toBe("draft");
+    expect(recyclePointInputSchema.safeParse({}).success).toBe(false);
+    expect(recyclePointInputSchema.safeParse({ ...draft, publicationStatus: "published" }).success).toBe(false);
+  });
+  test("updates do not fill absent fields or accept an invalid publication status", () => {
+    expect(dogUpdateSchema.parse({ publicationStatus: "published" })).toEqual({ publicationStatus: "published" });
+    expect(recyclePointUpdateSchema.parse({ publicationStatus: "draft" })).toEqual({ publicationStatus: "draft" });
+    expect(dogUpdateSchema.safeParse({ publicationStatus: "unknown" }).success).toBe(false);
+    expect(dogInputSchema.safeParse({ nome: "Nina", fotos: ["javascript:alert(1)"] }).success).toBe(false);
+  });
+});

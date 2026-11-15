@@ -1,13 +1,15 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router";
-import { CircleAlert, Plus, Search, MapPin, Pencil, Trash2, Map, RefreshCw } from "lucide-react";
+import { CircleAlert, Plus, MapPin, Pencil, Trash2, Map, RefreshCw } from "lucide-react";
 import { Badge } from "@jaci/ui/Badge";
 import { Button } from "@jaci/ui/Button";
 import { Card, CardBody, CardContent, CardFooter } from "@jaci/ui/Card";
-import { Input } from "@jaci/ui/Field";
+import { Separator } from "@jaci/ui/Separator";
 import { EmptyState } from "@jaci/ui/EmptyState";
 import { getRecyclePoints, deleteRecyclePoint } from "../../services/recycle";
 import type { RecyclePoint } from "../../types/recycle";
+import { ListingFilters } from "../../components/ListingFilters";
+import { PUBLICATION_LABELS } from "../../../shared/entities";
 import { DeleteModal } from "../../components/DeleteModal";
 import { ErrorModal } from "../../components/ErrorModal";
 import { Pagination } from "@jaci/ui/Pagination";
@@ -24,6 +26,7 @@ export default function RecycleDashboard() {
   const [reloadToken, setReloadToken] = useState(0);
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [publicationFilter, setPublicationFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [pointToDelete, setPointToDelete] = useState<{id: string, name: string} | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -54,11 +57,12 @@ export default function RecycleDashboard() {
   const filteredPoints = useMemo(() => {
     const term = searchTerm.toLowerCase();
     return points.filter(point =>
+      (publicationFilter === "all" || point.publicationStatus === publicationFilter) && (
       point.neighborhood.toLowerCase().includes(term) ||
       point.zone.toLowerCase().includes(term) ||
       (point.name && point.name.toLowerCase().includes(term))
-    );
-  }, [points, searchTerm]);
+    ));
+  }, [points, searchTerm, publicationFilter]);
 
   // Paginação
   const totalPages = Math.ceil(filteredPoints.length / ITEMS_PER_PAGE);
@@ -92,35 +96,35 @@ export default function RecycleDashboard() {
   return (
     <div className="container" style={{ paddingTop: "2rem", paddingBottom: "4rem" }}>
       <header className={styles.pageHeader}>
-        <h1 className={styles.title}>Pontos de Coleta</h1>
-        <p className={styles.subtitle}>
-          Gerencie os locais que recebem tampinhas em apoio ao abrigo.
-        </p>
+        <div className={styles.heading}>
+          <h1 className={styles.title}>Pontos de Coleta</h1>
+          <p className={styles.subtitle}>Gerencie os locais que recebem tampinhas em apoio ao abrigo.</p>
+        </div>
+        <Button type="button" onClick={() => navigate("/admin/recycle/new")} className={styles.addButton}>
+          <Plus size={20} aria-hidden="true" /> Novo ponto
+        </Button>
       </header>
 
-      <div className={styles.topBar}>
-
-        <div className={styles.searchWrapper}>
-          <Search size={20} aria-hidden="true" />
-          <Input
-            type="text"
-            aria-label="Buscar ponto de coleta"
-            placeholder="Buscar por zona, bairro ou nome..."
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setCurrentPage(1);
-            }}
-          />
-        </div>
-
-        <div className={styles.actionsRight}>
-           <Badge variant="outline">{filteredPoints.length} pontos</Badge>
-           <Button onClick={() => navigate("/admin/recycle/new")} className={styles.addButton}>
-            <Plus size={20} /> Novo Ponto
-          </Button>
-        </div>
-      </div>
+      <ListingFilters
+        searchLabel="Buscar ponto de coleta"
+        searchPlaceholder="Zona, bairro ou nome..."
+        searchValue={searchTerm}
+        onSearchChange={value => {
+          setSearchTerm(value);
+          setCurrentPage(1);
+        }}
+        publicationValue={publicationFilter}
+        onPublicationChange={value => {
+          setPublicationFilter(value);
+          setCurrentPage(1);
+        }}
+        onClear={() => {
+          setSearchTerm("");
+          setPublicationFilter("all");
+          setCurrentPage(1);
+        }}
+        totalItems={loading || loadError ? undefined : filteredPoints.length}
+      />
 
       {loading && (
         <div className={styles.loadingState}>
@@ -154,8 +158,8 @@ export default function RecycleDashboard() {
           icon={<MapPin />}
           title={searchTerm
             ? `Nenhum ponto encontrado para "${searchTerm}"`
-            : "Nenhum ponto de coleta cadastrado ainda."}
-          actions={!searchTerm && (
+            : publicationFilter !== "all" ? "Nenhum ponto com este status." : "Nenhum ponto de coleta cadastrado ainda."}
+          actions={!searchTerm && publicationFilter === "all" && (
             <Button variant="text" onClick={() => navigate("/admin/recycle/new")}>Cadastre o primeiro</Button>
           )}
         />
@@ -170,11 +174,21 @@ export default function RecycleDashboard() {
                 <CardBody className={styles.pointBody}>
                   <CardContent className={styles.pointInfo}>
                     <div className={styles.pointHeader}>
-                      <Badge variant="secondary">{point.zone}</Badge>
-                      <h3 className={styles.pointNeighborhood}>{point.neighborhood}</h3>
+                      <h3 className={styles.pointNeighborhood}>{point.neighborhood || point.name}</h3>
+                      <Badge variant={point.publicationStatus === "published" ? "success" : "outline"}>
+                        {PUBLICATION_LABELS[point.publicationStatus]}
+                      </Badge>
                     </div>
-                    {point.name && <p className={styles.pointName}><strong>{point.name}</strong></p>}
-                    <p className={styles.pointAddress}>{point.address}</p>
+                    {point.name && point.neighborhood && <p className={styles.pointName}><strong>{point.name}</strong></p>}
+                    {(point.zone || point.address) && (
+                      <p className={styles.pointAddress}>
+                        {point.zone && <span className={styles.pointZone}>{point.zone.toLocaleLowerCase("pt-BR")}</span>}
+                        {point.zone && point.address && <>
+                          {" "}<Separator orientation="vertical" />{" "}
+                        </>}
+                        {point.address && <span className={styles.addressText}>{point.address}</span>}
+                      </p>
+                    )}
 
                     {point.googleMapsUrl && (
                       <a
@@ -192,8 +206,10 @@ export default function RecycleDashboard() {
 
                 <CardFooter className={styles.pointActions}>
                   <Button
-                    variant="outline"
+                    variant="secondary"
+                    emphasis="soft"
                     size="sm"
+                    align="center"
                     leftIcon={<Pencil size={18} />}
                     onClick={() => navigate(`/admin/recycle/edit/${point.id}`)}
                     className={styles.editButton}
@@ -205,6 +221,7 @@ export default function RecycleDashboard() {
                   <Button
                     variant="danger"
                     size="icon-sm"
+                    shape="circle"
                     aria-label={`Excluir ${point.name || point.neighborhood}`}
                     onClick={() => openDeleteModal(point.id as string, point.name || point.neighborhood)}
                     className={styles.deleteBtn}

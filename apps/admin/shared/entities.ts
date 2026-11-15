@@ -1,4 +1,9 @@
 import { z } from "zod";
+import { PUBLICATION_STATUSES } from "../../../workers/shared/publication";
+
+export type { PublicationStatus } from "../../../workers/shared/publication";
+export const publicationStatusSchema = z.enum(PUBLICATION_STATUSES);
+export const PUBLICATION_LABELS = { draft: "Rascunho", published: "Publicado" };
 
 export const MAX_DOG_PHOTOS = 6;
 export const MAX_DOG_TAGS = 5;
@@ -149,19 +154,73 @@ const dogWritableFieldsSchema = z.object({
   descricaoCompleta: z.string().trim().max(5_000),
 });
 
-export const dogInputSchema = dogWritableFieldsSchema.extend({
-  instaLink: dogWritableFieldsSchema.shape.instaLink.default(""),
-  descricaoCompleta: dogWritableFieldsSchema.shape.descricaoCompleta.default(""),
+function optionalDetail<T extends z.ZodType>(schema: T) {
+  return z.union([z.literal(""), schema]);
+}
+
+const dogDraftFieldsSchema = dogWritableFieldsSchema.extend({
+  idade: optionalDetail(dogAgeWriteSchema),
+  cateIdade: optionalDetail(dogAgeCategorySchema),
+  sexo: optionalDetail(dogSexSchema),
+  temperamento: optionalDetail(dogTemperamentWriteSchema),
+  status: optionalDetail(dogHealthStatusSchema),
+  cor: z.string().trim().max(80),
+  publicationStatus: publicationStatusSchema,
 });
 
-export const dogDetailsSchema = dogInputSchema.omit({ fotos: true });
+const dogInputFieldsSchema = dogDraftFieldsSchema.extend({
+  idade: dogDraftFieldsSchema.shape.idade.default(""),
+  cateIdade: dogDraftFieldsSchema.shape.cateIdade.default(""),
+  sexo: dogDraftFieldsSchema.shape.sexo.default(""),
+  temperamento: dogDraftFieldsSchema.shape.temperamento.default(""),
+  status: dogDraftFieldsSchema.shape.status.default(""),
+  cor: dogDraftFieldsSchema.shape.cor.default(""),
+  tags: dogDraftFieldsSchema.shape.tags.default([]),
+  fotos: dogDraftFieldsSchema.shape.fotos.default([]),
+  instaLink: dogDraftFieldsSchema.shape.instaLink.default(""),
+  descricaoCompleta: dogDraftFieldsSchema.shape.descricaoCompleta.default(""),
+  publicationStatus: publicationStatusSchema.default("draft"),
+});
 
-export const dogUpdateSchema = dogWritableFieldsSchema.partial().refine(
-  (value) => Object.keys(value).length > 0,
+function requirePublishedFields(
+  data: { publicationStatus: string },
+  context: z.RefinementCtx,
+  schema: z.ZodType,
+) {
+  if (data.publicationStatus !== "published") return;
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    const labels: Record<string, string> = {
+      nome: "o nome", idade: "a idade", cateIdade: "a categoria de idade",
+      sexo: "o sexo", temperamento: "o temperamento", status: "a condição de saúde",
+      cor: "a cor", zone: "a zona", neighborhood: "o bairro", address: "o endereço",
+    };
+    for (const issue of result.error.issues) {
+      const field = String(issue.path[0]);
+      const value = (data as Record<string, unknown>)[field];
+      context.addIssue({ code: "custom", path: issue.path, message: value === "" && labels[field]
+        ? `Informe ${labels[field]} para publicar.` : issue.message });
+    }
+  }
+}
+
+export const dogInputSchema = dogInputFieldsSchema.superRefine((data, context) =>
+  requirePublishedFields(data, context, dogWritableFieldsSchema)
+);
+
+export const dogDetailsSchema = dogInputFieldsSchema.omit({ fotos: true })
+  .superRefine((data, context) =>
+    requirePublishedFields(data, context, dogWritableFieldsSchema.omit({ fotos: true }))
+  );
+
+export const dogUpdateSchema = dogDraftFieldsSchema.extend({
+  expectedUpdateTime: z.string().datetime().optional(),
+}).partial().refine(
+  (value) => Object.keys(value).some(key => key !== "expectedUpdateTime"),
   "Informe ao menos um campo para atualizar o cachorro.",
 );
 
-export const dogEntitySchema = dogInputSchema.extend({
+export const dogEntitySchema = dogInputFieldsSchema.extend({
   id: z.number().int().nonnegative(),
   archivedAt: z.string().datetime().nullish(),
   purgeAfter: z.string().datetime().nullish(),
@@ -169,9 +228,13 @@ export const dogEntitySchema = dogInputSchema.extend({
   archivedBy: z.string().email().nullish(),
   adoptionCountedAt: z.string().datetime().nullish(),
   retainedPhotos: z.array(z.string()).optional(),
-  // Reads stay tolerant so legacy records can be opened and corrected manually.
-  idade: dogAgeReadSchema,
-  temperamento: dogTemperamentReadSchema,
+  schemaVersion: z.number().int().nonnegative().optional(),
+  revision: z.string().datetime().optional(),
+  updatedAt: z.string().datetime().optional(),
+  publishedAt: z.string().datetime().optional(),
+  // Reads allow incomplete drafts and legacy values to be corrected manually.
+  idade: optionalDetail(dogAgeReadSchema).default(""),
+  temperamento: optionalDetail(dogTemperamentReadSchema).default(""),
 });
 
 const GOOGLE_MAPS_HOSTS = new Set([
@@ -222,22 +285,43 @@ const recyclePointWritableFieldsSchema = z.object({
   googleMapsUrl: googleMapsUrlSchema,
 });
 
-export const recyclePointInputSchema = recyclePointWritableFieldsSchema.extend({
-  name: recyclePointWritableFieldsSchema.shape.name.default(""),
-  googleMapsUrl: recyclePointWritableFieldsSchema.shape.googleMapsUrl.default(""),
+const recyclePointDraftFieldsSchema = recyclePointWritableFieldsSchema.extend({
+  zone: z.string().trim().max(80),
+  neighborhood: z.string().trim().max(120),
+  address: z.string().trim().max(300),
+  publicationStatus: publicationStatusSchema,
 });
 
-export const recyclePointUpdateSchema = recyclePointWritableFieldsSchema
-  .partial()
-  .refine(
-    (value) => Object.keys(value).length > 0,
-    "Informe ao menos um campo para atualizar o ponto de coleta.",
-  );
+const recyclePointInputFieldsSchema = recyclePointDraftFieldsSchema.extend({
+  zone: recyclePointDraftFieldsSchema.shape.zone.default(""),
+  neighborhood: recyclePointDraftFieldsSchema.shape.neighborhood.default(""),
+  address: recyclePointDraftFieldsSchema.shape.address.default(""),
+  name: recyclePointDraftFieldsSchema.shape.name.default(""),
+  googleMapsUrl: recyclePointDraftFieldsSchema.shape.googleMapsUrl.default(""),
+  publicationStatus: publicationStatusSchema.default("draft"),
+});
 
-export const recyclePointEntitySchema = recyclePointWritableFieldsSchema.extend({
+export const recyclePointInputSchema = recyclePointInputFieldsSchema
+  .superRefine((data, context) => {
+    if (!data.name && !data.neighborhood) {
+      context.addIssue({ code: "custom", path: ["name"], message: "Informe o nome do local ou o bairro para identificar o ponto." });
+    }
+    requirePublishedFields(data, context, recyclePointWritableFieldsSchema);
+  });
+
+export const recyclePointUpdateSchema = recyclePointDraftFieldsSchema.extend({
+  expectedUpdateTime: z.string().datetime().optional(),
+}).partial().refine(
+  (value) => Object.keys(value).some(key => key !== "expectedUpdateTime"),
+  "Informe ao menos um campo para atualizar o ponto de coleta.",
+);
+
+export const recyclePointEntitySchema = recyclePointInputFieldsSchema.extend({
   id: z.string().trim().min(1),
-  name: recyclePointWritableFieldsSchema.shape.name.default(""),
-  googleMapsUrl: recyclePointWritableFieldsSchema.shape.googleMapsUrl.default(""),
+  schemaVersion: z.number().int().nonnegative().optional(),
+  revision: z.string().datetime().optional(),
+  updatedAt: z.string().datetime().optional(),
+  publishedAt: z.string().datetime().optional(),
 });
 
 export type DogInput = z.infer<typeof dogInputSchema>;

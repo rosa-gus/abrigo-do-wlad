@@ -14,6 +14,7 @@ function client(fields: Record<string, unknown>, collection = false) {
 
 test("returns only public recycling fields through the REST client", async () => {
   const { rest, fetcher } = client({
+    publicationStatus: { stringValue: "published" },
     zone: { stringValue: "Centro" }, neighborhood: { stringValue: "Vila" },
     address: { stringValue: "Rua 1" }, name: { stringValue: "Ponto" },
     googleMapsUrl: { stringValue: "https://maps.google.com/point" },
@@ -63,4 +64,18 @@ test("upstream failure returns a generic non-cacheable 503", async () => {
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(JSON.stringify(await response.json())).not.toContain("private credentials");
   } finally { log.mockRestore(); }
+});
+
+
+test("recycling API excludes drafts and records without explicit publication", async () => {
+  const { rest } = client({});
+  const list = vi.spyOn(rest, "listDocuments").mockResolvedValue([
+    { id: "draft", name: "recycle_points/draft", data: { name: "Internal", publicationStatus: "draft" } },
+    { id: "legacy", name: "recycle_points/legacy", data: { name: "Legacy" } },
+  ]);
+  try {
+    const response = await getPublicDataResponse(new Request("https://abrigo.test/api/recycle-points"), {}, () => rest);
+    expect(await response.json()).toEqual([]);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+  } finally { list.mockRestore(); }
 });

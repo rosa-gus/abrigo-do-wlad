@@ -33,6 +33,8 @@ import {
   MAX_SOURCE_DOG_IMAGE_BYTES,
   uploadImageToCloudinary,
 } from "../../services/cloudinary";
+import type { PublicationStatus } from "../../../shared/entities";
+import { PublicationActions, PublicationSection } from "../Publication";
 import { SuccessModal } from "../SuccessModal";
 import { ErrorModal } from "../ErrorModal"; // <-- Importação do ErrorModal
 import { ConfirmModal } from "../ConfirmModal";
@@ -54,14 +56,15 @@ interface DogFormProps {
 
 function createDogDetailsInput(initialData?: DogProps): DogDetailsInput {
   return {
+    publicationStatus: initialData?.publicationStatus ?? "draft",
     nome: initialData?.nome ?? "",
     idade: initialData?.idade ?? "",
-    cateIdade: initialData?.cateIdade ?? "adulto",
-    sexo: initialData?.sexo ?? "Macho",
+    cateIdade: initialData?.cateIdade ?? "",
+    sexo: initialData?.sexo ?? "",
     temperamento: initialData?.temperamento ?? "",
     tags: initialData?.tags ?? [],
-    status: initialData?.status ?? DOG_HEALTH_STATUSES[0],
-    cor: initialData?.cor ?? "caramelo",
+    status: initialData?.status ?? "",
+    cor: initialData?.cor ?? "",
     instaLink: initialData?.instaLink ?? "",
     descricaoCompleta: initialData?.descricaoCompleta ?? "",
   };
@@ -87,6 +90,8 @@ export function DogForm({ initialData, onSubmit, title, buttonLabel }: DogFormPr
 
   // ESTADOS PARA OS MODAIS
   const [showSuccess, setShowSuccess] = useState(false);
+  const [confirmUnpublish, setConfirmUnpublish] = useState(false);
+  const [savedStatus, setSavedStatus] = useState<PublicationStatus>("draft");
   const [errorInfo, setErrorInfo] = useState({ show: false, message: "" });
   const [photoPendingRemoval, setPhotoPendingRemoval] = useState<DogPhoto | null>(null);
 
@@ -224,11 +229,23 @@ export function DogForm({ initialData, onSubmit, title, buttonLabel }: DogFormPr
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const validatedDetails = dogDetailsSchema.safeParse(formData);
+    if (isSubmitting) return;
+    const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+    const status = submitter?.value === "published" ? "published" : "draft";
+    if (status === "draft" && initialData?.publicationStatus === "published") {
+      setConfirmUnpublish(true);
+      return;
+    }
+    await save(status);
+  };
+
+  const save = async (publicationStatus: PublicationStatus) => {
+    if (isSubmitting) return;
+    const validatedDetails = dogDetailsSchema.safeParse({ ...formData, publicationStatus });
     if (!validatedDetails.success) {
       setErrorInfo({
         show: true,
-        message: validatedDetails.error.issues[0]?.message
+        message: [...new Set(validatedDetails.error.issues.map(issue => issue.message))].join(" ")
           ?? "Revise os dados do cachorro antes de continuar.",
       });
       return;
@@ -267,6 +284,8 @@ export function DogForm({ initialData, onSubmit, title, buttonLabel }: DogFormPr
       setUploadProgress("Salvando dados...");
       await onSubmit(finalData);
 
+      setSavedStatus(publicationStatus);
+      setConfirmUnpublish(false);
       setShowSuccess(true);
 
     } catch (error: unknown) {
@@ -287,7 +306,7 @@ export function DogForm({ initialData, onSubmit, title, buttonLabel }: DogFormPr
 
   const handleCloseSuccess = () => {
     setShowSuccess(false);
-    navigate("/admin");
+    navigate("/admin/dog");
   };
 
   return (
@@ -297,7 +316,7 @@ export function DogForm({ initialData, onSubmit, title, buttonLabel }: DogFormPr
         isOpen={showSuccess}
         onClose={handleCloseSuccess}
         title="Tudo certo!"
-        message="Os dados do cachorro foram salvos com sucesso."
+        message={savedStatus === "published" ? "Ficha publicada. As alterações estão salvas." : "Rascunho salvo. A ficha não está disponível ao público."}
       />
 
       <ErrorModal
@@ -316,6 +335,11 @@ export function DogForm({ initialData, onSubmit, title, buttonLabel }: DogFormPr
         isDestructive
       />
 
+      <ConfirmModal isOpen={confirmUnpublish} onClose={() => setConfirmUnpublish(false)}
+        onConfirm={() => void save("draft")} title="Voltar para rascunho?"
+        message="A ficha será retirada do site. As informações e fotos serão preservadas."
+        confirmText="Salvar e retirar do site" isConfirming={isSubmitting} />
+
       <FormShell
         title={title}
         backTo="/admin/dog"
@@ -324,7 +348,11 @@ export function DogForm({ initialData, onSubmit, title, buttonLabel }: DogFormPr
         submitLabel={buttonLabel}
         submittingLabel={uploadProgress || "Salvando..."}
         onSubmit={handleSubmit}
+        noValidate
+        actions={<PublicationActions status={initialData?.publicationStatus ?? "draft"}
+          isSubmitting={isSubmitting} progress={uploadProgress} />}
       >
+        <PublicationSection status={initialData?.publicationStatus ?? "draft"} updatedAt={initialData?.updatedAt} />
         <FormSection
           icon={<PawPrint size={24} />}
           title="Dados principais"
@@ -592,9 +620,8 @@ export function DogForm({ initialData, onSubmit, title, buttonLabel }: DogFormPr
             />
           </Field>
 
-          <Field controlId="dog-status" label="Status" required>
+          <Field controlId="dog-status" label="Condição de saúde">
             <SelectComponent.Select
-              required
               value={formData.status}
               onValueChange={value => {
                 const status = dogHealthStatusSchema.safeParse(value);

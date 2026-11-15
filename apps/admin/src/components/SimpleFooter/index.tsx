@@ -1,4 +1,5 @@
 import { ExternalLink } from "lucide-react";
+import { Separator } from "@jaci/ui/Separator";
 import { PUBLIC_APP_URL } from "../../config";
 import styles from "./SimpleFooter.module.css";
 
@@ -14,7 +15,7 @@ export function SimpleFooter() {
         Portal Principal <ExternalLink size={14} />
       </a>
 
-      <span className={styles.divider}>|</span>
+      <Separator orientation="vertical" className={styles.divider} />
 
       <span className={styles.text}>Desenvolvido por</span>
 

@@ -1,4 +1,5 @@
 import { ExternalLink } from "lucide-react";
+import { Separator } from "@jaci/ui/Separator";
 import { PUBLIC_APP_URL } from "../../config";
 import styles from "./Footer.module.css";
 
@@ -8,6 +9,7 @@ export function Footer() {
       <div className={`container ${styles.content}`}>
         <div className={styles.infoGroup}>
           <span>&copy; {new Date().getFullYear()} Abrigo do Wlad</span>
+          <Separator orientation="vertical" className={styles.portalSeparator} />
           <a
             href={PUBLIC_APP_URL}
             target="_blank"

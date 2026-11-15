@@ -2,6 +2,8 @@ import { generateKeyPairSync } from "node:crypto";
 import { env } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { FirestoreRestClient } from "../shared/api/_lib/firestore";
+
 import worker, { type AppEnv } from "./index";
 
 const blockedFetch = vi.fn<typeof fetch>(async () => {
@@ -11,6 +13,7 @@ const blockedFetch = vi.fn<typeof fetch>(async () => {
 function createEnv(): AppEnv {
   return {
     KV: env.KV,
+    FIREBASE_PROJECT_ID: "test",
     ADOPTION_RATE_LIMITER: { limit: async () => ({ success: true }) },
     APP_ENV: "production",
     ALLOWED_ORIGIN: "https://abrigo.test",
@@ -122,6 +125,10 @@ describe("Worker app runtime", () => {
     await env.KV.delete("dogs-tombstone:dog-1");
     await env.KV.delete("dogs-public-slug:slug:pacoca");
     await env.KV.delete("dogs-public-slug:id:dog-1");
+    vi.spyOn(FirestoreRestClient.prototype, "getDocument").mockImplementation(async path => ({
+      id: path.split("/").at(-1)!, name: path,
+      data: { ...currentDogFeed().dogs[0], publicationStatus: "published" },
+    }));
     blockedFetch.mockClear();
     vi.stubGlobal("fetch", blockedFetch);
   });
@@ -129,6 +136,7 @@ describe("Worker app runtime", () => {
   afterEach(() => {
     expect(blockedFetch).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it("reads the hero dog through the local KV binding", async () => {
@@ -145,7 +153,7 @@ describe("Worker app runtime", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       message: "Hero dog fetched successfully.",
-      data: { id: "hero-runtime", nome: "Bidu" },
+      data: { ...currentDogFeed().dogs[0], id: "hero-runtime", tags: ["docil"] },
     });
   });
 
@@ -186,7 +194,7 @@ describe("Worker app runtime", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Cache-Control")).toBe(
-      "public, max-age=60, s-maxage=300",
+      "no-store",
     );
     const html = await response.text();
     expect(html).toContain("<title>Paçoca para adoção | Abrigo do Wlad</title>");
@@ -332,6 +340,7 @@ describe("Worker app runtime", () => {
   });
 
   it("serves public data through REST without exposing private fields", async () => {
+    vi.mocked(FirestoreRestClient.prototype.getDocument).mockRestore();
     const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
     const appEnv: AppEnv = {
       ...createEnv(),
@@ -357,6 +366,7 @@ describe("Worker app runtime", () => {
       return Response.json([{ document: {
         name: "projects/public-data-runtime/databases/(default)/documents/recycle_points/point-1",
         fields: {
+          publicationStatus: { stringValue: "published" },
           zone: { stringValue: "Centro" }, neighborhood: { stringValue: "Vila" },
           address: { stringValue: "Rua 1" }, privateNote: { stringValue: "secret" },
         },

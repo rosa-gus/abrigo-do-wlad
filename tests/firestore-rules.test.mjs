@@ -36,12 +36,13 @@ beforeEach(async () => testEnvironment.clearFirestore());
 after(async () => testEnvironment.cleanup());
 
 describe("public data", () => {
-  test("allows reads for recycle points and public settings", async () => {
+  test("isolates recycle points and allows public settings", async () => {
     await seed("recycle_points/point-1", { name: "Point" });
     await seed("system/settings", { adoptionEnabled: true });
     const db = testEnvironment.unauthenticatedContext().firestore();
 
-    await assertSucceeds(getDoc(doc(db, "recycle_points/point-1")));
+    await assertFails(getDoc(doc(db, "recycle_points/point-1")));
+    await assertFails(getDocs(collection(db, "recycle_points")));
     await assertSucceeds(getDoc(doc(db, "system/settings")));
   });
 });

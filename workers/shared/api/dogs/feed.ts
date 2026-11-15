@@ -4,6 +4,7 @@ import type { CloudflareEnv } from "../_lib/env";
 import { jsonResponse } from "../_lib/env";
 import { getKvStore } from "../_lib/kv";
 import { isDogArchived } from "./archive";
+import { isPublished } from "../../publication";
 import {
   ensureDogPublicSlug,
   isValidDogPublicSlug,
@@ -131,7 +132,7 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
-function toPublicDog(
+export function toPublicDog(
   document: FirestoreDocument<Record<string, unknown>>,
 ): Omit<PublicDog, "publicSlug"> | null {
   const data = document.data;
@@ -238,7 +239,7 @@ export async function updateDogFeed(
     DOGS_COLLECTION,
   );
   const sourceDogs = documents.flatMap((document) => {
-    if (isDogArchived(document.data)) return [];
+    if (isDogArchived(document.data) || !isPublished(document.data)) return [];
     const dog = toPublicDog(document);
     return dog ? [dog] : [];
   });
@@ -303,6 +304,16 @@ async function readDogFeed(
 
 export async function getCurrentDogFeed(env: CloudflareEnv): Promise<DogFeed> {
   return (await readDogFeed(env)) ?? updateDogFeed(env);
+}
+
+// Check the source on every public read, including old pagination snapshots.
+// A failed check must never fall back to a formerly public copy.
+export async function filterVisibleDogFeed(env: CloudflareEnv, feed: DogFeed): Promise<DogFeed> {
+  const documents = await createFirestoreClient(env).listDocuments("dogs");
+  const visibleIds = new Set(documents.filter(({ data }) =>
+    isPublished(data) && !isDogArchived(data)
+  ).map(({ id }) => id));
+  return { ...feed, dogs: feed.dogs.filter(dog => visibleIds.has(dog.id)) };
 }
 
 function positiveInteger(
@@ -413,13 +424,13 @@ export async function getDogFeedResponse(
         message: "Requested feed version is no longer available.",
       });
     }
-    const page = paginateDogFeed(feed, url);
+    const page = paginateDogFeed(await filterVisibleDogFeed(env, feed), url);
     if (!page) {
       return jsonResponse(400, { message: "Invalid dog feed parameters." });
     }
 
     return jsonResponse(200, page, {
-      "Cache-Control": "public, max-age=60, s-maxage=300",
+      "Cache-Control": "no-store",
     });
   } catch (error) {
     console.error(JSON.stringify({

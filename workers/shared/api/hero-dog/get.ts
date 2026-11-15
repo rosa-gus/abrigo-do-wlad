@@ -1,3 +1,8 @@
+import { createFirestoreClient } from "../_lib/firestore";
+import { isPublished } from "../../publication";
+import { isDogArchived } from "../dogs/archive";
+import { toPublicDog } from "../dogs/feed";
+import { ensureDogPublicSlug, isValidPublicDogId } from "../dogs/public-slug";
 import { getKvStore } from "../_lib/kv";
 import { HTTP_STATUS } from "../_lib/constants";
 import { jsonResponse, type CloudflareEnv } from "../_lib/env";
@@ -17,12 +22,17 @@ export async function onRequest({
 
   try {
     const kvStore = getKvStore(env);
-    const dog = await kvStore.get("hero-dog");
+    const cached = await kvStore.get<{ id?: string }>("hero-dog");
+    const document = cached?.id && isValidPublicDogId(cached.id)
+      ? await createFirestoreClient(env).getDocument(`dogs/${cached.id}`)
+      : null;
+    const dog = document && isPublished(document.data) && !isDogArchived(document.data)
+      ? toPublicDog(document) : null;
 
     if (dog) {
       return jsonResponse(HTTP_STATUS.OK, {
         message: "Hero dog fetched successfully.",
-        data: dog,
+        data: { ...dog, publicSlug: (await ensureDogPublicSlug(env, dog)).slug },
       });
     }
 
