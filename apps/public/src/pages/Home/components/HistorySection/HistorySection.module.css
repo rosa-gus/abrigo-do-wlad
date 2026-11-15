@@ -39,11 +39,6 @@
 }
 
 @media (max-width: 768px) {
-  .contentSection {
-    margin-top: 4rem;
-    padding: 4rem 0;
-  }
-
   .gridContainer {
     grid-template-columns: 1fr;
     gap: 2.5rem;

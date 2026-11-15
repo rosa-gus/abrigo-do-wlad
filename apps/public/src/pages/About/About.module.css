@@ -1,15 +1,32 @@
-.historyContainer {
-  display: grid;
-  grid-template-columns: 1.5fr 1fr;
-  align-items: start;
-  gap: 50px;
+.article {
+  width: 100%;
+  padding-block: clamp(2rem, 5vw, 4rem);
+  overflow-wrap: anywhere;
 }
 
-.historyText {
-  text-align: left;
+.chapter + .chapter {
+  margin-top: clamp(2.5rem, 5vw, 4rem);
 }
 
-.historySticker {
+.chapter > h2 {
+  margin: 0 0 1.25rem;
+  color: var(--text-primary);
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: var(--tracking-heading);
+  text-wrap: balance;
+}
+
+.chapter > p {
+  margin: 0 0 1.5rem;
+  color: var(--text-secondary);
+  font-size: 1.05rem;
+  line-height: 1.9;
+  text-align: start;
+}
+
+.introSticker {
   display: block;
   width: 64px;
   height: 64px;
@@ -17,62 +34,62 @@
   object-fit: contain;
 }
 
-.historyText > .historySticker + h2 {
-  margin-top: 0;
-}
-
-.historyText p {
-  margin-bottom: 1.5rem;
-  font-size: 1.05rem;
-  text-align: start;
-  color: var(--text-secondary);
-}
-
-.historyText > h2,
-.historyText > h3 {
+.opening .lead {
+  margin: 0 0 1.5rem;
   color: var(--text-primary);
-  margin-top: 40px;
-  margin-bottom: 15px;
+  font-size: clamp(1.125rem, 2vw, 1.25rem);
+  line-height: 1.8;
 }
 
-.historyText > h3 {
-  font-size: 1.8rem;
-  letter-spacing: var(--tracking-heading);
+.highlight {
+  height: auto;
+  margin-block: 2rem;
 }
 
-.imageWrapper {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  opacity: 0;
-  transform: translateX(-50px);
-  transition: all 0.8s cubic-bezier(0.5, 0, 0, 1);
+.photograph {
+  margin: clamp(2rem, 5vw, 3rem) 0;
 }
 
-.historyImageContainer {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  position: sticky;
-  margin-top: 3.5rem;
-  margin-bottom: 6rem;
-  top: 120px;
-}
-
-.historyImage {
-  border-radius: var(--radius);
-  width: 100%;
-  height: clamp(350px, 25vw, 600px);
-  object-fit: cover;
+.photograph img {
   display: block;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+  border-radius: var(--radius);
 }
 
-@media (max-width: 768px) {
-  .historyContainer {
-    display: block;
-  }
-  .historyImageContainer {
-    display: none;
-  }
+.photograph figcaption {
+  margin-top: 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.relatedLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 100%;
+  color: var(--primary);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.6;
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+  text-underline-offset: 0.25em;
+  transition: color 180ms ease, text-decoration-color 180ms ease;
+}
+
+.relatedLink:hover {
+  color: var(--primary-hover);
+  text-decoration-color: currentColor;
+}
+
+.relatedLink svg {
+  flex-shrink: 0;
+}
+
+.articleFooter {
+  margin-top: clamp(2.5rem, 5vw, 4rem);
 }

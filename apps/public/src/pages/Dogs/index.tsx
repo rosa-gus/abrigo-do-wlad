@@ -426,8 +426,6 @@ export default function Dogs() {
           />
         )}
 
-        <AdoptionBanner context="catalog" />
-
         <LiveRegion>
           {loading
             ? "Atualizando resultados"
@@ -501,6 +499,8 @@ export default function Dogs() {
             )}
           </>
         )}
+
+        <AdoptionBanner context="catalog" />
       </div>
 
       <DogModal

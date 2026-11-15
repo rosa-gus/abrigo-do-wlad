@@ -1,3 +1,10 @@
+.filterDefinitions {
+  position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
 .contentSection {
   padding: clamp(1.25rem, 4vw, 3.5rem);
   border: 1px solid color-mix(in srgb, var(--brand-earth) 16%, var(--surface-earth));
@@ -184,6 +191,8 @@
 }
 
 .tagDog {
+  --tag-dog-shadow: drop-shadow(0 2px 2px color-mix(in srgb, var(--brand-earth) 14%, transparent));
+
   pointer-events: none;
   grid-area: 1 / 1;
   align-self: start;
@@ -193,11 +202,10 @@
   height: 96px;
   min-height: 0;
   object-fit: contain;
-  filter: drop-shadow(0 3px 2px color-mix(in srgb, var(--brand-earth) 18%, transparent));
 }
 
 .tagWrapper[data-revealed="true"] .tagDog {
-  animation: dogPortraitTurn 2.4s steps(1, end) infinite;
+  animation: dogPortraitTurn 2.4s steps(1, end) 1;
   animation-delay: calc(var(--tag-swing-delay) + var(--tag-swing-duration));
 }
 

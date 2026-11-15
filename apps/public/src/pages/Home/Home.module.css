@@ -1,7 +1,7 @@
 .homeContainer {
   display: flex;
   flex-direction: column;
-  gap: 9rem;
+  gap: clamp(4rem, 7vw, 7rem);
   margin-top: 10rem;
 }
 

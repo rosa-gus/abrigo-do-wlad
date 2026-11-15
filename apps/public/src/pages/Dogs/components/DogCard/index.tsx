@@ -39,6 +39,7 @@ export function DogCard({ data, onClick, isLoading }: DogCardProps) {
   return (
     <Card
       variant="image"
+      className={styles.dogCard}
       interactive
       // disable click if loading
       onClick={isLoading ? undefined : handleClick}
@@ -53,14 +54,17 @@ export function DogCard({ data, onClick, isLoading }: DogCardProps) {
         </div>
       )}
 
-      <CardBody imageSrc={dogImageUrl}>
-        <CardHeader>
+      <CardBody imageSrc={dogImageUrl} className={styles.photo}>
+        <CardHeader className={styles.photoHeader}>
           <CardTitle className={styles.dogTitle}>
             <span>Oi, eu sou </span>
             <span className={styles.dogName}>{data.nome}!</span>
           </CardTitle>
+          {data.temperamento && (
+            <p className={styles.temperament}>{data.temperamento}</p>
+          )}
         </CardHeader>
-        <CardContent>
+        <CardContent className={styles.photoContent}>
           <div className={styles.cardContainer}>
             <div className={styles.badgeContainer}>
               <Badge
@@ -99,14 +103,13 @@ export function DogCard({ data, onClick, isLoading }: DogCardProps) {
                 {data.status}
               </Badge>
             </div>
-            <p>{data.temperamento}</p>
           </div>
         </CardContent>
       </CardBody>
       <CardFooter>
-        <CardButton>
+        <CardButton className={styles.cardAction}>
           Conheça {data.nome}
-          <Lucide.ChevronUp />
+          <Lucide.ChevronRight aria-hidden="true" />
         </CardButton>
       </CardFooter>
     </Card>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@jaci/ui/Badge";
 import { Button, ButtonLink } from "@jaci/ui/Button";
 import * as CardComponent from "@jaci/ui/Card";
@@ -17,7 +17,6 @@ import recyclingSticker from "@/assets/stickers/fluent-emoji/recycling-symbol.sv
 
 import Banner from "@/components/Banner";
 import { PageFeedback } from "@/components/PageFeedback";
-import { ScrollIndicators } from "@/components/ScrollIndicators";
 import { analytics } from "@/utils/analytics";
 import { getThirdPartyImage } from "@/utils/common";
 
@@ -138,10 +137,6 @@ export default function Recycle() {
       })),
     [],
   );
-  const containerRef = useRef<HTMLDivElement>(null!);
-  const section1Ref = useRef<HTMLElement>(null!);
-  const section2Ref = useRef<HTMLElement>(null!);
-  const sectionLabels = ["O que doar?", "Pontos de coleta"];
 
   const [collectionPoints, setCollectionPoints] = useState<RecyclePoint[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -226,19 +221,14 @@ export default function Recycle() {
 
   return (
     <>
-      <ScrollIndicators
-        containerRef={containerRef}
-        sectionCount={2}
-        labels={sectionLabels}
-      />
       <Banner
         image={heroImage as string}
         title="Sua tampinha vale vidas"
         description="Transformamos tampinhas em ração e medicamentos para os cães do abrigo. Encontre um ponto de coleta e participe."
       />
 
-      <div className={styles.mainContainer} ref={containerRef}>
-        <section className="container" ref={section1Ref}>
+      <div className={styles.mainContainer}>
+        <section className="container">
           <div className={styles.recycleTextContainer}>
             <img
               className={styles.introSticker}
@@ -317,7 +307,7 @@ export default function Recycle() {
           </div>
         </section>
 
-        <section className="container" ref={section2Ref}>
+        <section className="container">
           <div className={styles.collectionSection}>
             <header className={styles.collectionIntro}>
               <h2 className="section-title">Pontos de coleta</h2>

@@ -21,3 +21,18 @@
   flex-shrink: 0;
   object-fit: contain;
 }
+
+.actionCard.actionCard:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+
+.cardAction.cardAction:hover {
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .actionCard.actionCard:hover {
+    transform: none;
+  }
+}

@@ -22,6 +22,7 @@ interface HeroProps {
 }
 
 export function Hero({ dog }: HeroProps) {
+  const dogName = import.meta.env.PUBLIC_DEV_TOOLS ? "Pedro" : dog?.nome;
   const mainImage = import.meta.env.PUBLIC_DEV_TOOLS
     ? mockHeroImage
     : dog?.fotos?.[0] ?? null;
@@ -73,7 +74,6 @@ export function Hero({ dog }: HeroProps) {
         </div>
       </div>
 
-      {/* image */}
       <div className={styles.heroOverlay}>
         {heroImageUrl ? (
           <img
@@ -99,16 +99,16 @@ export function Hero({ dog }: HeroProps) {
               import.meta.env.PUBLIC_DEV_TOOLS
                 ? "Cão do Abrigo do Wlad"
                 : dog
-                  ? `Foto de ${dog.nome}`
-                  : "Cachorro para adoção"
+                  ? `Outra foto de ${dog.nome}`
+                  : "Outra foto do cachorro para adoção"
             }
           />
         )}
-        {!import.meta.env.PUBLIC_DEV_TOOLS && dog && dog.nome && (
+        {dogName && (
           <Badge
             variant="primary"
             size="md"
-            leftIcon={<Lucide.Dog />}
+            leftIcon={<Lucide.Dog aria-hidden="true" />}
             style={{
               position: "absolute",
               bottom: "-0.5rem",
@@ -119,7 +119,7 @@ export function Hero({ dog }: HeroProps) {
               boxShadow: "none",
             }}
           >
-            {dog.nome}
+            {dogName}
           </Badge>
         )}
       </div>

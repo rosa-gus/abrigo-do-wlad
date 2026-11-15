@@ -62,3 +62,51 @@
     transform: rotate(360deg);
   }
 }
+
+.dogCard.dogCard:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+
+.cardAction.cardAction:hover {
+  transform: none;
+}
+
+.photo.photo {
+  min-height: 32rem;
+}
+
+.photoHeader {
+  gap: 0.5rem;
+}
+
+/* Share the photo area between the introduction and the bottom metadata. */
+.photoContent.photoContent {
+  min-height: 0;
+}
+
+.dogCard.dogCard .photo::before,
+.dogCard.dogCard:hover .photo::before {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--overlay-dark) 95%, transparent) 0%,
+    color-mix(in srgb, var(--overlay-dark) 65%, transparent) 28%,
+    var(--card-image-gradient) 52%,
+    color-mix(in srgb, var(--overlay-dark) 95%, transparent) 100%
+  );
+}
+
+.temperament {
+  margin: 0;
+  color: var(--text-on-image);
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+  text-shadow: 0 1px 3px var(--overlay-dark);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dogCard.dogCard:hover {
+    transform: none;
+  }
+}
