@@ -13,11 +13,13 @@ vi.mock("../../../workers/shared/api/_lib/encryption", () => ({
   encryptSystemKey: () => "encrypted-system-key",
 }));
 
-vi.mock("../../../workers/shared/api/_lib/firestore", () => ({
+vi.mock("../../../workers/shared/api/_lib/firestore", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../../../workers/shared/api/_lib/firestore")>(),
   createFirestoreClient: () => firestore,
 }));
 
 import { rotateSystemKey } from "./system-keys";
+import { FirestoreRestError } from "../../../workers/shared/api/_lib/firestore";
 
 const env = {} as Env;
 const identity: AccessIdentity = {
@@ -28,6 +30,49 @@ const identity: AccessIdentity = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+test("rotation retries a concurrent increment using the latest counters", async () => {
+  const key = {
+    id: "existing-key", key: "encrypted-key", version: "v1",
+    createdAt: "2026-08-22T12:00:00.000Z", counter: 3, active: true,
+  };
+  const document = {
+    name: "projects/test/databases/(default)/documents/system/keys",
+    updateTime: "2026-08-23T12:00:00.000Z",
+    data: { active_key_id: key.id, keys: { [key.id]: key } },
+  };
+  firestore.getDocument.mockResolvedValueOnce(document).mockResolvedValueOnce({
+    ...document,
+    updateTime: "2026-08-23T12:00:01.000Z",
+    data: { ...document.data, keys: { [key.id]: { ...key, counter: 4 } } },
+  });
+  firestore.updateDocument.mockRejectedValueOnce(new FirestoreRestError("Changed", 400, {
+    error: { status: "FAILED_PRECONDITION" },
+  })).mockResolvedValueOnce({});
+  await rotateSystemKey(env, identity);
+  assert.equal(firestore.getDocument.mock.calls.length, 2);
+  assert.equal(firestore.updateDocument.mock.calls[1][1].keys[key.id].counter, 4);
+  assert.deepEqual(firestore.updateDocument.mock.calls[1][2], {
+    expectedUpdateTime: "2026-08-23T12:00:01.000Z",
+  });
+});
+
+test("rotation stops after three conflicting attempts", async () => {
+  const key = {
+    id: "existing-key", key: "encrypted-key", version: "v1",
+    createdAt: "2026-08-22T12:00:00.000Z", counter: 3,
+  };
+  firestore.getDocument.mockResolvedValue({
+    name: "projects/test/databases/(default)/documents/system/keys",
+    updateTime: "2026-08-23T12:00:00.000Z",
+    data: { active_key_id: key.id, keys: { [key.id]: key } },
+  });
+  for (let attempt = 0; attempt < 3; attempt++) {
+    firestore.updateDocument.mockRejectedValueOnce(new FirestoreRestError("Conflict", 409));
+  }
+  await assert.rejects(() => rotateSystemKey(env, identity), /Conflict/);
+  assert.equal(firestore.updateDocument.mock.calls.length, 3);
 });
 
 test("rotation initializes the first system key when the document does not exist", async () => {

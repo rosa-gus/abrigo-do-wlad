@@ -161,40 +161,10 @@
   gap: 0.75rem;
 }
 
-.summaryBody {
-  width: 100%;
-}
-
-.summaryIcon {
-  background: var(--surface-earth);
-  color: var(--primary-hover);
-}
-
 .summaryContent {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
-}
-
-.summaryContent strong {
-  color: var(--text-primary);
-  font-size: 1.6rem;
-}
-
-.summaryLabel,
-.summaryDetail {
-  color: var(--text-muted);
-}
-
-.summaryLabel {
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.summaryDetail {
-  font-size: 0.85rem;
 }
 
 .listSection h3 {
@@ -209,19 +179,29 @@
 }
 
 .keyCard {
+  --card-mobile-text-align: left;
+  --card-mobile-header-align: flex-start;
   height: auto;
+  text-align: left;
 }
 
 .keyBody {
   padding: 1.25rem !important;
 }
 
-.keyHeader {
+.keyCard .keyHeader {
   display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 1rem;
   margin-bottom: 1rem;
+}
+
+.keyHeader h3 {
+  margin: 0;
+  text-align: left;
 }
 
 .keyDetails dl {

@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router";
-import { CircleAlert, Plus, MapPin, Pencil, Trash2, Map, RefreshCw } from "lucide-react";
+import { CircleAlert, Compass, Plus, MapPin, Pencil, Trash2, Map, RefreshCw } from "lucide-react";
 import { Badge } from "@jaci/ui/Badge";
 import { Button, ButtonLink } from "@jaci/ui/Button";
 import { Card, CardBody, CardContent, CardFooter } from "@jaci/ui/Card";
@@ -183,16 +183,27 @@ export default function RecycleDashboard() {
                     {point.name && point.neighborhood && <p className={styles.pointName}><strong>{point.name}</strong></p>}
                     {(point.zone || point.address) && (
                       <p className={styles.pointAddress}>
-                        {point.zone && <span className={styles.pointZone}>{point.zone.toLocaleLowerCase("pt-BR")}</span>}
+                        {point.zone && (
+                          <span className={styles.pointZone}>
+                            <Compass size={16} aria-hidden="true" />
+                            <span>{point.zone.toLocaleLowerCase("pt-BR")}</span>
+                          </span>
+                        )}
                         {point.zone && point.address && <>
-                          {" "}<Separator orientation="vertical" />{" "}
+                          {" "}<Separator orientation="vertical" className={styles.addressSeparator} />{" "}
                         </>}
-                        {point.address && <span className={styles.addressText}>{point.address}</span>}
+                        {point.address && (
+                          <span className={styles.addressText}>
+                            <MapPin size={16} aria-hidden="true" />
+                            <span>{point.address}</span>
+                          </span>
+                        )}
                       </p>
                     )}
                   </CardContent>
                 </CardBody>
 
+                <Separator />
                 <CardFooter className={styles.pointActions}>
                   {point.googleMapsUrl && (
                     <ButtonLink

@@ -1,7 +1,9 @@
 import type { CloudflareEnv } from "../_lib/env";
+import { encryptionCounterIncrement } from "../_lib/encryption-counters";
 import {
   createFirestoreClient,
   type DeleteDocumentsResult,
+  type DocumentFieldIncrement,
   type FirestoreDocument,
 } from "../_lib/firestore";
 
@@ -9,13 +11,15 @@ const ADOPTION_APPLICATIONS_COLLECTION = "adoption_application";
 const EXPIRATION_FIELD = "expiresAt";
 const DEFAULT_BATCH_SIZE = 200;
 const DEFAULT_MAX_BATCHES = 25;
-const MAX_BATCH_SIZE = 500;
+// Reserve one write for the aggregated key counter transforms.
+const MAX_BATCH_SIZE = 499;
 
 type ExpiredApplication = FirestoreDocument<Record<string, unknown>>;
 
 export interface AdoptionCleanupRepository {
   deleteDocumentsIfUnchanged(
     documents: Array<{ name: string; updateTime: string }>,
+    increments?: DocumentFieldIncrement[],
   ): Promise<DeleteDocumentsResult>;
   findExpiredApplications(
     cutoff: Date,
@@ -47,8 +51,8 @@ const productionDependencies: AdoptionCleanupDependencies = {
     const firestore = createFirestoreClient(env);
 
     return {
-      deleteDocumentsIfUnchanged: (documents) =>
-        firestore.deleteDocumentsIfUnchanged(documents),
+      deleteDocumentsIfUnchanged: (documents, increments) =>
+        firestore.deleteDocumentsIfUnchanged(documents, increments),
       findExpiredApplications: (cutoff, limit) =>
         firestore.findDocumentsByTimestampBefore<Record<string, unknown>>(
           ADOPTION_APPLICATIONS_COLLECTION,
@@ -116,13 +120,23 @@ export async function cleanupExpiredAdoptionApplications(
       };
     }
 
+    const counts = new Map<string, number>();
     const deletion = await firestore.deleteDocumentsIfUnchanged(
       documents.map((document) => {
         if (typeof document.updateTime !== "string" || !Number.isFinite(Date.parse(document.updateTime))) {
           throw new Error(`Expired application ${document.id} is missing a valid update time.`);
         }
+        const encrypted = typeof document.data.sensitive === "string";
+        if (encrypted && (typeof document.data.keyVersion !== "string" || !document.data.keyVersion)) {
+          throw new Error(`Expired application ${document.id} has no encryption key reference.`);
+        }
+        if (encrypted) {
+          const keyId = document.data.keyVersion as string;
+          counts.set(keyId, (counts.get(keyId) ?? 0) - 1);
+        }
         return { name: document.name, updateTime: document.updateTime };
       }),
+      [...counts].map(([keyId, amount]) => encryptionCounterIncrement(keyId, amount)),
     );
     matched += documents.length;
     deleted += deletion.deleted;

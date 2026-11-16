@@ -29,40 +29,35 @@ export function ListingFilters({
   totalItems,
 }: ListingFiltersProps) {
   const id = useId();
-  const titleId = `${id}-filters-title`;
   const searchId = `${id}-search`;
   const hasActiveFilters = searchValue.length > 0 || publicationValue !== "all";
 
   return (
     <Card tone="muted" size="sm" className={styles.filtersCard}
-      role="region" aria-labelledby={titleId}>
+      role="region" aria-label="Busca e publicação">
       <CardBody className={styles.filtersBody}>
-        <header className={styles.header}>
-          <h2 id={titleId}>Filtros</h2>
-          <div className={styles.meta}>
-            <span role="status" aria-live="polite" aria-atomic="true">
-              {totalItems !== undefined && (
-                <Badge variant="outline">
-                  {totalItems === 1 ? "1 resultado" : `${totalItems} resultados`}
-                </Badge>
-              )}
-            </span>
-            {hasActiveFilters && (
-              <Button type="button" variant="text" size="sm" onClick={onClear}>
-                Limpar filtros
-              </Button>
-            )}
-          </div>
-        </header>
-
         <div className={styles.controls}>
           <Field controlId={searchId} label={searchLabel}>
             <SearchField id={searchId} value={searchValue}
               iconPlacement="outside"
               placeholder={searchPlaceholder} onValueChange={onSearchChange} />
           </Field>
-          <PublicationFilter value={publicationValue} onChange={onPublicationChange} />
+          <PublicationFilter value={publicationValue} onChange={onPublicationChange}
+            headerExtra={<span role="status" aria-live="polite" aria-atomic="true">
+              {totalItems !== undefined && (
+                <Badge variant="outline">
+                  {totalItems === 1 ? "1 resultado" : `${totalItems} resultados`}
+                </Badge>
+              )}
+            </span>} />
         </div>
+        {hasActiveFilters && (
+          <div className={styles.clearActions}>
+            <Button type="button" variant="text" size="sm" onClick={onClear}>
+              Limpar filtros
+            </Button>
+          </div>
+        )}
       </CardBody>
     </Card>
   );

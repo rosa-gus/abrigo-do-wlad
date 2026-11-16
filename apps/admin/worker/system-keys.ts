@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { z } from "zod";
 
 import { encryptSystemKey } from "../../../workers/shared/api/_lib/encryption";
-import { createFirestoreClient } from "../../../workers/shared/api/_lib/firestore";
+import { createFirestoreClient, FirestoreRestError } from "../../../workers/shared/api/_lib/firestore";
 import type { AccessIdentity } from "./access";
 
 const storedKeySchema = z.object({
@@ -61,6 +61,22 @@ export async function rotateSystemKey(
   env: Env,
   identity: AccessIdentity,
 ): Promise<RotatedSystemKey> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await rotateSystemKeyOnce(env, identity);
+    } catch (error) {
+      const details = error instanceof FirestoreRestError ? error.details : undefined;
+      const code = typeof details === "object" && details !== null && "error" in details
+        && typeof details.error === "object" && details.error !== null && "status" in details.error
+        ? details.error.status : undefined;
+      const conflict = error instanceof FirestoreRestError
+        && ([409, 412].includes(error.status) || code === "FAILED_PRECONDITION" || code === "ABORTED");
+      if (attempt >= 2 || !conflict) throw error;
+    }
+  }
+}
+
+async function rotateSystemKeyOnce(env: Env, identity: AccessIdentity): Promise<RotatedSystemKey> {
   const firestore = createFirestoreClient(env);
   const document = await firestore.getDocument("system/keys");
   const current = document ? keyDocumentSchema.parse(document.data) : undefined;
@@ -93,6 +109,7 @@ export async function rotateSystemKey(
   };
 
   if (document) {
+    if (!document.updateTime) throw new Error("System keys document has no revision.");
     await firestore.updateDocument(
       document.name,
       { active_key_id: id, keys },

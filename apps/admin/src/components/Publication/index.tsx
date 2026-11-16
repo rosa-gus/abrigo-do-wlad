@@ -1,8 +1,8 @@
-import { useId } from "react";
+import { useId, type ReactNode } from "react";
 import { Badge } from "@jaci/ui/Badge";
 import { Button } from "@jaci/ui/Button";
 import { Card, CardBody } from "@jaci/ui/Card";
-import { Field } from "@jaci/ui/Field";
+import { Label } from "@jaci/ui/Label";
 import * as SelectComponent from "@jaci/ui/Select";
 import { PUBLICATION_LABELS, type PublicationStatus } from "../../../shared/entities";
 import styles from "./Publication.module.css";
@@ -56,13 +56,18 @@ export function PublicationActions({ status, isSubmitting, progress }: {
   );
 }
 
-export function PublicationFilter({ value, onChange }: {
+export function PublicationFilter({ value, onChange, headerExtra }: {
   value: string;
   onChange: (value: string) => void;
+  headerExtra?: ReactNode;
 }) {
   const id = useId();
   return (
-    <Field controlId={`${id}-publication-filter`} label="Publicação">
+    <div className={styles.filterField}>
+      <div className={styles.filterHeader}>
+        <Label htmlFor={`${id}-publication-filter`} className={styles.filterLabel}>Publicação</Label>
+        {headerExtra}
+      </div>
       <SelectComponent.Select value={value} onValueChange={onChange}>
         <SelectComponent.SelectTrigger id={`${id}-publication-filter`} className={styles.selectTrigger}>
           <SelectComponent.SelectValue placeholder="Todos" />
@@ -73,6 +78,6 @@ export function PublicationFilter({ value, onChange }: {
           <SelectComponent.SelectItem value="draft">Rascunhos</SelectComponent.SelectItem>
         </SelectComponent.SelectContent>
       </SelectComponent.Select>
-    </Field>
+    </div>
   );
 }

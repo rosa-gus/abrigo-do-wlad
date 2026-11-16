@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { FirestoreRestClient, FirestoreRestError } from "../_lib/firestore";
+import { FirestoreRestClient, FirestoreRestError, type FirestoreDocument } from "../_lib/firestore";
 
 import {
   cleanupExpiredAdoptionApplications,
@@ -12,7 +12,43 @@ const CUTOFF = new Date("2026-08-21T03:00:00.000Z");
 const DOCUMENT_ROOT =
   "projects/test-project/databases/(default)/documents/adoption_application";
 
-function application(id: string) {
+test("cleanup decrements encrypted documents by their own key and ignores plaintext records", async () => {
+  const documents = [
+    { ...application("old-1"), data: { sensitive: "ciphertext", keyVersion: "old-key" } },
+    { ...application("old-2"), data: { sensitive: "ciphertext", keyVersion: "old-key" } },
+    { ...application("new-1"), data: { sensitive: "ciphertext", keyVersion: "new-key" } },
+    application("plaintext"),
+  ];
+  let deleted = false;
+  const result = await cleanupExpiredAdoptionApplications(undefined, { cutoff: CUTOFF }, {
+    createFirestoreClient: () => ({
+      findExpiredApplications: async () => documents,
+      async deleteDocumentsIfUnchanged(targets, increments) {
+        assert.equal(targets.length, 4);
+        assert.deepEqual(increments, [
+          { documentPath: "system/keys", fieldPath: ["keys", "old-key", "counter"], amount: -2 },
+          { documentPath: "system/keys", fieldPath: ["keys", "new-key", "counter"], amount: -1 },
+        ]);
+        deleted = true;
+        return { deleted: targets.length };
+      },
+    }),
+  });
+  assert.equal(deleted, true);
+  assert.equal(result.deleted, 4);
+});
+
+test("cleanup refuses encrypted records without a key before issuing any deletion", async () => {
+  const original = application("missing-key");
+  const fixture = createDependencies([[{
+    ...original, data: { ...original.data, sensitive: "ciphertext" },
+  }]]);
+  await assert.rejects(() => cleanupExpiredAdoptionApplications(undefined, { cutoff: CUTOFF }, fixture.dependencies),
+    /no encryption key reference/);
+  assert.deepEqual(fixture.deletedNames, []);
+});
+
+function application(id: string): FirestoreDocument<Record<string, unknown>> {
   return {
     id,
     name: `${DOCUMENT_ROOT}/${id}`,
@@ -137,7 +173,7 @@ test("cleanup validates bounds before creating the Firestore client", async () =
         { cutoff: CUTOFF, batchSize: 501 },
         dependencies,
       ),
-    /batchSize must be between 1 and 500/,
+    /batchSize must be between 1 and 499/,
   );
   assert.equal(clientCreated, false);
 });
@@ -176,7 +212,7 @@ test("cleanup sends read-version preconditions and propagates concurrent-change 
   const dependencies: AdoptionCleanupDependencies = {
     createFirestoreClient: () => ({
       findExpiredApplications: async () => [document],
-      deleteDocumentsIfUnchanged: (documents) => client.deleteDocumentsIfUnchanged(documents),
+      deleteDocumentsIfUnchanged: (documents, increments) => client.deleteDocumentsIfUnchanged(documents, increments),
     }),
   };
 

@@ -2,6 +2,7 @@
 .header h1 { margin: 0; color: var(--text-primary); font-size: 2rem; }
 .header p { color: var(--text-muted); }
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
+.archiveCount { width: fit-content; flex-shrink: 0; }
 .search { display: flex; align-items: center; gap: .75rem; width: min(100%, 400px); color: var(--text-muted); }
 .search input { width: 100%; }
 .loading { padding: 3rem; color: var(--text-muted); text-align: center; }

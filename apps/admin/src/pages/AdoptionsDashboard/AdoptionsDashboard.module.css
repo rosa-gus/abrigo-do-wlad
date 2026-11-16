@@ -119,7 +119,8 @@
 
 .detailsRow {
   display: flex;
-  gap: 1.5rem;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
   color: var(--text-muted);
   font-size: 0.9rem;
   font-weight: 500;

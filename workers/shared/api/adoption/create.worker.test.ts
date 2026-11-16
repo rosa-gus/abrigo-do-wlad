@@ -146,6 +146,7 @@ describe("adoption application runtime", () => {
     expect(options).toEqual({
       serverTimestampFields: ["submittedAt"],
       documentId: IDEMPOTENCY_KEY,
+      increments: [{ documentPath: "system/keys", fieldPath: ["keys", "key-v1", "counter"], amount: 1 }],
     });
     expect(document).toMatchObject({
       sensitive: "synthetic-ciphertext",

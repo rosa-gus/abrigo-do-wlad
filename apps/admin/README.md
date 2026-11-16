@@ -226,6 +226,17 @@ endpoint de mídia recusa a exclusão de imagens ligadas a qualquer cão.
 
 ## Publicação
 
+O DevOptions exibe, para cada chave, a quantidade de solicitações criptografadas
+que permanecem armazenadas. A criação da solicitação e o incremento de
+`system/keys.keys.<keyVersion>.counter` usam o mesmo commit, condicionado à
+inexistência do ID da solicitação; reenvios não aumentam a contagem. A limpeza
+de solicitações expiradas exclui os documentos e decrementa os respectivos
+contadores no mesmo commit, condicionado às versões lidas. Mudanças de status
+não alteram o contador. A rotação preserva os contadores e repete a leitura em
+caso de conflito, por até três tentativas. Qualquer futura exclusão ou troca de
+chave dos dados deve atualizar os contadores no mesmo commit. Esta mudança
+não inclui migração ou recontagem de dados anteriores.
+
 Esta entrega usa o executor versionado de migrações do Firestore. A primeira
 migração, `0001-publication-status`, preserva os status explícitos, publica os
 registros legados sem status e introduz `schemaVersion: 1` em cães e pontos.

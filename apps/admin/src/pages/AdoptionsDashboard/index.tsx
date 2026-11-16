@@ -578,6 +578,7 @@ export default function AdoptionsDashboard() {
                         </span>
                       </div>
 
+                      <Separator orientation="vertical" />
                       {/* Link para o whatsapp no telefone */}
                       {req.telefone ? (
                         <a
@@ -600,6 +601,7 @@ export default function AdoptionsDashboard() {
                         </div>
                       )}
 
+                      <Separator orientation="vertical" />
                       <div className={styles.detailItem}>
                         <Lucide.Calendar size={16} />
                         <span>{formatDate(req.submittedAt)}</span>

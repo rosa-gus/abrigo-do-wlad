@@ -6,6 +6,7 @@ import {
   type FirestoreDocument,
 } from "../_lib/firestore";
 import { encryptData } from "../_lib/encryption";
+import { encryptionCounterIncrement } from "../_lib/encryption-counters";
 import { sendEmail, generateAdoptionApplicationEmail } from "../_lib/email";
 import { fullFormSchema } from "../../../../apps/public/src/pages/BetaForm/components/WizardForm/schema";
 import { z } from "zod";
@@ -250,6 +251,7 @@ export function createAdoptionApplicationHandler(
           {
             serverTimestampFields: ["submittedAt"],
             documentId: idempotencyKey,
+            increments: [encryptionCounterIncrement(keyVersion, 1)],
           },
         ));
       } catch (error) {

@@ -334,15 +334,15 @@ export default function DeveloperOptions() {
           {notice && <p className={styles.notice}>{notice}</p>}
         </div>
 
-        <Card className={styles.summary} tone="info" size="sm" layout="inline">
-          <CardBody className={styles.summaryBody}>
-            <CardIcon className={styles.summaryIcon}>
+        <Card variant="callout" className={styles.summary} tone="info" size="lg" layout="inline">
+          <CardBody>
+            <CardIcon>
               <KeyRound size={28} />
             </CardIcon>
+            <CardTitle>Chave ativa</CardTitle>
             <CardContent className={styles.summaryContent}>
-              <span className={styles.summaryLabel}>Chave ativa</span>
               <strong>{activeKey?.version ?? (loading ? "Carregando..." : "Nenhuma")}</strong>
-              <span className={styles.summaryDetail}>
+              <span>
                 Acesso concedido a {user?.email ?? "desenvolvedor autenticado"}
               </span>
             </CardContent>
@@ -375,7 +375,7 @@ export default function DeveloperOptions() {
                       <dl>
                         <div><dt>Criada em</dt><dd>{formatDate(key.createdAt)}</dd></div>
                         <div><dt>Autor</dt><dd>{key.author ?? "Não informado"}</dd></div>
-                        <div><dt>Itens criptografados</dt><dd>{key.counter}</dd></div>
+                        <div><dt>Solicitações criptografadas</dt><dd>{key.counter}</dd></div>
                       </dl>
                     </CardContent>
                   </CardBody>

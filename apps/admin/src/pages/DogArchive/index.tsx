@@ -76,7 +76,7 @@ export default function DogArchive() {
             onChange={(event) => setSearchTerm(event.target.value)}
           />
         </div>
-        <Badge variant="outline">{filteredDogs.length} arquivados</Badge>
+        <Badge variant="outline" className={styles.archiveCount}>{filteredDogs.length} arquivados</Badge>
       </div>
 
       {loading && <p className={styles.loading}>Carregando arquivo...</p>}
