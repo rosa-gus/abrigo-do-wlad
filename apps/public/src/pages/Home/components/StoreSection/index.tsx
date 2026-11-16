@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import reveal from "../../Reveal.module.css";
 import { useSectionReveal } from "../../useSectionReveal";
 import { ArrowUpRight, HeartHandshake, ShoppingBag } from "lucide-react";
@@ -12,6 +12,7 @@ import dogCollageCutout from "@/assets/images/dog-collage-cutout.png";
 import { STORE_URL } from "@/utils/links";
 
 export function StoreSection() {
+  const dogOutlineId = useId();
   const { sectionRef, isVisible } = useSectionReveal();
   const tagRef = useRef<HTMLDivElement>(null);
   const [isTagVisible, setIsTagVisible] = useState(false);
@@ -41,6 +42,19 @@ export function StoreSection() {
       className={styles.contentSection}
       ref={sectionRef}
     >
+      <svg className={styles.filterDefinitions} aria-hidden="true" focusable="false">
+        <defs>
+          <filter id={dogOutlineId} x="-10%" y="-10%" width="120%" height="120%" colorInterpolationFilters="sRGB">
+            <feMorphology in="SourceAlpha" operator="dilate" radius="2" result="silhouette" />
+            <feFlood floodColor="var(--always-white)" result="white" />
+            <feComposite in="white" in2="silhouette" operator="in" result="outline" />
+            <feMerge>
+              <feMergeNode in="outline" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+      </svg>
       <div className={styles.gridContainer}>
         <div className={`${styles.textSide} ${reveal.item} ${isVisible ? reveal.visible : ""}`}>
           <Badge variant="primary" size="md" leftIcon={<ShoppingBag aria-hidden="true" />}>
@@ -77,6 +91,7 @@ export function StoreSection() {
                 src={dogCollageCutout}
                 alt=""
                 className={styles.tagDog}
+                style={{ filter: `url("#${dogOutlineId}") var(--tag-dog-shadow)` }}
                 width={1355}
                 height={1160}
                 loading="lazy"

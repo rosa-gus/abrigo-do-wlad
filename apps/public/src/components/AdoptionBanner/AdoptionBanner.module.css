@@ -1,5 +1,5 @@
 .section {
-  margin-block: -4rem;
+  margin-block: calc(clamp(1rem, 2vw, 2rem) * -1);
 }
 
 .banner {

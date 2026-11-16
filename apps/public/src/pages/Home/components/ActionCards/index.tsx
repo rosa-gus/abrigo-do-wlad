@@ -20,9 +20,9 @@ export function ActionCards() {
     <section className={styles.cardsContainer} ref={sectionRef}>
       {/* adoption */}
       <Card.Card
-        tone="danger"
+        tone="coral"
         interactive
-        className={`${reveal.item} ${isVisible ? reveal.visible : ""}`}
+        className={`${styles.actionCard} ${reveal.item} ${isVisible ? reveal.visible : ""}`}
       >
         <Card.CardBody>
           <Card.CardHeader>
@@ -45,7 +45,7 @@ export function ActionCards() {
         </Card.CardBody>
         <Card.CardFooter>
           <Link to="/caes">
-            <Card.CardButton>
+            <Card.CardButton className={styles.cardAction}>
               Conheça nossos cães <Lucide.ChevronRight size={20} />
             </Card.CardButton>
           </Link>
@@ -55,7 +55,7 @@ export function ActionCards() {
       {/* donations & pix modal */}
       <Card.Card
         interactive
-        className={`${reveal.item} ${styles.cardDelay1} ${isVisible ? reveal.visible : ""}`}
+        className={`${styles.actionCard} ${reveal.item} ${styles.cardDelay1} ${isVisible ? reveal.visible : ""}`}
       >
         <Card.CardBody>
           <Card.CardHeader>
@@ -78,7 +78,7 @@ export function ActionCards() {
         <Card.CardFooter>
           <Dialog.Dialog>
             <Dialog.DialogTrigger asChild>
-              <Card.CardButton onClick={() => analytics.trackConversionIntent("donation")}>
+              <Card.CardButton className={styles.cardAction} onClick={() => analytics.trackConversionIntent("donation")}>
                 Doação via Pix
                 <Lucide.ChevronUp size={20} />
               </Card.CardButton>
@@ -92,7 +92,7 @@ export function ActionCards() {
       <Card.Card
         tone="success"
         interactive
-        className={`${reveal.item} ${styles.cardDelay2} ${isVisible ? reveal.visible : ""}`}
+        className={`${styles.actionCard} ${reveal.item} ${styles.cardDelay2} ${isVisible ? reveal.visible : ""}`}
       >
         <Card.CardBody>
           <Card.CardHeader>
@@ -107,14 +107,14 @@ export function ActionCards() {
           </Card.CardHeader>
           <Card.CardContent>
             <p>
-              <strong>Não jogue fora!</strong> Suas tampinhas de plástico
+              <strong>Suas tampinhas também ajudam a cuidar.</strong> Elas
               financiam a ração e os medicamentos dos nossos resgatados.
             </p>
           </Card.CardContent>
         </Card.CardBody>
         <Card.CardFooter>
           <Link to="/tampinhas">
-            <Card.CardButton>
+            <Card.CardButton className={styles.cardAction}>
               Ver pontos de coleta <Lucide.ChevronRight size={20} />
             </Card.CardButton>
           </Link>

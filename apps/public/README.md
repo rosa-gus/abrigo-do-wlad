@@ -41,9 +41,10 @@ workspace `@jaci/ui`, em [`packages/ui`](../../packages/ui).
 
 O frontend lê pontos de reciclagem e configurações públicas pela API do Worker.
 O Worker acessa o Firestore via REST com conta de serviço e retorna somente os
-campos públicos. O frontend mantém um cache JSON no localStorage por três horas
-para reciclagem e uma hora para configurações, com fallback para dados antigos
-em caso de falha na rede. A autenticação do
+campos públicos. Pontos de reciclagem e disponibilidade do formulário são
+consultados com `cache: 'no-store'`, sem reutilizar dados antigos do localStorage.
+Se a consulta falhar, a lista de pontos fica vazia e a disponibilidade do
+formulário retorna um erro. A autenticação do
 [painel administrativo](../admin/README.md) é feita pelo Cloudflare Access.
 
 Na inicialização, o site remove chaves de versões antigas do cache no seu
