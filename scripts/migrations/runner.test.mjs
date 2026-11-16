@@ -3,6 +3,7 @@ import { decodeMetadata, encodeMetadata } from "./firestore.mjs";
 import { MigrationRunner, planDocument, validateMigrations } from "./runner.mjs";
 import publication from "./definitions/0001-publication-status.mjs";
 import { loadMigrations } from "./registry.mjs";
+import { migrations as workerMigrations } from "./worker-registry.mjs";
 import { main, parseArguments } from "../migrate.mjs";
 import { DOG_DOCUMENT_SCHEMA_VERSION, RECYCLE_POINT_DOCUMENT_SCHEMA_VERSION } from "../../workers/shared/document-schema.ts";
 
@@ -74,8 +75,67 @@ function runner(store, options = {}) {
 function seedDog(store, id, extra = {}) { return store.seed(`dogs/${id}`, { nome: { stringValue: "Nina" }, ...extra }); }
 function sourceWrites(store) { return store.commits.flat().filter(write => write.update.name.includes("/dogs/")); }
 
+test("bounded calls resume the durable cursor, release the lock and interoperate with the CLI", async () => {
+  const store = new MemoryStore(); seedDog(store, "a"); seedDog(store, "b");
+  await runner(store, { actor: "developer@example.test" }).up({ maxBatches: 1 });
+  const firstState = decodeMetadata(await store.get(`_migrations/${first.id}`));
+  expect(firstState).toMatchObject({ status: "running", scanned: 1, changed: 1, actor: "developer@example.test" });
+  expect(Date.parse(decodeMetadata(await store.get("_migration_locks/firestore")).expiresAt)).toBe(NOW);
+  await runner(store).up();
+  expect(decodeMetadata(await store.get(`_migrations/${first.id}`))).toMatchObject({ status: "completed", scanned: 2, changed: 2 });
+  expect(sourceWrites(store)).toHaveLength(2);
+});
+
+test("repeated HTTP batches finish multiple migrations and empty collections without replay", async () => {
+  const store = new MemoryStore(); seedDog(store, "a");
+  for (let i = 0; i < 12; i++) {
+    const instance = runner(store, { migrations: [first, second] });
+    await instance.up({ maxBatches: 1 });
+    if ((await instance.status()).every(m => m.status === "completed")) break;
+  }
+  expect((await runner(store, { migrations: [first, second] }).status()).map(m => m.status)).toEqual(["completed", "completed"]);
+  expect(sourceWrites(store)).toHaveLength(2);
+  expect((await store.get("dogs/a")).fields.name).toEqual({ stringValue: "Nina" });
+});
+
+test("preview pages simulate the whole version chain and never write", async () => {
+  const store = new MemoryStore(); seedDog(store, "a"); seedDog(store, "b");
+  const instance = runner(store, { migrations: [first, second] });
+  const expected = await instance.plan();
+  const counts = new Map();
+  let cursor = null;
+  let pages = 0;
+  do {
+    const result = await instance.planStep({ cursor });
+    for (const count of result.counts) {
+      const previous = counts.get(count.id) ?? { scanned: 0, changes: 0 };
+      counts.set(count.id, { scanned: count.scanned + previous.scanned, changes: count.changes + previous.changes });
+    }
+    cursor = result.cursor;
+    expect(++pages).toBeLessThan(10);
+  } while (cursor);
+  for (const count of expected) expect(counts.get(count.id)).toEqual({ scanned: count.scanned, changes: count.changes });
+  expect(store.commits).toEqual([]);
+  await expect(instance.planStep({ cursor: { collectionIndex: 99, after: null } })).rejects.toThrow("cursor");
+});
+
+test("a lost bounded commit response resumes from confirmed data without duplicate writes", async () => {
+  const store = new MemoryStore(); seedDog(store, "a"); seedDog(store, "b");
+  store.afterCommit = writes => {
+    if (writes.some(w => w.update.name.includes("/dogs/"))) {
+      store.afterCommit = undefined;
+      throw new Error("Response lost.");
+    }
+  };
+  await expect(runner(store).up({ maxBatches: 1 })).rejects.toThrow("Response lost");
+  await runner(store).up();
+  expect(sourceWrites(store)).toHaveLength(2);
+  expect((await runner(store).status())[0]).toMatchObject({ status: "completed", changed: 2 });
+});
+
 test("registry is ordered, checksummed and enforces an unbroken version chain", async () => {
   const registry = await loadMigrations();
+  expect(workerMigrations).toEqual(registry);
   expect(registry[0].id).toBe("0001-publication-status");
   expect(registry[0].checksum).toMatch(/^[a-f0-9]{64}$/);
   const currentVersions = validateMigrations(registry);

@@ -1,10 +1,51 @@
 # Migrações do Firestore
 
-O executor local versiona transformações dos documentos, sem executar migrações
-durante requisições do site ou no cron. Usa a API REST e a conta de serviço do
+O executor versiona transformações dos documentos, sem executar migrações
+automaticamente nas requisições do site ou no cron. Usa a API REST e a conta de serviço do
 ambiente, sempre no banco `(default)`. Não modifica imagens nem outros serviços.
 
-## Executar
+## Executar pelo painel de admin
+
+Em **Opções de desenvolvedor → Migrações de dados**, usuários com papel
+`developer` podem consultar o histórico, simular e aplicar/retomar migrações.
+O backend também exige esse papel em todas as rotas; administradores não têm
+acesso, inclusive ao histórico e à simulação.
+
+1. Confira o ambiente, o projeto Firebase e o banco exibidos no painel.
+2. Clique em **Simular migrações** e revise as contagens de alterações previstas.
+3. Clique em **Aplicar / retomar** e confirme o destino e as migrações pendentes.
+4. Aguarde a conclusão. O painel continua solicitando lotes enquanto estiver aberto.
+
+No painel de produção, o Worker usa os secrets `FIREBASE_PROJECT_ID`,
+`FIREBASE_CLIENT_EMAIL` e `FIREBASE_PRIVATE_KEY` já configurados no Cloudflare.
+Não é necessário copiar ou regenerar credenciais, nem alterar `.dev.vars.local`.
+A conta de serviço precisa ter as permissões IAM de leitura e escrita necessárias.
+A publicação do código não inicia migrações automaticamente.
+
+Cada chamada de aplicação processa no máximo um lote de 50 documentos (ou a
+passagem de uma coleção vazia), preserva o checkpoint e libera a trava. As
+migrações seguintes só avançam após a conclusão das anteriores. A mesma trava
+protege contra sobreposição com a CLI. O estado `running` pode representar uma
+execução aguardando a próxima chamada; `failed` indica uma falha registrada.
+`attempts` conta aquisições para execução/retomada, inclusive chamadas pelo painel.
+
+Fechar a página interrompe a solicitação dos próximos lotes. Uma chamada já
+enviada ainda pode confirmar seu commit; reabra, atualize o histórico, simule e
+retome. Depois de uma falha ou resposta perdida, vale o checkpoint persistido.
+Uma trava abandonada expira automaticamente. Não apague histórico ou travas.
+
+A simulação é paginada e não grava dados, histórico ou trava; suas contagens são
+mantidas na página e uma nova simulação reinicia a leitura. O projeto e os
+checksums das definições compõem a confirmação de destino. Se o projeto, o ambiente
+ou as definições mudarem após a revisão, o backend recusa a chamada e exige uma
+nova revisão. A simulação não representa um snapshot do banco.
+
+O histórico registra o desenvolvedor responsável pela aplicação. A auditoria do
+admin registra as chamadas de aplicação e seus resultados; os logs do Worker
+incluem projeto, migração e contagens, sem credenciais ou documentos.
+`--to` e `--rescan` continuam disponíveis somente na CLI nesta etapa.
+
+## Executar pela CLI
 
 As variáveis `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL` e
 `FIREBASE_PRIVATE_KEY` vêm do arquivo de runtime. O projeto passado no comando
@@ -97,6 +138,17 @@ entre um valor antigo e um novo que divergem.
 
 Valide transformações, valores legados, falhas e retomada com
 `npm run test:migrations`. O comando usa dados em memória, sem acessar produção.
+
+O Vite do admin gera `scripts/migrations/worker-registry.mjs` ao iniciar ou fazer
+build, incluindo as definições e os checksums dos arquivos originais. Esse arquivo
+deve ser versionado e nunca editado manualmente. Para regenerá-lo antes dos testes:
+
+```bash
+node --input-type=module -e 'import { generateWorkerRegistry } from "./scripts/migrations/generate-worker-registry.mjs"; generateWorkerRegistry()'
+```
+
+O teste do registro verifica que CLI e Worker carregam exatamente as mesmas
+definições e checksums. O bundle do Worker não depende de leitura do filesystem.
 
 ## Mudança semântica planejada
 

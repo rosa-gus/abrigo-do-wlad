@@ -24,6 +24,7 @@ import type {
 } from "../../types/notifications";
 import type { SystemKey } from "../../types/systemKeys";
 import styles from "./DeveloperOptions.module.css";
+import { MigrationsPanel } from "./MigrationsPanel";
 
 function formatDate(createdAt: string): string {
   const date = new Date(createdAt);
@@ -205,6 +206,8 @@ export default function DeveloperOptions() {
         </p>
       </header>
 
+      <MigrationsPanel />
+
       <section className={styles.optionSection} aria-labelledby="admin-notification-title">
         <Separator className={styles.optionSeparator} />
         <div className={styles.optionHeader}>
@@ -223,7 +226,7 @@ export default function DeveloperOptions() {
           {notificationNotice && <p className={styles.notice}>{notificationNotice}</p>}
         </div>
 
-        <Card className={styles.notificationEditor} tone="info" size="sm">
+        <Card className={styles.notificationEditor} tone="muted" size="sm">
           <CardBody>
             <form className={styles.notificationForm} onSubmit={handleNotificationSubmit}>
               <div className={styles.notificationMessageField}>

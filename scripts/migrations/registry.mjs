@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import publicationStatus from "./definitions/0001-publication-status.mjs";
 
-const entries = [
+export const entries = [
   [publicationStatus, new URL("./definitions/0001-publication-status.mjs", import.meta.url)],
 ];
 

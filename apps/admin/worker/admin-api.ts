@@ -26,6 +26,7 @@ import {
   type DogTombstoneInput,
 } from "../../../workers/shared/api/dogs/tombstone";
 import type { AccessIdentity } from "./access";
+import { handleMigrations } from "./migrations";
 import {
   listAdminAuditEvents,
   recordAdminAuditEvent,
@@ -241,6 +242,9 @@ function describeAuditedMutation(request: Request): AuditDescriptor | null {
   }
   if (pathname === "/api/admin/system-keys/rotate" && method === "POST") {
     return { action: "system-key.rotated", method, target: "system/keys" };
+  }
+  if (pathname === "/api/admin/migrations/apply" && method === "POST") {
+    return { action: "migration.batch.applied", method, target: "_migrations" };
   }
   if (pathname === "/api/admin/notifications") {
     if (method === "PUT") {
@@ -679,6 +683,11 @@ async function routeAdminApi(
     assertSameOrigin(request);
     const url = new URL(request.url);
     const segments = url.pathname.split("/").filter(Boolean);
+
+    if (url.pathname === "/api/admin/migrations" || url.pathname.startsWith("/api/admin/migrations/")) {
+      requireDeveloper(identity);
+      return await handleMigrations(request, env, identity, parseJson);
+    }
 
     if (url.pathname === "/api/admin/system/settings") {
       if (request.method !== "GET" && request.method !== "PATCH") {

@@ -10,6 +10,20 @@ function request(path: string, init?: RequestInit): Request {
 describe("mock admin API", () => {
   beforeEach(() => resetMockAdminState());
 
+  test("migration preview stays read-only and application changes only the simulated history", async () => {
+    const initial = await (await handleMockAdminRequest(request("/api/admin/migrations"))).json();
+    const post = (path: string) => handleMockAdminRequest(request(`/api/admin/migrations/${path}`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ project: initial.project, release: initial.release }),
+    }));
+    const preview = await (await post("plan")).json();
+    expect(preview.cursor).toBeNull();
+    expect((await (await handleMockAdminRequest(request("/api/admin/migrations"))).json()).migrations[0].status).toBe("pending");
+    const applied = await (await post("apply")).json();
+    expect(applied.migrations[0].status).toBe("completed");
+    expect(applied.project).toBe("abrigo-mock");
+  });
+
   test("provides a local developer session", async () => {
     const response = await handleMockAdminRequest(request("/api/session"));
 

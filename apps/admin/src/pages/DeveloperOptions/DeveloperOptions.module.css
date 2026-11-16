@@ -4,6 +4,73 @@
   padding: 2rem 1rem 4rem;
 }
 
+.migrationActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.migrationController {
+  height: auto;
+}
+
+.migrationController .migrationHeader,
+.migrationRowHeader {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.migrationContent {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.migrationTarget {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.migrationList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.migrationEntry {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem 0;
+}
+
+.migrationRowHeader h4 {
+  min-width: 0;
+  margin: 0;
+}
+
+.migrationContent .migrationEntry p,
+.migrationContent .migrationFeedback p {
+  margin: 0;
+}
+
+.migrationFeedback:empty {
+  display: none;
+}
+
+.migrationFeedback {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
 .pageHeader {
   margin-bottom: 2rem;
 }
@@ -238,6 +305,20 @@
 }
 
 @media (max-width: 700px) {
+  .migrationTarget,
+  .migrationActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .migrationTarget {
+    align-items: flex-start;
+  }
+
+  .migrationActions button {
+    width: 100%;
+  }
+
   .optionHeader {
     align-items: stretch;
     flex-direction: column;
