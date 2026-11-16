@@ -34,8 +34,6 @@
 }
 
 .portalLink {
-  padding-left: 0.75rem;
-  border-left: 1px solid var(--border);
   color: var(--primary);
 }
 
@@ -64,9 +62,8 @@
     text-align: center;
   }
 
-  .portalLink {
-    padding-left: 0;
-    border-left: 0;
+  .infoGroup .portalSeparator {
+    display: none;
   }
 
   .creditsGroup {

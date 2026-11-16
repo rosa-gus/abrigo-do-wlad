@@ -15,6 +15,8 @@ interface FormShellProps {
   submittingLabel?: string;
   onSubmit: FormEventHandler<HTMLFormElement>;
   children: ReactNode;
+  actions?: ReactNode;
+  noValidate?: boolean;
 }
 
 interface FormSectionProps {
@@ -37,6 +39,8 @@ export function FormShell({
   submittingLabel = "Salvando...",
   onSubmit,
   children,
+  actions,
+  noValidate,
 }: FormShellProps) {
   const navigate = useNavigate();
   const [pendingDestination, setPendingDestination] = useState<string | null>(null);
@@ -132,9 +136,9 @@ export function FormShell({
         <h1 className={styles.title}>{title}</h1>
       </div>
 
-      <form onSubmit={onSubmit} className={styles.formGrid}>
+      <form onSubmit={onSubmit} noValidate={noValidate} className={styles.formGrid}>
         {children}
-        <Button
+        {actions ?? <Button
           type="submit"
           size="lg"
           className={styles.submitButton}
@@ -142,7 +146,7 @@ export function FormShell({
           disabled={isSubmitting}
         >
           {isSubmitting ? submittingLabel : submitLabel}
-        </Button>
+        </Button>}
       </form>
     </div>
   );

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test, vi } from "vitest";
+import { afterEach, test, vi } from "vitest";
 
 import type { CloudflareEnv } from "../_lib/env";
 import type { FirestoreDocument } from "../_lib/firestore";
@@ -13,6 +13,8 @@ import {
   type DogFeed,
   type PublicDog,
 } from "./feed";
+
+afterEach(() => vi.restoreAllMocks());
 
 function dog(id: string, overrides: Partial<PublicDog> = {}): PublicDog {
   return {
@@ -62,7 +64,7 @@ function document(item: PublicDog): FirestoreDocument<Record<string, unknown>> {
   return {
     id,
     name: `projects/test/databases/(default)/documents/dogs/${id}`,
-    data,
+    data: { ...data, publicationStatus: "published" },
   };
 }
 
@@ -71,12 +73,18 @@ function kvEnv(initial: Record<string, unknown> = {}): {
   values: Map<string, string>;
   writes: Array<{ key: string; expirationTtl?: number }>;
 } {
+  const snapshots = Object.values(initial).filter((value): value is DogFeed =>
+    Boolean(value && typeof value === "object" && "dogs" in value));
+  vi.spyOn(FirestoreRestClient.prototype, "listDocuments").mockResolvedValue(
+    snapshots.flatMap(feed => feed.dogs.map(document)),
+  );
   const values = new Map(
     Object.entries(initial).map(([key, value]) => [key, JSON.stringify(value)]),
   );
   const writes: Array<{ key: string; expirationTtl?: number }> = [];
   return {
     env: {
+      FIREBASE_PROJECT_ID: "test",
       APP_ENV: "production",
       KV: {
         async get(key) {
@@ -269,7 +277,7 @@ test("GET dog feed reads the requested KV version and returns only one page", as
   );
 
   assert.equal(response.status, 200);
-  assert.equal(response.headers.get("Cache-Control"), "public, max-age=60, s-maxage=300");
+  assert.equal(response.headers.get("Cache-Control"), "no-store");
   assert.deepEqual(await response.json(), {
     dogs: [feed.dogs[2]],
     totalItems: 3,
@@ -367,4 +375,45 @@ test("GET dog feed returns a structured unavailable response when KV fails", asy
   } finally {
     errorLog.mockRestore();
   }
+});
+
+
+test("old pagination snapshots cannot expose drafts, deleted dogs or records without a status", async () => {
+  const snapshot: DogFeed = {
+    schemaVersion: 2, version: "2026-08-24", generatedAt: "2026-08-24T12:00:00.000Z",
+    dogs: [dog("published"), dog("draft"), dog("legacy"), dog("deleted")],
+  };
+  const { env } = kvEnv({ "dogs-feed:2026-08-24": snapshot });
+  vi.mocked(FirestoreRestClient.prototype.listDocuments).mockResolvedValue([
+    document(dog("published")),
+    { ...document(dog("draft")), data: { publicationStatus: "draft" } },
+    { ...document(dog("legacy")), data: {} },
+  ]);
+  const response = await getDogFeedResponse(new Request("https://abrigo.test/api/dogs?version=2026-08-24"), env);
+  const payload = await response.json() as { dogs: PublicDog[]; totalItems: number; tagCounts: unknown };
+  assert.equal(response.status, 200);
+  assert.deepEqual(payload.dogs.map(dog => dog.id), ["published"]);
+  assert.equal(payload.totalItems, 1);
+  assert.deepEqual(payload.tagCounts, { docil: 1 });
+});
+
+test("feed rebuild excludes drafts and legacy records before allocating public slugs", async () => {
+  const { env, writes } = kvEnv();
+  const draft = document(dog("draft")); draft.data.publicationStatus = "draft";
+  const legacy = document(dog("legacy")); delete legacy.data.publicationStatus;
+  const feed = await updateDogFeed(env, { source: { async listDocuments() { return [draft, legacy]; } } });
+  assert.deepEqual(feed.dogs, []);
+  assert.equal(writes.some(write => write.key.startsWith("dogs-public-slug:")), false);
+});
+
+test("a failed visibility check never serves a stale public catalog", async () => {
+  const { env } = kvEnv({ "dogs-feed:current": {
+    schemaVersion: 2, version: "2026-08-24", generatedAt: "2026-08-24T12:00:00.000Z", dogs: [dog("secret")],
+  } });
+  vi.mocked(FirestoreRestClient.prototype.listDocuments).mockRejectedValue(new Error("source unavailable"));
+  const log = vi.spyOn(console, "error").mockImplementation(() => {});
+  const response = await getDogFeedResponse(new Request("https://abrigo.test/api/dogs"), env);
+  assert.equal(response.status, 503);
+  assert.equal((await response.text()).includes("secret"), false);
+  log.mockRestore();
 });

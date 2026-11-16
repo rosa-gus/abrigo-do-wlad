@@ -1,3 +1,5 @@
+import { DOG_DOCUMENT_SCHEMA_VERSION, RECYCLE_POINT_DOCUMENT_SCHEMA_VERSION, supportsDocumentVersion } from "../../../../workers/shared/document-schema";
+import { isPublished, publicationMetadata } from "../../../../workers/shared/publication";
 import type { DogProps } from "../types/dogs";
 import { systemSettingsSchema, type SystemSettings } from "../../shared/system-settings";
 import { adoptionStatusUpdate, AdoptionTransitionError } from "../../shared/adoption-retention";
@@ -59,6 +61,9 @@ function createInitialState(): MockState {
     dogs: [
       {
         id: 103,
+        publicationStatus: "published",
+        schemaVersion: 1,
+        publishedAt: "2026-01-01T00:00:00.000Z",
         nome: "Simba",
         idade: "3 anos",
         cateIdade: "adulto",
@@ -73,6 +78,9 @@ function createInitialState(): MockState {
       },
       {
         id: 102,
+        publicationStatus: "published",
+        schemaVersion: 1,
+        publishedAt: "2026-01-01T00:00:00.000Z",
         nome: "Amora",
         idade: "8 meses",
         cateIdade: "filhote",
@@ -87,6 +95,9 @@ function createInitialState(): MockState {
       },
       {
         id: 101,
+        publicationStatus: "published",
+        schemaVersion: 1,
+        publishedAt: "2026-01-01T00:00:00.000Z",
         nome: "Bento",
         idade: "9 anos",
         cateIdade: "idoso",
@@ -103,6 +114,9 @@ function createInitialState(): MockState {
     recyclePoints: [
       {
         id: "eco-morumbi",
+        publicationStatus: "published",
+        schemaVersion: 1,
+        publishedAt: "2026-01-01T00:00:00.000Z",
         zone: "ZONA OESTE",
         neighborhood: "Morumbi",
         name: "Mercadinho do Bairro",
@@ -111,6 +125,9 @@ function createInitialState(): MockState {
       },
       {
         id: "pet-vila-sonia",
+        publicationStatus: "published",
+        schemaVersion: 1,
+        publishedAt: "2026-01-01T00:00:00.000Z",
         zone: "ZONA OESTE",
         neighborhood: "Vila Sônia",
         name: "Pet Amigo",
@@ -119,6 +136,9 @@ function createInitialState(): MockState {
       },
       {
         id: "coleta-campo-limpo",
+        publicationStatus: "published",
+        schemaVersion: 1,
+        publishedAt: "2026-01-01T00:00:00.000Z",
         zone: "ZONA SUL",
         neighborhood: "Campo Limpo",
         name: "Ponto Solidário",
@@ -363,7 +383,7 @@ async function handleDogs(
       );
     }
     const input = parsedInput.data;
-    const dog = { ...input, id: state.nextDogId++ };
+    const dog = { ...input, schemaVersion: DOG_DOCUMENT_SCHEMA_VERSION, id: state.nextDogId++, ...publicationMetadata({}, input.publicationStatus) };
     state.dogs.push(dog);
     recordMutation(request, `dogs/${dog.id}`);
     return jsonResponse({ id: dog.id }, 201);
@@ -371,13 +391,18 @@ async function handleDogs(
 
   const id = Number(idSegment);
   if (operation && request.method !== "POST") return methodNotAllowed(["POST"]);
-  if (!operation && request.method !== "GET" && request.method !== "PATCH") {
-    return methodNotAllowed(["GET", "PATCH"]);
+  if (!operation && !["GET", "PATCH", "DELETE"].includes(request.method)) {
+    return methodNotAllowed(["GET", "PATCH", "DELETE"]);
   }
   const index = state.dogs.findIndex((dog) => dog.id === id);
   if (index < 0) return jsonResponse({ error: "Dog not found." }, 404);
 
-  if (request.method === "GET") return jsonResponse(state.dogs[index]);
+  if (request.method === "GET") return jsonResponse({
+    ...state.dogs[index], revision: state.dogs[index].updatedAt ?? state.dogs[index].publishedAt,
+  });
+  if (!supportsDocumentVersion(state.dogs[index], DOG_DOCUMENT_SCHEMA_VERSION)) {
+    return jsonResponse({ error: "A ficha usa uma versão de dados mais recente ou inválida." }, 409);
+  }
   if (request.method === "PATCH") {
     if (isDogArchived(state.dogs[index])) {
       return jsonResponse({ error: "Archived dogs cannot be edited." }, 409);
@@ -388,16 +413,29 @@ async function handleDogs(
         parsedUpdate.error.issues[0]?.message ?? "Atualização do cachorro inválida.",
       );
     }
+    if (parsedUpdate.data.expectedUpdateTime && parsedUpdate.data.expectedUpdateTime !== (state.dogs[index].updatedAt ?? state.dogs[index].publishedAt)) {
+      return jsonResponse({ error: "A ficha foi alterada por outra pessoa. Recarregue antes de salvar." }, 409);
+    }
+    const merged = dogInputSchema.safeParse({ ...state.dogs[index], ...parsedUpdate.data });
+    if (!merged.success) return validationErrorResponse(merged.error.issues[0]?.message ?? "Ficha incompleta.");
     const previous = state.dogs[index];
     const removedPhotos = parsedUpdate.data.fotos
       ? previous.fotos.filter((photo) => !parsedUpdate.data.fotos?.includes(photo))
       : [];
     state.dogs[index] = {
-      ...previous, ...parsedUpdate.data, id,
+      ...previous, ...merged.data, ...publicationMetadata(previous, merged.data.publicationStatus), id,
       retainedPhotos: Array.from(new Set([...(previous.retainedPhotos ?? []), ...removedPhotos])),
     };
     recordMutation(request, `dogs/${id}`);
     return jsonResponse({ ok: true });
+  }
+  if (request.method === "DELETE") {
+    if (isDogArchived(state.dogs[index]) || state.dogs[index].publicationStatus !== "draft") {
+      return jsonResponse({ error: "Somente rascunhos não arquivados podem ser excluídos." }, 409);
+    }
+    state.dogs.splice(index, 1);
+    recordMutation(request, `dogs/${id}`);
+    return noContentResponse();
   }
   if (operation === "archive" && request.method === "POST") {
     const input = await readJson<{ reason?: unknown }>(request);
@@ -431,7 +469,8 @@ async function handleDogs(
     if (!isDogArchived(state.dogs[index])) return jsonResponse({ ok: true });
     state.dogs[index] = {
       ...state.dogs[index], archivedAt: null, purgeAfter: null,
-      archiveReason: null, archivedBy: null,
+      archiveReason: null, archivedBy: null, publicationStatus: "draft",
+      updatedAt: new Date().toISOString(),
     };
     recordMutation(request, `dogs/${id}`);
     return jsonResponse({ ok: true });
@@ -451,7 +490,7 @@ async function handleRecyclePoints(request: Request, idSegment?: string): Promis
       );
     }
     const input = parsedInput.data;
-    const point = { ...input, id: `mock-recycle-${state.nextRecycleId++}` };
+    const point = { ...input, schemaVersion: RECYCLE_POINT_DOCUMENT_SCHEMA_VERSION, id: `mock-recycle-${state.nextRecycleId++}`, ...publicationMetadata({}, input.publicationStatus) };
     state.recyclePoints.push(point);
     recordMutation(request, `recycle_points/${point.id}`);
     return jsonResponse({ id: point.id }, 201);
@@ -461,7 +500,12 @@ async function handleRecyclePoints(request: Request, idSegment?: string): Promis
   const index = state.recyclePoints.findIndex((point) => point.id === id);
   if (index < 0) return jsonResponse({ error: "Recycle point not found." }, 404);
 
-  if (request.method === "GET") return jsonResponse(state.recyclePoints[index]);
+  if (request.method === "GET") return jsonResponse({
+    ...state.recyclePoints[index], revision: state.recyclePoints[index].updatedAt ?? state.recyclePoints[index].publishedAt,
+  });
+  if (!supportsDocumentVersion(state.recyclePoints[index], RECYCLE_POINT_DOCUMENT_SCHEMA_VERSION)) {
+    return jsonResponse({ error: "O ponto usa uma versão de dados mais recente ou inválida." }, 409);
+  }
   if (request.method === "PATCH") {
     const parsedUpdate = recyclePointUpdateSchema.safeParse(await readJson<unknown>(request));
     if (!parsedUpdate.success) {
@@ -469,7 +513,15 @@ async function handleRecyclePoints(request: Request, idSegment?: string): Promis
         parsedUpdate.error.issues[0]?.message ?? "Atualização do ponto de coleta inválida.",
       );
     }
-    state.recyclePoints[index] = { ...state.recyclePoints[index], ...parsedUpdate.data, id };
+    if (parsedUpdate.data.expectedUpdateTime && parsedUpdate.data.expectedUpdateTime !== (state.recyclePoints[index].updatedAt ?? state.recyclePoints[index].publishedAt)) {
+      return jsonResponse({ error: "O ponto foi alterado por outra pessoa. Recarregue antes de salvar." }, 409);
+    }
+    const merged = recyclePointInputSchema.safeParse({ ...state.recyclePoints[index], ...parsedUpdate.data });
+    if (!merged.success) return validationErrorResponse(merged.error.issues[0]?.message ?? "Ponto incompleto.");
+    state.recyclePoints[index] = {
+      ...state.recyclePoints[index], ...merged.data,
+      ...publicationMetadata(state.recyclePoints[index], merged.data.publicationStatus), id,
+    };
     recordMutation(request, `recycle_points/${id}`);
     return jsonResponse({ ok: true });
   }
@@ -515,6 +567,9 @@ async function handleMedia(request: Request, operation: string): Promise<Respons
   if (operation === "delete") {
     if (request.method !== "POST") return methodNotAllowed(["POST"]);
     const { imageUrl } = await readJson<{ imageUrl?: unknown }>(request);
+    if (state.dogs.some(dog => !supportsDocumentVersion(dog, DOG_DOCUMENT_SCHEMA_VERSION))) {
+      return jsonResponse({ error: "Atualize a aplicação antes de excluir imagens de fichas com versões de dados mais recentes ou inválidas." }, 409);
+    }
     if (state.dogs.some((dog) =>
       dog.fotos.includes(String(imageUrl)) || dog.retainedPhotos?.includes(String(imageUrl))
     )) {
@@ -567,6 +622,8 @@ export async function handleMockAdminRequest(request: Request): Promise<Response
       metrics: {
         dogs: state.dogs.filter((dog) => !isDogArchived(dog)).length,
         recycles: state.recyclePoints.length,
+        publishedDogs: state.dogs.filter(dog => !isDogArchived(dog) && isPublished(dog)).length,
+        publishedRecycles: state.recyclePoints.filter(isPublished).length,
         adoptions: state.adoptions.length,
         adoptionsViaSite: state.adoptionsViaSite,
       },

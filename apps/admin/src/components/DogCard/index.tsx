@@ -1,12 +1,14 @@
 import { useNavigate } from "react-router";
-import { Pencil, HeartHandshake, Dog } from "lucide-react";
+import { Pencil, HeartHandshake, Dog, Trash2 } from "lucide-react";
 import { Badge } from "@jaci/ui/Badge";
 import { Button } from "@jaci/ui/Button";
 import { Card } from "@jaci/ui/Card";
+import { Separator } from "@jaci/ui/Separator";
 import {
   getOptimizedImageUrl,
   getResponsiveImageSrcSet,
 } from "@abrigo/media/cloudinary";
+import { PUBLICATION_LABELS } from "../../../shared/entities";
 import type { DogProps } from "../../types/dogs";
 import { resolveMockMediaUrl } from "../../mocks/media";
 import styles from "./DogCard.module.css";
@@ -15,13 +17,14 @@ interface DogCardProps {
   dog: DogProps;
   onArchive: (id: number, nome: string) => void;
   priority?: boolean;
+  onDiscard: (id: number, nome: string) => void;
 }
 
 const CARD_IMAGE_WIDTH = 320;
 const CARD_IMAGE_HEIGHT = 350;
 const CARD_IMAGE_WIDTHS = [320, 480, 640] as const;
 
-export function DogCard({ dog, onArchive, priority = false }: DogCardProps) {
+export function DogCard({ dog, onArchive, onDiscard, priority = false }: DogCardProps) {
   const navigate = useNavigate();
   const originalImageUrl = dog.fotos?.[0];
   const imageUrl = resolveMockMediaUrl(getOptimizedImageUrl(originalImageUrl, {
@@ -64,43 +67,53 @@ export function DogCard({ dog, onArchive, priority = false }: DogCardProps) {
             <Dog size={40} />
           </div>
         )}
-
-        <Badge className={styles.statusBadge} variant="secondary" size="sm">
-          {dog.status}
-        </Badge>
       </div>
 
       <div className={styles.cardContent}>
         <div className={styles.cardHeader}>
           <h3>{dog.nome}</h3>
-          <Badge className={styles.sexoTag} variant={dog.sexo === "Macho" ? "secondary" : "danger"} size="sm">
-            {dog.sexo}
+          <Badge variant={dog.publicationStatus === "published" ? "success" : "outline"}>
+            {PUBLICATION_LABELS[dog.publicationStatus]}
           </Badge>
         </div>
 
-        <div className={styles.cardInfo}>
-          <span className={styles.category}>{dog.cateIdade}</span>
-          <span className={styles.separator}>•</span>
-          <span>{dog.idade}</span>
-        </div>
+        <p className={styles.cardInfo}>
+          {dog.sexo && <>
+            <span>{dog.sexo}</span>{" "}
+            <Separator orientation="vertical" />{" "}
+          </>}
+          <span className={styles.category}>{dog.cateIdade || "Categoria pendente"}</span>
+          {" "}<Separator orientation="vertical" />{" "}
+          <span>{dog.idade || "Idade pendente"}</span>
+        </p>
+        <p className={styles.healthInfo}>{dog.status || "Saúde pendente"}</p>
 
         <div className={styles.cardActions}>
           <Button
-            variant="outline"
+            variant="secondary"
+            emphasis="soft"
             size="sm"
+            align="center"
             onClick={() => navigate(`/admin/dog/edit/${dog.id}`)}
-            className={styles.actionBtn}
+            className={styles.editButton}
             title="Editar"
           >
             <Pencil size={18} /> Editar
           </Button>
 
+          {dog.publicationStatus === "draft" && (
+            <Button variant="danger" size="icon-sm" shape="circle" aria-label={`Excluir rascunho de ${dog.nome}`}
+              onClick={() => onDiscard(dog.id, dog.nome)} title="Excluir rascunho">
+              <Trash2 size={18} />
+            </Button>
+          )}
           <Button
             variant="danger"
             size="icon-sm"
+            shape="circle"
             aria-label={`Finalizar jornada de ${dog.nome}`}
             onClick={() => onArchive(dog.id, dog.nome)}
-            className={`${styles.actionBtn} ${styles.deleteBtn}`}
+            className={styles.deleteBtn}
             title="Arquivar"
           >
             <HeartHandshake size={18} />

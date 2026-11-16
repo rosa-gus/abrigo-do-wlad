@@ -1,0 +1,34 @@
+.filtersCard {
+  height: auto;
+  margin-bottom: 2rem;
+  overflow: visible;
+}
+
+.filtersBody {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.clearActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(12rem, 16rem);
+  align-items: end;
+  gap: 1.25rem;
+}
+
+@media (max-width: 768px) {
+  .filtersCard > div.filtersBody {
+    padding: 1rem;
+  }
+
+  .controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

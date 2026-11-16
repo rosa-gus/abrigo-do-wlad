@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { FlaskConical, LogOut, ShieldCheck } from "lucide-react";
 import { Badge } from "@jaci/ui/Badge";
 import { Button } from "@jaci/ui/Button";
+import { Separator } from "@jaci/ui/Separator";
 import { useAuth } from "../../contexts/AuthContext";
 import { ADMIN_LOCAL_MODE, ADMIN_MOCK_MODE } from "../../services/api";
 import styles from "./Header.module.css";
@@ -21,7 +22,7 @@ export function Header() {
           aria-label="Ir para a visão geral do painel"
         >
           <img src={logoImg} alt="Abrigo do Wlad" className={styles.logo} />
-          <div className={styles.divider}></div>
+          <Separator orientation="vertical" className={styles.brandSeparator} />
           <Badge
             leftIcon={<ShieldCheck size={18} />}
             variant="primary"

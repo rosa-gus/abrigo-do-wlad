@@ -17,6 +17,7 @@ export interface SearchFieldProps
   onClear?: () => void;
   clearable?: boolean;
   clearLabel?: string;
+  iconPlacement?: "inside" | "outside";
 }
 
 export const SearchField = React.forwardRef<HTMLInputElement, SearchFieldProps>(
@@ -29,6 +30,7 @@ export const SearchField = React.forwardRef<HTMLInputElement, SearchFieldProps>(
       onClear,
       clearable = true,
       clearLabel = "Limpar busca",
+      iconPlacement = "inside",
       className,
       disabled,
       ...props
@@ -61,6 +63,7 @@ export const SearchField = React.forwardRef<HTMLInputElement, SearchFieldProps>(
       <div
         className={cn(styles.root, disabled && styles.disabled)}
         data-size={props.size ?? "md"}
+        data-icon-placement={iconPlacement}
       >
         <Search className={styles.searchIcon} aria-hidden="true" />
         <Input

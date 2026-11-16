@@ -8,6 +8,68 @@ import {
   FirestoreRestError,
 } from "./firestore.ts";
 
+test("encrypted creation uses the same guarded commit for the document and key counter", async () => {
+  const commits: Array<{ writes: Array<Record<string, unknown>> }> = [];
+  const client = new FirestoreRestClient("test-project", {
+    tokenProvider: async () => "test-token",
+    fetcher: mockFetch((_url, init) => {
+      commits.push(JSON.parse(String(init?.body)));
+      // Firestore rejects the entire commit on duplicate creation.
+      return commits.length === 1 ? Response.json({})
+        : Response.json({ error: { message: "Already exists" } }, { status: 409 });
+    }),
+  });
+  const options = {
+    documentId: "request-1",
+    increments: [{ documentPath: "system/keys", fieldPath: ["keys", "key-with-hyphens", "counter"], amount: 1 }],
+  };
+  await client.createDocument("adoption_application", { sensitive: "ciphertext" }, options);
+  assert.equal(commits[0].writes.length, 2);
+  assert.deepEqual(commits[0].writes[0].currentDocument, { exists: false });
+  assert.deepEqual(commits[0].writes[1], {
+    transform: {
+      document: "projects/test-project/databases/(default)/documents/system/keys",
+      fieldTransforms: [{ fieldPath: "`keys`.`key-with-hyphens`.`counter`", increment: { integerValue: "1" } }],
+    },
+    currentDocument: { exists: true },
+  });
+  await assert.rejects(() => client.createDocument("adoption_application", {}, options),
+    (error: unknown) => error instanceof FirestoreRestError && error.status === 409);
+  assert.equal(commits.length, 2); // No independent counter request after a failed commit.
+});
+
+test("cleanup reserves one write for counters across multiple encryption keys", async () => {
+  let writes: Array<Record<string, unknown>> = [];
+  const client = new FirestoreRestClient("test-project", {
+    tokenProvider: async () => "test-token",
+    fetcher: mockFetch((_url, init) => {
+      writes = JSON.parse(String(init?.body)).writes;
+      return Response.json({});
+    }),
+  });
+  const documents = Array.from({ length: 499 }, (_, index) => ({
+    name: `projects/test-project/databases/(default)/documents/adoption_application/request-${index}`,
+    updateTime: "2026-08-20T00:00:01Z",
+  }));
+  const result = await client.deleteDocumentsIfUnchanged(documents, [
+    { documentPath: "system/keys", fieldPath: ["keys", "old-key", "counter"], amount: -200 },
+    { documentPath: "system/keys", fieldPath: ["keys", "new-key", "counter"], amount: -299 },
+  ]);
+  assert.equal(result.deleted, 499);
+  assert.equal(writes.length, 500);
+  assert.deepEqual(writes[0].currentDocument, { updateTime: documents[0].updateTime });
+  assert.deepEqual(writes[499], {
+    transform: {
+      document: "projects/test-project/databases/(default)/documents/system/keys",
+      fieldTransforms: [
+        { fieldPath: "`keys`.`old-key`.`counter`", increment: { integerValue: "-200" } },
+        { fieldPath: "`keys`.`new-key`.`counter`", increment: { integerValue: "-299" } },
+      ],
+    },
+    currentDocument: { exists: true },
+  });
+});
+
 test("updateDocument returns the actual write version for a conditional follow-up", async () => {
   const client = new FirestoreRestClient("test-project", {
     fetcher: mockFetch(() => Response.json({ commitTime: "commit-time", writeResults: [{ updateTime: "document-version" }] })),

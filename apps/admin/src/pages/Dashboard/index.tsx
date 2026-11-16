@@ -22,6 +22,7 @@ import { apiRequest } from "../../services/api";
 import type { AdminNotification, NotificationType } from "../../types/notifications";
 
 import styles from "./Dashboard.module.css";
+import containerStyles from "../DashboardContainer.module.css";
 
 interface ExpiringAlert {
   id: string;
@@ -32,6 +33,8 @@ interface ExpiringAlert {
 interface DashboardResponse {
   metrics: {
     dogs: number;
+    publishedDogs: number;
+    publishedRecycles: number;
     recycles: number;
     adoptions: number;
     adoptionsViaSite: number;
@@ -55,6 +58,8 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [metrics, setMetrics] = useState({
     dogs: 0,
+    publishedDogs: 0,
+    publishedRecycles: 0,
     recycles: 0,
     adoptions: 0,
     adoptionsViaSite: 0,
@@ -94,7 +99,7 @@ export default function Dashboard() {
     : null;
 
   return (
-    <div className={styles.container}>
+    <div className={`${containerStyles.container} ${styles.container}`}>
       <h1 className={styles.title}>Visão Geral</h1>
       <p className={styles.subtitle}>Acompanhe os números do Abrigo do Wlad em tempo real.</p>
 

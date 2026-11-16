@@ -82,3 +82,21 @@
 .root[data-size="lg"] .input {
   padding-right: 3rem;
 }
+
+.root[data-icon-placement="outside"] {
+  gap: 0.75rem;
+}
+
+.root[data-icon-placement="outside"] .searchIcon {
+  position: static;
+  flex-shrink: 0;
+}
+
+.root[data-icon-placement="outside"] .input {
+  min-width: 0;
+  padding-left: 1rem;
+}
+
+.root[data-icon-placement="outside"][data-size="sm"] .input {
+  padding-left: 0.75rem;
+}

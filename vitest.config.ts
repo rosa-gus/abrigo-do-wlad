@@ -23,6 +23,7 @@ export default defineConfig({
             "apps/admin/src/**/*.test.ts",
             "apps/admin/worker/**/*.test.ts",
             "packages/**/*.test.ts",
+            "scripts/**/*.test.mjs",
             "workers/**/*.test.ts",
           ],
           exclude: ["**/*.worker.test.ts"],

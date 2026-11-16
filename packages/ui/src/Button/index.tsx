@@ -7,6 +7,8 @@ type ButtonAppearanceProps = {
   variant?: "primary" | "secondary" | "success" | "danger" | "outline" | "text" | "ghost";
   emphasis?: "strong" | "soft" | "minimal";
   size?: "sm" | "md" | "lg" | "icon" | "icon-sm";
+  shape?: "default" | "circle";
+  align?: "start" | "center" | "end";
   blur?: boolean;
   leftIcon?: ReactNode;
   rightIcon?: ReactNode;
@@ -24,6 +26,8 @@ export function Button({
   variant = "primary",
   emphasis = "soft",
   size = "md",
+  shape = "default",
+  align = "center",
   blur,
   leftIcon,
   rightIcon,
@@ -37,6 +41,8 @@ export function Button({
         style[variant],
         style[emphasis],
         style[size],
+        shape === "circle" && style.circle,
+        align !== "center" && style[`align-${align}`],
         { [style.blur]: blur },
         className,
       )}
@@ -55,6 +61,8 @@ export function ButtonLink({
   variant = "primary",
   emphasis = "soft",
   size = "md",
+  shape = "default",
+  align = "center",
   blur,
   leftIcon,
   rightIcon,
@@ -68,6 +76,8 @@ export function ButtonLink({
         style[variant],
         style[emphasis],
         style[size],
+        shape === "circle" && style.circle,
+        align !== "center" && style[`align-${align}`],
         { [style.blur]: blur },
         className,
       )}

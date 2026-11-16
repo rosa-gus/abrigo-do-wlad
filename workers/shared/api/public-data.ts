@@ -1,3 +1,4 @@
+import { isPublished } from "../publication";
 import { jsonResponse, type CloudflareEnv } from "./_lib/env";
 import { createFirestoreClient, type FirestoreRestClient } from "./_lib/firestore";
 
@@ -29,7 +30,7 @@ export async function getPublicDataResponse(
     }
 
     const documents = await firestore.listDocuments("recycle_points");
-    const points = documents.map(({ id, data }) => ({
+    const points = documents.filter(({ data }) => isPublished(data)).map(({ id, data }) => ({
       id,
       zone: typeof data.zone === "string" ? data.zone : "",
       neighborhood: typeof data.neighborhood === "string" ? data.neighborhood : "",

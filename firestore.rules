@@ -8,9 +8,9 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Rascunhos são internos; a API pública entrega apenas pontos publicados.
     match /recycle_points/{pointId} {
-      allow read: if true;
-      allow write: if false;
+      allow read, write: if false;
     }
 
     match /system/settings {

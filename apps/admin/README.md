@@ -138,7 +138,7 @@ validam origem e payload.
 | Sessão       | `/api/session`                                            | Identidade e papel atuais.                                |
 | Dashboard    | `/api/admin/dashboard`                                    | Métricas, retenção e aviso ativo.                         |
 | Animais      | `/api/admin/dogs[/:id]`                                   | Cadastro, consulta e edição; `GET /dogs?state=archived` lista arquivados. |
-| Arquivo      | `/api/admin/dogs/:id/archive`, `/api/admin/dogs/:id/restore` | `POST` para arquivar ou restaurar; não há exclusão definitiva pela API. |
+| Arquivo      | `/api/admin/dogs/:id/archive`, `/api/admin/dogs/:id/restore` | `POST` para arquivar ou restaurar como rascunho. `DELETE /dogs/:id` exclui somente rascunhos não arquivados. |
 | Reciclagem   | `/api/admin/recycle-points[/:id]`                         | Consulta e CRUD.                                          |
 | Candidaturas | `/api/admin/adoptions`, `/api/admin/adoptions/:id/status` | Consulta e atualização de status.                         |
 | Auditoria    | `/api/admin/audit-log`                                    | Últimos 100 eventos; somente `developer`.                 |
@@ -171,6 +171,40 @@ O cron usa `ADOPTION_CLEANUP_MODE=delete` em produção e `dry-run` no ambiente
 local. A nova programação é aplicada ao alterar o status; decisões anteriores
 sem esses campos mantêm o vencimento já armazenado até uma nova ação da equipe.
 
+### Rascunhos e publicação
+
+Cães e pontos de coleta têm `publicationStatus: "draft" | "published"`;
+novos cadastros começam em rascunho. Solicitações mantêm seu fluxo próprio.
+**Salvar rascunho** aceita dados incompletos: exige o nome do cão, ou nome/bairro
+do ponto. Campos informados continuam sujeitos aos limites e formatos válidos.
+**Publicar** exige os campos obrigatórios do cadastro completo, conferidos
+também pela API. Sexo, saúde, categoria e cor do cão não recebem valores presumidos.
+
+Salvar uma ficha publicada atualiza o site. **Voltar para rascunho** pede
+confirmação e retira a ficha do público, preservando dados e fotos. Não há uma
+segunda revisão em preparação enquanto a versão anterior permanece publicada.
+As listas têm filtros e selos de publicação; o contador acompanha os filtros
+aplicados, e o dashboard exibe os totais cadastrados. `updatedAt` registra o
+último salvamento e `publishedAt`, a primeira publicação. Edições usam a versão
+carregada (`revision`/`expectedUpdateTime`)
+para recusar salvamentos de fichas alteradas por outra pessoa. Rascunhos não
+expiram. É necessário salvar antes de sair; não há salvamento automático.
+
+Somente registros explicitamente publicados e cães não arquivados entram nas
+saídas públicas. Catálogos antigos de paginação, perfis, metadados e destaque
+conferem a elegibilidade no Firestore a cada acesso; falhas não liberam cópias
+antigas. Essas respostas usam `no-store`, e a lista de pontos não reutiliza o
+cache do navegador. Isso acrescenta consultas ao banco por requisição pública.
+Uma ficha em rascunho responde como não encontrada por link; republicar preserva
+o slug existente. Conteúdo já recebido por visitantes ou serviços externos não
+pode ser recolhido. As URLs das fotos no Cloudinary continuam públicas.
+
+Arquivar continua separado da publicação e mantém a retenção de 30 dias.
+Restaurar um cão arquivado o devolve como rascunho. Arquivar uma ficha em
+rascunho não cria um tombstone público, mesmo se ela já foi publicada antes. Excluir um rascunho elimina
+sua ficha; as imagens permanecem no Cloudinary, conforme a política atual de
+retenção de mídia. Fotos ainda ligadas a outras fichas seguem protegidas.
+
 As principais mutações geram eventos em `admin_audit_log` sem copiar payloads,
 candidaturas ou URLs de mídia. Mudanças em animais também agendam a reconstrução
 do catálogo público no KV, que pode levar um breve período para convergir entre
@@ -191,6 +225,37 @@ Fotos retiradas do cadastro permanecem registradas em `retainedPhotos`. O
 endpoint de mídia recusa a exclusão de imagens ligadas a qualquer cão.
 
 ## Publicação
+
+O DevOptions exibe, para cada chave, a quantidade de solicitações criptografadas
+que permanecem armazenadas. A criação da solicitação e o incremento de
+`system/keys.keys.<keyVersion>.counter` usam o mesmo commit, condicionado à
+inexistência do ID da solicitação; reenvios não aumentam a contagem. A limpeza
+de solicitações expiradas exclui os documentos e decrementa os respectivos
+contadores no mesmo commit, condicionado às versões lidas. Mudanças de status
+não alteram o contador. A rotação preserva os contadores e repete a leitura em
+caso de conflito, por até três tentativas. Qualquer futura exclusão ou troca de
+chave dos dados deve atualizar os contadores no mesmo commit. Esta mudança
+não inclui migração ou recontagem de dados anteriores.
+
+Esta entrega usa o executor versionado de migrações do Firestore. A primeira
+migração, `0001-publication-status`, preserva os status explícitos, publica os
+registros legados sem status e introduz `schemaVersion: 1` em cães e pontos.
+Novos cadastros já recebem essa versão; não há renomeação de campos nesta etapa.
+
+```bash
+node --env-file=<runtime.env> scripts/migrate.mjs plan --project=<id>
+node --env-file=<runtime.env> scripts/migrate.mjs up --project=<id> --apply
+```
+
+O projeto deve coincidir com `FIREBASE_PROJECT_ID` do runtime. A simulação não
+escreve dados. A execução usa histórico, trava, lotes e retomada após falhas.
+Consulte [Migrações do Firestore](../../docs/firestore-migrations.md) para os
+comandos `status`, `--to`, `--rescan`, e o processo para futuras mudanças de esquema.
+
+Durante a atualização, pause a edição de fichas, execute a migração, publique
+as regras do Firestore (pontos também recusam leitura direta), atualize público
+e cron e, por último, o admin. Não habilite o novo admin com Workers públicos
+antigos: eles não conhecem rascunhos. A migração e o deploy não são automáticos.
 
 A configuração está em [`wrangler.jsonc`](wrangler.jsonc). Para verificar e
 publicar o painel, siga o

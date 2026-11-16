@@ -1,5 +1,14 @@
 .pageHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem 1.5rem;
   margin-bottom: 1.5rem;
+}
+
+.heading {
+  flex: 1;
+  min-width: 0;
 }
 
 .title {
@@ -12,41 +21,14 @@
 }
 
 .subtitle {
-  margin-top: 0.35rem;
+  margin: 0.35rem 0 0;
   color: var(--text-muted);
   font-size: 1rem;
 }
 
-.topBar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.searchWrapper {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex: 1;
-  min-width: 0;
-  max-width: 400px;
-  color: var(--text-muted);
-}
-
-.searchWrapper input {
-  width: 100%;
-}
-
-.actionsRight {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
 .addButton {
+  flex-shrink: 0;
+  align-self: flex-start;
   white-space: nowrap;
 }
 
@@ -77,6 +59,7 @@
 
 .pointInfo {
   display: flex;
+  min-width: 0;
   flex-direction: column;
   gap: 0.25rem;
   text-align: left;
@@ -88,14 +71,16 @@
 }
 
 .pointHeader {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   gap: 0.75rem;
   margin-bottom: 0.25rem;
-  flex-wrap: wrap;
 }
 
 .pointNeighborhood {
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: 1.1rem;
   color: var(--text-primary);
   margin: 0;
@@ -103,70 +88,71 @@
 }
 
 .pointName {
+  overflow-wrap: anywhere;
   color: var(--text-secondary);
   margin: 0;
   font-size: 0.95rem;
 }
 
 .pointAddress {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
   color: var(--text-muted);
   margin: 0;
   font-size: 0.9rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
-.mapLink {
+.pointZone,
+.addressText {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  background-color: var(--surface-water);
-  color: var(--primary);
-  border: 1px solid var(--control-border);
-  padding: 0.4rem 0.8rem;
-  border-radius: var(--radius-sm);
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 0.85rem;
-  margin-top: 0.5rem;
-  transition: all 0.2s ease;
-  width: fit-content;
-  box-shadow: var(--shadow-sm);
 }
 
-.mapLink:hover {
-  background-color: var(--surface-water);
-  border-color: var(--border);
-  color: var(--primary-hover);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
+.pointAddress svg {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.pointZone {
+  flex-shrink: 0;
+  text-transform: capitalize;
+}
+
+.addressText {
+  flex: 1;
+  min-width: 0;
+}
+
+.mapLink {
+  margin-right: auto;
 }
 
 /* Ações do Card */
 .pointActions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   width: 100%;
   gap: 0.5rem;
   margin: 0;
   padding: 0.75rem 0.5rem 0.5rem;
-  border-top: 1px solid var(--border-light);
 }
 
-.editButton {
+.pointActions .editButton,
+.pointActions .mapLink {
   flex: 0 0 auto;
+  height: 2.25rem;
+  padding-block: 0;
   gap: 0.4rem;
   white-space: nowrap;
 }
 
-.editButton:hover {
-  background: var(--surface-water);
-  color: var(--text-primary);
-  border-color: var(--border);
-}
-
 .deleteBtn {
-  flex: 0 0 auto;
-  width: 42px;
   color: var(--error);
   border-color: var(--error);
   background: var(--accent-red);
@@ -190,30 +176,36 @@
     font-size: 1.75rem;
   }
 
-  .topBar {
-    flex-direction: column-reverse;
+  .pageHeader {
+    flex-direction: column;
     align-items: stretch;
-  }
-
-  .searchWrapper {
-    max-width: 100%;
-  }
-
-  .actionsRight {
-    justify-content: space-between;
   }
 
   .pointCard {
     width: 100%;
   }
 
-  .pointActions {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    padding: 1rem 0.75rem 0.75rem;
+  .pointAddress {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
   }
 
-  .editButton {
+  .addressSeparator {
+    display: none;
+  }
+
+  .addressText {
+    flex: none;
     width: 100%;
+    align-items: flex-start;
+  }
+
+  .addressText svg {
+    margin-top: 0.175rem;
+  }
+
+  .pointActions {
+    padding: 1rem 0.75rem 0.75rem;
   }
 }

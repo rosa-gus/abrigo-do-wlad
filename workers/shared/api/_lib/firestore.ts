@@ -71,6 +71,13 @@ export interface FirestoreDocument<T extends Record<string, unknown>> {
 export interface CreateDocumentOptions {
   serverTimestampFields?: string[];
   documentId?: string;
+  increments?: DocumentFieldIncrement[];
+}
+
+export interface DocumentFieldIncrement {
+  documentPath: string;
+  fieldPath: string[];
+  amount: number;
 }
 
 export interface DeleteDocumentsResult {
@@ -857,9 +864,11 @@ export class FirestoreRestClient {
 
   async deleteDocumentsIfUnchanged(
     documents: Array<{ name: string; updateTime: string }>,
+    increments: DocumentFieldIncrement[] = [],
   ): Promise<DeleteDocumentsResult> {
     if (documents.length === 0) return { deleted: 0 };
-    if (documents.length > MAX_COMMIT_WRITES) {
+    const incrementWrites = this.incrementWrites(increments);
+    if (documents.length + incrementWrites.length > MAX_COMMIT_WRITES) {
       throw new RangeError(`Firestore commit cannot contain more than ${MAX_COMMIT_WRITES} deletes.`);
     }
     if (new Set(documents.map((document) => document.name)).size !== documents.length) {
@@ -876,10 +885,10 @@ export class FirestoreRestClient {
       {
         method: "POST",
         body: JSON.stringify({
-          writes: documents.map((document) => ({
+          writes: [...documents.map((document) => ({
             delete: document.name,
             currentDocument: { updateTime: document.updateTime },
-          })),
+          })), ...incrementWrites],
         }),
       },
     );
@@ -1115,6 +1124,32 @@ export class FirestoreRestClient {
     );
   }
 
+  private incrementWrites(increments: DocumentFieldIncrement[]) {
+    const grouped = new Map<string, Array<{ fieldPath: string; increment: FirestoreValue }>>();
+    for (const { documentPath, fieldPath, amount } of increments) {
+      const parts = documentPath.split("/");
+      if (parts.length !== 2 || parts.some((part) => !/^[A-Za-z0-9_-]{1,128}$/.test(part))) {
+        throw new TypeError("Invalid increment document path.");
+      }
+      if (!Number.isSafeInteger(amount) || fieldPath.length === 0 || fieldPath.some((part) => !part)) {
+        throw new TypeError("Invalid field increment.");
+      }
+      // Quote each segment: key IDs may contain hyphens, dots or backticks.
+      const path = fieldPath.map((part) => `\`${part.replace(/\\/g, "\\\\").replace(/`/g, "\\`")}\``).join(".");
+      const transforms = grouped.get(documentPath) ?? [];
+      if (transforms.some((entry) => entry.fieldPath === path)) throw new TypeError("Duplicate increment field.");
+      transforms.push({ fieldPath: path, increment: encodeFirestoreValue(amount) });
+      grouped.set(documentPath, transforms);
+    }
+    return [...grouped].map(([documentPath, fieldTransforms]) => ({
+      transform: {
+        document: `${this.documentsRoot}/${documentPath}`,
+        fieldTransforms,
+      },
+      currentDocument: { exists: true },
+    }));
+  }
+
   async createDocument(
     collectionId: string,
     data: Record<string, unknown>,
@@ -1129,6 +1164,9 @@ export class FirestoreRestClient {
     }
 
     const name = `${this.documentsRoot}/${collectionId}/${id}`;
+    const increments = options.increments ?? [];
+    const incrementWrites = this.incrementWrites(increments);
+    if (1 + incrementWrites.length > MAX_COMMIT_WRITES) throw new RangeError("Too many commit writes.");
     const updateTransforms = (options.serverTimestampFields ?? []).map(
       (fieldPath) => ({
         fieldPath,
@@ -1147,7 +1185,7 @@ export class FirestoreRestClient {
       `${this.databaseRoot}/documents:commit`,
       {
         method: "POST",
-        body: JSON.stringify({ writes: [write] }),
+        body: JSON.stringify({ writes: [write, ...incrementWrites] }),
       },
     );
 

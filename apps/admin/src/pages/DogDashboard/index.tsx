@@ -1,11 +1,11 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router";
-import { CircleAlert, Plus, Dog, RefreshCw, Search } from "lucide-react";
-import { Badge } from "@jaci/ui/Badge";
+import { CircleAlert, Plus, Dog, RefreshCw } from "lucide-react";
 import { Button } from "@jaci/ui/Button";
-import { Input } from "@jaci/ui/Field";
 import { EmptyState } from "@jaci/ui/EmptyState";
-import { getDogs, archiveDog } from "../../services/dogs";
+import { getDogs, archiveDog, deleteDraftDog } from "../../services/dogs";
+import { ListingFilters } from "../../components/ListingFilters";
+import { ConfirmModal } from "../../components/ConfirmModal";
 import { DogCard } from "../../components/DogCard";
 import { AdoptionModal } from "../../components/AdoptionModal";
 import { ErrorModal } from "../../components/ErrorModal";
@@ -13,6 +13,7 @@ import { SuccessModal } from "../../components/SuccessModal";
 import { Pagination } from "@jaci/ui/Pagination";
 import type { DogProps } from "../../types/dogs";
 import styles from "./DogDashboard.module.css";
+import containerStyles from "../DashboardContainer.module.css";
 
 const ITEMS_PER_PAGE = 9; // Cachorros por página
 
@@ -25,6 +26,8 @@ export default function DogDashboard() {
   const [reloadToken, setReloadToken] = useState(0);
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [publicationFilter, setPublicationFilter] = useState("all");
+  const [draftToDelete, setDraftToDelete] = useState<{ id: number; nome: string } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [dogToProcess, setDogToProcess] = useState<{id: number, nome: string} | null>(null);
   const [isProcessingDog, setIsProcessingDog] = useState(false);
@@ -53,11 +56,27 @@ export default function DogDashboard() {
     return () => { active = false; };
   }, [reloadToken]);
 
+  async function discardDraft() {
+    if (!draftToDelete || isProcessingDog) return;
+    setIsProcessingDog(true);
+    try {
+      await deleteDraftDog(draftToDelete.id);
+      setDogs(current => current.filter(dog => dog.id !== draftToDelete.id));
+      setDraftToDelete(null);
+    } catch (error) {
+      setDraftToDelete(null);
+      setOperationError(error instanceof Error ? error.message : "Não foi possível excluir o rascunho.");
+    } finally {
+      setIsProcessingDog(false);
+    }
+  }
+
   const filteredDogs = useMemo(() => {
     return dogs.filter(dog =>
-      dog.nome.toLowerCase().includes(searchTerm.toLowerCase())
+      (publicationFilter === "all" || dog.publicationStatus === publicationFilter)
+      && dog.nome.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [dogs, searchTerm]);
+  }, [dogs, searchTerm, publicationFilter]);
 
   const totalPages = Math.ceil(filteredDogs.length / ITEMS_PER_PAGE);
   const visiblePage = Math.min(currentPage, Math.max(totalPages, 1));
@@ -105,37 +124,37 @@ export default function DogDashboard() {
   }
 
   return (
-    <div className="container" style={{ paddingTop: "2rem", paddingBottom: "4rem" }}>
+    <div className={containerStyles.container} style={{ paddingTop: "2rem", paddingBottom: "4rem" }}>
       <header className={styles.pageHeader}>
-        <h1 className={styles.title}>Cachorros</h1>
-        <p className={styles.subtitle}>
-          Consulte, cadastre e atualize os animais disponíveis para adoção.
-        </p>
+        <div className={styles.heading}>
+          <h1 className={styles.title}>Cachorros</h1>
+          <p className={styles.subtitle}>Gerencie fichas publicadas e rascunhos dos animais.</p>
+        </div>
+        <Button type="button" onClick={() => navigate("/admin/dog/new")} className={styles.addButton}>
+          <Plus size={20} aria-hidden="true" /> Novo cachorro
+        </Button>
       </header>
 
-      <div className={styles.topBar}>
-
-        <div className={styles.searchWrapper}>
-          <Search size={20} aria-hidden="true" />
-          <Input
-            type="text"
-            aria-label="Buscar cachorro por nome"
-            placeholder="Buscar por nome..."
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setCurrentPage(1);
-            }}
-          />
-        </div>
-
-        <div className={styles.actionsRight}>
-           <Badge variant="outline">{filteredDogs.length} cães</Badge>
-           <Button onClick={() => navigate("/admin/dog/new")} className={styles.addButton}>
-            <Plus size={20} /> Novo
-          </Button>
-        </div>
-      </div>
+      <ListingFilters
+        searchLabel="Buscar por nome"
+        searchPlaceholder="Buscar por nome..."
+        searchValue={searchTerm}
+        onSearchChange={value => {
+          setSearchTerm(value);
+          setCurrentPage(1);
+        }}
+        publicationValue={publicationFilter}
+        onPublicationChange={value => {
+          setPublicationFilter(value);
+          setCurrentPage(1);
+        }}
+        onClear={() => {
+          setSearchTerm("");
+          setPublicationFilter("all");
+          setCurrentPage(1);
+        }}
+        totalItems={loading || loadError ? undefined : filteredDogs.length}
+      />
 
       {loading && (
         <div className={styles.loadingState}>
@@ -169,8 +188,8 @@ export default function DogDashboard() {
           icon={<Dog />}
           title={searchTerm
             ? `Nenhum cachorro encontrado para "${searchTerm}"`
-            : "Nenhum cachorro cadastrado ainda."}
-          actions={!searchTerm && (
+            : publicationFilter !== "all" ? "Nenhum cachorro com este status." : "Nenhum cachorro cadastrado ainda."}
+          actions={!searchTerm && publicationFilter === "all" && (
             <Button variant="text" onClick={() => navigate("/admin/dog/new")}>Cadastre o primeiro</Button>
           )}
         />
@@ -184,6 +203,7 @@ export default function DogDashboard() {
                 key={dog.id}
                 dog={dog}
                 onArchive={openAdoptionModal}
+                onDiscard={(id, nome) => setDraftToDelete({ id, nome })}
                 priority={index < 3}
               />
             ))}
@@ -196,6 +216,11 @@ export default function DogDashboard() {
           />
         </>
       )}
+
+      <ConfirmModal isOpen={draftToDelete !== null} onClose={() => setDraftToDelete(null)}
+        onConfirm={() => void discardDraft()} title="Excluir rascunho?"
+        message={`Excluir a ficha de ${draftToDelete?.nome ?? "este cão"}? Esta ação não pode ser desfeita.`}
+        confirmText="Excluir rascunho" isConfirming={isProcessingDog} isDestructive />
 
       <AdoptionModal
         isOpen={!!dogToProcess}

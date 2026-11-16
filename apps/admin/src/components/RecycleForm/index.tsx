@@ -3,6 +3,9 @@ import { useNavigate } from "react-router";
 import { MapPin } from "lucide-react";
 import { Field, Input } from "@jaci/ui/Field";
 import * as SelectComponent from "@jaci/ui/Select";
+import { ConfirmModal } from "../ConfirmModal";
+import { PublicationActions, PublicationSection } from "../Publication";
+import type { PublicationStatus } from "../../../shared/entities";
 import { SuccessModal } from "../SuccessModal";
 import { ErrorModal } from "../ErrorModal";
 import {
@@ -23,7 +26,8 @@ interface RecycleFormProps {
 
 function createRecyclePointInput(initialData?: RecyclePoint): RecyclePointInput {
   return {
-    zone: initialData?.zone ?? "ZONA SUL",
+    publicationStatus: initialData?.publicationStatus ?? "draft",
+    zone: initialData?.zone ?? "",
     neighborhood: initialData?.neighborhood ?? "",
     name: initialData?.name ?? "",
     address: initialData?.address ?? "",
@@ -35,6 +39,8 @@ export function RecycleForm({ initialData, onSubmit, title, buttonLabel }: Recyc
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [confirmUnpublish, setConfirmUnpublish] = useState(false);
+  const [savedStatus, setSavedStatus] = useState<PublicationStatus>("draft");
   const [errorInfo, setErrorInfo] = useState({ show: false, message: "" });
 
   const [formData, setFormData] = useState<RecyclePointInput>(() =>
@@ -45,11 +51,23 @@ export function RecycleForm({ initialData, onSubmit, title, buttonLabel }: Recyc
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const validatedData = recyclePointInputSchema.safeParse(formData);
+    if (isSubmitting) return;
+    const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+    const status = submitter?.value === "published" ? "published" : "draft";
+    if (status === "draft" && initialData?.publicationStatus === "published") {
+      setConfirmUnpublish(true);
+      return;
+    }
+    await save(status);
+  };
+
+  const save = async (publicationStatus: PublicationStatus) => {
+    if (isSubmitting) return;
+    const validatedData = recyclePointInputSchema.safeParse({ ...formData, publicationStatus });
     if (!validatedData.success) {
       setErrorInfo({
         show: true,
-        message: validatedData.error.issues[0]?.message
+        message: [...new Set(validatedData.error.issues.map(issue => issue.message))].join(" ")
           ?? "Revise os dados do ponto de coleta antes de continuar.",
       });
       return;
@@ -59,10 +77,12 @@ export function RecycleForm({ initialData, onSubmit, title, buttonLabel }: Recyc
 
     try {
       await onSubmit(validatedData.data);
+      setSavedStatus(publicationStatus);
+      setConfirmUnpublish(false);
       setShowSuccess(true);
     } catch (error: unknown) {
       console.error(error);
-      setErrorInfo({ show: true, message: "Não foi possível salvar os dados. Verifique sua conexão." });
+      setErrorInfo({ show: true, message: error instanceof Error ? error.message : "Não foi possível salvar os dados." });
     } finally {
       setIsSubmitting(false);
     }
@@ -80,7 +100,7 @@ export function RecycleForm({ initialData, onSubmit, title, buttonLabel }: Recyc
         isOpen={showSuccess}
         onClose={handleCloseSuccess}
         title="Tudo certo!"
-        message="Os dados do ponto de coleta foram salvos com sucesso."
+        message={savedStatus === "published" ? "Ponto publicado. As alterações estão salvas." : "Rascunho salvo. O ponto não está disponível ao público."}
       />
 
       <ErrorModal
@@ -89,6 +109,11 @@ export function RecycleForm({ initialData, onSubmit, title, buttonLabel }: Recyc
         message={errorInfo.message}
       />
 
+      <ConfirmModal isOpen={confirmUnpublish} onClose={() => setConfirmUnpublish(false)}
+        onConfirm={() => void save("draft")} title="Voltar para rascunho?"
+        message="O ponto será retirado do site. As informações serão preservadas."
+        confirmText="Salvar e retirar do site" isConfirming={isSubmitting} />
+
       <FormShell
         title={title}
         backTo="/admin/recycle"
@@ -96,7 +121,10 @@ export function RecycleForm({ initialData, onSubmit, title, buttonLabel }: Recyc
         isSubmitting={isSubmitting}
         submitLabel={buttonLabel}
         onSubmit={handleSubmit}
+        noValidate
+        actions={<PublicationActions status={initialData?.publicationStatus ?? "draft"} isSubmitting={isSubmitting} />}
       >
+        <PublicationSection status={initialData?.publicationStatus ?? "draft"} updatedAt={initialData?.updatedAt} />
         <FormSection
           icon={<MapPin size={24} />}
           title="Informações do local"
@@ -132,7 +160,7 @@ export function RecycleForm({ initialData, onSubmit, title, buttonLabel }: Recyc
             </Field>
           </FormRow>
 
-          <Field controlId="recycle-name" label="Nome do local (opcional)">
+          <Field controlId="recycle-name" label="Nome do local" description="Informe o nome ou o bairro para identificar o rascunho.">
             <Input
               maxLength={160}
               placeholder="Ex: PetShop Latmia"

@@ -75,6 +75,21 @@ function keyDependencies(
 
 const linkedImage = "https://res.cloudinary.com/test-cloud/image/upload/v1/abrigo-do-wlad/dogs/image-id.jpg";
 
+test("an older writer cannot delete media whose references may use a newer schema", async () => {
+  const list = vi.spyOn(FirestoreRestClient.prototype, "listDocuments").mockResolvedValue([{
+    id: "dog-1", name: "dogs/dog-1", data: { schemaVersion: 2, photos: [linkedImage] },
+  }]);
+  const fetcher = vi.spyOn(globalThis, "fetch");
+  try {
+    const response = await handleAdminApi(new Request("https://admin.example.test/api/admin/media/delete", {
+      method: "POST", headers: { Origin: "https://admin.example.test", "Content-Type": "application/json" },
+      body: JSON.stringify({ imageUrl: linkedImage }),
+    }), env, identity, keyDependencies());
+    assert.equal(response.status, 409);
+    assert.equal(fetcher.mock.calls.length, 0);
+  } finally { list.mockRestore(); fetcher.mockRestore(); }
+});
+
 for (const field of ["fotos", "retainedPhotos"]) {
   test.each([
     linkedImage,
@@ -228,18 +243,18 @@ test("admin API rejects state changes without a same-origin Origin header", asyn
   assert.equal(response.status, 403);
 });
 
-test("admin API has no permanent dog deletion endpoint", async () => {
-  const response = await handleAdminApi(
-    new Request("https://admin.example.test/api/admin/dogs/123", {
-      method: "DELETE",
-      headers: { Origin: "https://admin.example.test" },
-    }),
-    env,
-    identity,
-    keyDependencies(),
-  );
-  assert.equal(response.status, 405);
-  assert.equal(response.headers.get("Allow"), "GET, PATCH");
+test("admin API rejects permanent deletion of published dogs", async () => {
+  const find = vi.spyOn(FirestoreRestClient.prototype, "findFirstDocumentByField").mockResolvedValue({
+    id: "dog-1", name: "dogs/dog-1", data: { publicationStatus: "published" },
+  });
+  try {
+    const response = await handleAdminApi(
+      new Request("https://admin.example.test/api/admin/dogs/123", {
+        method: "DELETE", headers: { Origin: "https://admin.example.test" },
+      }), env, identity, keyDependencies(),
+    );
+    assert.equal(response.status, 409);
+  } finally { find.mockRestore(); }
 });
 
 test("admin API proxies uploads only after same-origin validation", async () => {
@@ -709,4 +724,162 @@ test("developer identities can remove the admin notification", async () => {
 
   assert.equal(response.status, 204);
   assert.deepEqual(receivedIdentity, developerIdentity);
+});
+
+const completeDog = {
+  nome: "Nina", idade: "2 anos", cateIdade: "adulto", sexo: "Fêmea",
+  temperamento: "Dócil", tags: [], status: "Apenas Castrado", cor: "caramelo", fotos: [],
+};
+function publicationRequest(path: string, method: string, body?: unknown) {
+  return new Request(`https://admin.example.test/api/admin/${path}`, {
+    method, headers: { Origin: "https://admin.example.test", "Content-Type": "application/json" },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+}
+
+test("new dog drafts persist partial fields and default to internal visibility", async () => {
+  const create = vi.spyOn(FirestoreRestClient.prototype, "createDocument").mockResolvedValue({ id: "dog-1" });
+  try {
+    const response = await handleAdminApi(publicationRequest("dogs", "POST", { nome: "Nina" }), env, identity, keyDependencies());
+    assert.equal(response.status, 201);
+    const saved = create.mock.calls[0][1];
+    assert.equal(saved.publicationStatus, "draft");
+    assert.equal(saved.schemaVersion, 1);
+    assert.equal(saved.status, "");
+    assert.equal(saved.idade, "");
+    assert.equal(saved.publishedAt, undefined);
+    assert.ok(saved.updatedAt);
+  } finally { create.mockRestore(); }
+});
+
+test.each([
+  [{ nome: "Nina", publicationStatus: "draft" }, { publicationStatus: "published" }],
+  [{ ...completeDog, publicationStatus: "published" }, { idade: "" }],
+])("publication and published edits validate the entire resulting dog", async (stored, patch) => {
+  const find = vi.spyOn(FirestoreRestClient.prototype, "findFirstDocumentByField").mockResolvedValue({
+    id: "dog-1", name: "dogs/dog-1", data: stored,
+  });
+  const update = vi.spyOn(FirestoreRestClient.prototype, "updateDocument").mockResolvedValue({});
+  try {
+    const response = await handleAdminApi(publicationRequest("dogs/123", "PATCH", patch), env, identity, keyDependencies());
+    assert.equal(response.status, 400);
+    assert.equal(update.mock.calls.length, 0);
+  } finally { find.mockRestore(); update.mockRestore(); }
+});
+
+test("publishing a complete draft sets its first-publication timestamp and a write precondition", async () => {
+  const updateTime = "2026-11-01T12:00:00.000Z";
+  const find = vi.spyOn(FirestoreRestClient.prototype, "findFirstDocumentByField").mockResolvedValue({
+    id: "dog-1", name: "dogs/dog-1", updateTime, data: { ...completeDog, publicationStatus: "draft" },
+  });
+  const update = vi.spyOn(FirestoreRestClient.prototype, "updateDocument").mockResolvedValue({});
+  try {
+    const response = await handleAdminApi(publicationRequest("dogs/123", "PATCH", { publicationStatus: "published" }), env, identity, keyDependencies());
+    assert.equal(response.status, 200);
+    assert.equal(update.mock.calls[0][1].publicationStatus, "published");
+    assert.ok(update.mock.calls[0][1].publishedAt);
+    assert.deepEqual(update.mock.calls[0][2], { expectedUpdateTime: updateTime });
+  } finally { find.mockRestore(); update.mockRestore(); }
+});
+
+test("unpublishing preserves photos and does not archive or count an adoption", async () => {
+  const find = vi.spyOn(FirestoreRestClient.prototype, "findFirstDocumentByField").mockResolvedValue({
+    id: "dog-1", name: "dogs/dog-1", data: { ...completeDog, publicationStatus: "published", publishedAt: "2026-11-01T12:00:00.000Z" },
+  });
+  const update = vi.spyOn(FirestoreRestClient.prototype, "updateDocument").mockResolvedValue({});
+  try {
+    const response = await handleAdminApi(publicationRequest("dogs/123", "PATCH", { publicationStatus: "draft", idade: "" }), env, identity, keyDependencies());
+    assert.equal(response.status, 200);
+    const saved = update.mock.calls[0][1];
+    assert.equal(saved.publicationStatus, "draft");
+    assert.deepEqual(saved.fotos, []);
+    assert.equal(saved.archivedAt, undefined);
+    assert.equal(saved.purgeAfter, undefined);
+    assert.equal(saved.adoptionCountedAt, undefined);
+  } finally { find.mockRestore(); update.mockRestore(); }
+});
+
+test("restoring an archived dog always returns it as a draft", async () => {
+  const find = vi.spyOn(FirestoreRestClient.prototype, "findFirstDocumentByField").mockResolvedValue({
+    id: "dog-1", name: "dogs/dog-1", data: { ...completeDog, archivedAt: "2026-11-01T12:00:00.000Z", publicationStatus: "published" },
+  });
+  const update = vi.spyOn(FirestoreRestClient.prototype, "updateDocument").mockResolvedValue({});
+  try {
+    const response = await handleAdminApi(publicationRequest("dogs/123/restore", "POST"), env, identity, keyDependencies());
+    assert.equal(response.status, 200);
+    assert.equal(update.mock.calls[0][1].publicationStatus, "draft");
+    assert.equal(update.mock.calls[0][1].purgeAfter, null);
+  } finally { find.mockRestore(); update.mockRestore(); }
+});
+
+test.each([undefined, "2026-11-01T00:00:00.000Z"])("archiving a draft does not expose its unpublished name (publishedAt %s)", async publishedAt => {
+  const find = vi.spyOn(FirestoreRestClient.prototype, "findFirstDocumentByField").mockResolvedValue({
+    id: "dog-1", name: "dogs/dog-1", data: { nome: "Nome interno", publicationStatus: "draft", publishedAt },
+  });
+  const update = vi.spyOn(FirestoreRestClient.prototype, "updateDocument").mockResolvedValue({});
+  const saveDogTombstone = vi.fn();
+  try {
+    const response = await handleAdminApi(publicationRequest("dogs/123/archive", "POST", { reason: "other" }), env, identity, keyDependencies({ saveDogTombstone }));
+    assert.equal(response.status, 200);
+    assert.equal(saveDogTombstone.mock.calls.length, 0);
+  } finally { find.mockRestore(); update.mockRestore(); }
+});
+
+test("draft deletion requires the read document version", async () => {
+  const updateTime = "2026-11-01T12:00:00.000Z";
+  const find = vi.spyOn(FirestoreRestClient.prototype, "findFirstDocumentByField").mockResolvedValue({
+    id: "dog-1", name: "dogs/dog-1", updateTime, data: { nome: "Nina", publicationStatus: "draft" },
+  });
+  const remove = vi.spyOn(FirestoreRestClient.prototype, "deleteDocumentsIfUnchanged").mockResolvedValue({ deleted: 1 });
+  try {
+    const response = await handleAdminApi(publicationRequest("dogs/123", "DELETE"), env, identity, keyDependencies());
+    assert.equal(response.status, 204);
+    assert.deepEqual(remove.mock.calls[0][0], [{ name: "dogs/dog-1", updateTime }]);
+  } finally { find.mockRestore(); remove.mockRestore(); }
+});
+
+test("recycle points accept partial drafts but reject incomplete publication", async () => {
+  const create = vi.spyOn(FirestoreRestClient.prototype, "createDocument").mockResolvedValue({ id: "point-1" });
+  const get = vi.spyOn(FirestoreRestClient.prototype, "getDocument").mockResolvedValue({
+    id: "point-1", name: "recycle_points/point-1", data: { name: "Mercado", publicationStatus: "draft" },
+  });
+  const update = vi.spyOn(FirestoreRestClient.prototype, "updateDocument").mockResolvedValue({});
+  try {
+    const created = await handleAdminApi(publicationRequest("recycle-points", "POST", { name: "Mercado" }), env, identity, keyDependencies());
+    assert.equal(created.status, 201);
+    assert.equal(create.mock.calls[0][1].publicationStatus, "draft");
+    assert.equal(create.mock.calls[0][1].schemaVersion, 1);
+    const rejected = await handleAdminApi(publicationRequest("recycle-points/point-1", "PATCH", { publicationStatus: "published" }), env, identity, keyDependencies());
+    assert.equal(rejected.status, 400);
+    assert.equal(update.mock.calls.length, 0);
+  } finally { create.mockRestore(); get.mockRestore(); update.mockRestore(); }
+});
+
+test.each(["dogs/123", "recycle-points/point-1"])("an older writer cannot mutate newer document versions at %s", async path => {
+  const stored = { id: "record", name: "record", data: { ...completeDog, schemaVersion: 2, publicationStatus: "draft" } };
+  const find = vi.spyOn(FirestoreRestClient.prototype, "findFirstDocumentByField").mockResolvedValue(stored);
+  const get = vi.spyOn(FirestoreRestClient.prototype, "getDocument").mockResolvedValue(stored);
+  const update = vi.spyOn(FirestoreRestClient.prototype, "updateDocument").mockResolvedValue({});
+  try {
+    const response = await handleAdminApi(publicationRequest(path, "PATCH", { publicationStatus: "published" }), env, identity, keyDependencies());
+    assert.equal(response.status, 409);
+    assert.equal(update.mock.calls.length, 0);
+  } finally { find.mockRestore(); get.mockRestore(); update.mockRestore(); }
+});
+
+test.each(["dogs/123", "recycle-points/point-1"])("stale editors cannot republish %s after another editor unpublishes it", async path => {
+  const stored = {
+    id: "record", name: "record", updateTime: "2026-11-02T00:00:00.000Z",
+    data: { ...completeDog, name: "Mercado", zone: "Centro", neighborhood: "Vila", address: "Rua 1", publicationStatus: "draft" },
+  };
+  const find = vi.spyOn(FirestoreRestClient.prototype, "findFirstDocumentByField").mockResolvedValue(stored);
+  const get = vi.spyOn(FirestoreRestClient.prototype, "getDocument").mockResolvedValue(stored);
+  const update = vi.spyOn(FirestoreRestClient.prototype, "updateDocument").mockResolvedValue({});
+  try {
+    const response = await handleAdminApi(publicationRequest(path, "PATCH", {
+      publicationStatus: "published", expectedUpdateTime: "2026-11-01T00:00:00.000Z",
+    }), env, identity, keyDependencies());
+    assert.equal(response.status, 409);
+    assert.equal(update.mock.calls.length, 0);
+  } finally { find.mockRestore(); get.mockRestore(); update.mockRestore(); }
 });

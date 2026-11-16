@@ -1,4 +1,3 @@
-import { fetchJsonWithCache } from '@/lib/cache';
 import type { RecyclePoint } from '../types/recycle';
 
 function isRecyclePoints(value: unknown): value is RecyclePoint[] {
@@ -16,7 +15,13 @@ function isRecyclePoints(value: unknown): value is RecyclePoint[] {
 
 export async function getRecyclePoints(): Promise<RecyclePoint[]> {
   try {
-    return await fetchJsonWithCache('/api/recycle-points', 'all_recycle_points', isRecyclePoints);
+    const response = await fetch('/api/recycle-points', {
+      cache: 'no-store', headers: { Accept: 'application/json' },
+    });
+    if (!response.ok) throw new Error(`Falha ao carregar pontos (HTTP ${response.status}).`);
+    const points: unknown = await response.json();
+    if (!isRecyclePoints(points)) throw new Error('A API retornou pontos inválidos.');
+    return points;
   } catch (error) {
     console.error('Erro ao buscar pontos de coleta:', error);
     return [];

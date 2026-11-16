@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import containerStyles from "../DashboardContainer.module.css";
 import * as Lucide from "lucide-react";
 import { Button } from "@jaci/ui/Button";
 import { Badge } from "@jaci/ui/Badge";
@@ -30,6 +31,7 @@ import {
   SelectValue,
 } from "@jaci/ui/Select";
 import { Skeleton } from "@jaci/ui/Skeleton";
+import { Separator } from "@jaci/ui/Separator";
 import { Toggle } from "@jaci/ui/Toggle";
 import { getSystemSettings, updateSystemSettings } from "../../services/systemSettings";
 import { ApiError } from "../../services/api";
@@ -463,7 +465,7 @@ export default function AdoptionsDashboard() {
     ADOPTION_REVIEW_STEPS[activeReviewStep] ?? ADOPTION_REVIEW_STEPS[0];
 
   return (
-    <div className={styles.container}>
+    <div className={`${containerStyles.container} ${styles.container}`}>
       <div className={styles.topBar}>
         <div>
           <h1 className={styles.title}>Solicitações de Adoção</h1>
@@ -576,6 +578,7 @@ export default function AdoptionsDashboard() {
                         </span>
                       </div>
 
+                      <Separator orientation="vertical" />
                       {/* Link para o whatsapp no telefone */}
                       {req.telefone ? (
                         <a
@@ -598,6 +601,7 @@ export default function AdoptionsDashboard() {
                         </div>
                       )}
 
+                      <Separator orientation="vertical" />
                       <div className={styles.detailItem}>
                         <Lucide.Calendar size={16} />
                         <span>{formatDate(req.submittedAt)}</span>
@@ -606,6 +610,7 @@ export default function AdoptionsDashboard() {
                   </CardContent>
                 </CardBody>
 
+                <Separator />
                 <CardFooter className={styles.cardActions}>
                   <div className={styles.utilityActions}>
                     <Button

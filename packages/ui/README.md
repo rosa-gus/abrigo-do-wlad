@@ -124,6 +124,59 @@ claro e texto escuro sobre cores luminosas no tema escuro. As variantes utilitá
 <Button variant="primary" emphasis="minimal">Ver detalhes</Button>
 ```
 
+`shape="circle"` define um botão circular com largura e altura iguais,
+independentemente do ícone ou do layout do contêiner. Use com ações de ícone e
+um nome acessível. Os diâmetros são `2.25rem` para `icon-sm`/`sm`, `2.75rem` para
+`icon`/`md` e `3.25rem` para `lg`.
+
+`align="start"` e `align="end"` alinham o conteúdo de botões com texto; o padrão
+é centralizado. Botões circulares mantêm o ícone centralizado. Essas propriedades
+também estão disponíveis em `ButtonLink`.
+
+```tsx
+import { Trash2 } from "lucide-react";
+
+<Button variant="danger" size="icon-sm" shape="circle" aria-label="Excluir">
+  <Trash2 size={18} />
+</Button>
+<Button variant="outline" align="start">Editar</Button>
+```
+
+### Campo de busca
+
+`SearchField` oferece ícone de busca e limpeza do valor preservando o foco no
+campo. `iconPlacement="outside"` posiciona o ícone à esquerda, fora da borda do
+input; o padrão é `inside`. O botão de limpar permanece dentro do input.
+
+```tsx
+import { SearchField } from "@jaci/ui/SearchField";
+
+<SearchField
+  aria-label="Buscar por nome"
+  value={search}
+  onValueChange={setSearch}
+  iconPlacement="outside"
+  placeholder="Buscar por nome..."
+/>
+```
+
+### Separadores
+
+`Separator` desenha uma linha de 1px na cor `--border`. A orientação padrão é
+horizontal, com largura total; a vertical tem altura de `1em`, acompanhando o
+texto. O espaçamento é definido pelo contêiner, e `className`/`style` permitem
+ajustar o comprimento.
+
+```tsx
+import { Separator } from "@jaci/ui/Separator";
+
+<Separator />
+<Separator orientation="vertical" />
+```
+
+Por padrão é decorativo e fica oculto da árvore de acessibilidade. Use
+`decorative={false}` quando representar uma separação semântica de conteúdo.
+
 ### Estados vazios e indisponibilidade
 
 `EmptyState` apresenta ausência de resultados, falhas de carregamento e

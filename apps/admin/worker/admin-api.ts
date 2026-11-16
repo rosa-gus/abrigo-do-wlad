@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { DOG_DOCUMENT_SCHEMA_VERSION, RECYCLE_POINT_DOCUMENT_SCHEMA_VERSION, supportsDocumentVersion } from "../../../workers/shared/document-schema";
+import { isPublished, publicationMetadata } from "../../../workers/shared/publication";
 import { systemSettingsSchema } from "../shared/system-settings";
 import { adoptionStatusUpdate, AdoptionTransitionError } from "../shared/adoption-retention";
 
@@ -206,6 +208,7 @@ function describeAuditedMutation(request: Request): AuditDescriptor | null {
   if (segments[2] === "dogs" && segments.length === 4) {
     const target = `dogs/${safeAuditId(segments[3])}`;
     if (method === "PATCH") return { action: "dog.updated", method, target };
+    if (method === "DELETE") return { action: "dog.deleted", method, target };
   }
   if (segments[2] === "dogs" && segments.length === 5 && method === "POST") {
     const target = `dogs/${safeAuditId(segments[3])}`;
@@ -437,7 +440,7 @@ async function handleDogs(
     if (request.method === "POST") {
       const dog = dogSchema.parse(await parseJson(request));
       const id = Date.now();
-      await firestore.createDocument("dogs", { ...dog, id });
+      await firestore.createDocument("dogs", { ...dog, id, schemaVersion: DOG_DOCUMENT_SCHEMA_VERSION, ...publicationMetadata({}, dog.publicationStatus) });
       scheduleDogFeedUpdate(env, executionContext);
       return jsonResponse(201, { id });
     }
@@ -446,28 +449,29 @@ async function handleDogs(
 
   const id = numericDogId(pathId);
   if (operation && request.method !== "POST") return methodNotAllowed(["POST"]);
-  if (!operation && request.method !== "GET" && request.method !== "PATCH") {
-    return methodNotAllowed(["GET", "PATCH"]);
+  if (!operation && !["GET", "PATCH", "DELETE"].includes(request.method)) {
+    return methodNotAllowed(["GET", "PATCH", "DELETE"]);
   }
   const parsedUpdate = request.method === "PATCH"
     ? dogUpdateSchema.parse(await parseJson(request))
     : null;
-  const document = await firestore.findFirstDocumentByField<{
-    fotos?: unknown;
-    retainedPhotos?: unknown;
-    nome?: unknown;
-    archivedAt?: unknown;
-    purgeAfter?: unknown;
-    archiveReason?: unknown;
-    adoptionCountedAt?: unknown;
-  }>("dogs", "id", id);
+  const document = await firestore.findFirstDocumentByField<Record<string, unknown>>("dogs", "id", id);
   if (!document) throw new ApiError(404, "Dog not found.");
 
-  if (request.method === "GET") return jsonResponse(200, { id, ...document.data });
+  if (request.method === "GET") return jsonResponse(200, { ...document.data, id, revision: document.updateTime });
+  if (!supportsDocumentVersion(document.data, DOG_DOCUMENT_SCHEMA_VERSION)) {
+    throw new ApiError(409, "A ficha usa uma versão de dados mais recente ou inválida. Atualize a aplicação antes de editar.");
+  }
   if (request.method === "PATCH") {
     if (isDogArchived(document.data)) throw new ApiError(409, "Archived dogs cannot be edited.");
     if (!parsedUpdate) throw new ApiError(400, "Invalid request");
-    const update: Record<string, unknown> = { ...parsedUpdate };
+    if (parsedUpdate.expectedUpdateTime && parsedUpdate.expectedUpdateTime !== document.updateTime) {
+      throw new ApiError(409, "A ficha foi alterada por outra pessoa. Recarregue antes de salvar.");
+    }
+    const merged = dogSchema.parse({ ...document.data, ...parsedUpdate });
+    const update: Record<string, unknown> = {
+      ...merged, ...publicationMetadata(document.data, merged.publicationStatus),
+    };
     if (parsedUpdate.fotos) {
       const previousPhotos = Array.isArray(document.data.fotos)
         ? document.data.fotos.filter((photo): photo is string => typeof photo === "string")
@@ -486,6 +490,20 @@ async function handleDogs(
     scheduleDogFeedUpdate(env, executionContext);
     return jsonResponse(200, { ok: true });
   }
+  if (request.method === "DELETE") {
+    if (isDogArchived(document.data) || document.data.publicationStatus !== "draft") {
+      throw new ApiError(409, "Somente rascunhos não arquivados podem ser excluídos.");
+    }
+    if (!document.updateTime) throw new ApiError(409, "Document version unavailable.");
+    const result = await firestore.deleteDocumentsIfUnchanged([
+      { name: document.name, updateTime: document.updateTime },
+    ]);
+    if (result.deleted !== 1) throw new ApiError(409, "Document changed; retry the operation.");
+    await deleteDogTombstone(env, document.id);
+    scheduleDogFeedUpdate(env, executionContext);
+    scheduleHeroDogUpdate(env, executionContext);
+    return new Response(null, { status: 204, headers: { "Cache-Control": "no-store" } });
+  }
   if (operation === "archive" && request.method === "POST") {
     if (!identity) throw new ApiError(500, "Missing identity.");
     const { reason } = archiveDogSchema.parse(await parseJson(request));
@@ -493,7 +511,7 @@ async function handleDogs(
       if (document.data.archiveReason !== reason || typeof document.data.archivedAt !== "string") {
         throw new ApiError(409, "Dog is already archived.");
       }
-      await persistDogTombstone(env, {
+      if (isPublished(document.data) && typeof document.data.publishedAt === "string") await persistDogTombstone(env, {
         id: document.id,
         nome: typeof document.data.nome === "string" && document.data.nome.trim()
           ? document.data.nome : "Cão",
@@ -528,7 +546,7 @@ async function handleDogs(
         expectedUpdateTime: document.updateTime,
       });
     }
-    await persistDogTombstone(env, {
+    if (isPublished(document.data) && typeof document.data.publishedAt === "string") await persistDogTombstone(env, {
       id: document.id,
       nome:
         typeof document.data.nome === "string" && document.data.nome.trim()
@@ -549,6 +567,7 @@ async function handleDogs(
     }
     await firestore.updateDocument(document.name, {
       archivedAt: null, purgeAfter: null, archiveReason: null, archivedBy: null,
+      publicationStatus: "draft", updatedAt: new Date().toISOString(),
     }, { expectedUpdateTime: document.updateTime });
     await deleteDogTombstone(env, document.id);
     scheduleDogFeedUpdate(env, executionContext);
@@ -566,7 +585,7 @@ async function handleRecycle(request: Request, env: Env, pathId?: string): Promi
     }
     if (request.method === "POST") {
       const point = recycleSchema.parse(await parseJson(request));
-      const result = await firestore.createDocument("recycle_points", point);
+      const result = await firestore.createDocument("recycle_points", { ...point, schemaVersion: RECYCLE_POINT_DOCUMENT_SCHEMA_VERSION, ...publicationMetadata({}, point.publicationStatus) });
       return jsonResponse(201, { id: result.id });
     }
     return methodNotAllowed(["GET", "POST"]);
@@ -575,9 +594,19 @@ async function handleRecycle(request: Request, env: Env, pathId?: string): Promi
   const id = documentId(pathId);
   const document = await firestore.getDocument(`recycle_points/${id}`);
   if (!document) throw new ApiError(404, "Recycle point not found.");
-  if (request.method === "GET") return jsonResponse(200, { id, ...document.data });
+  if (request.method === "GET") return jsonResponse(200, { ...document.data, id, revision: document.updateTime });
+  if (!supportsDocumentVersion(document.data, RECYCLE_POINT_DOCUMENT_SCHEMA_VERSION)) {
+    throw new ApiError(409, "O ponto usa uma versão de dados mais recente ou inválida. Atualize a aplicação antes de editar.");
+  }
   if (request.method === "PATCH") {
-    await firestore.updateDocument(document.name, recycleUpdateSchema.parse(await parseJson(request)));
+    const patch = recycleUpdateSchema.parse(await parseJson(request));
+    if (patch.expectedUpdateTime && patch.expectedUpdateTime !== document.updateTime) {
+      throw new ApiError(409, "O ponto foi alterado por outra pessoa. Recarregue antes de salvar.");
+    }
+    const merged = recycleSchema.parse({ ...document.data, ...patch });
+    await firestore.updateDocument(document.name, {
+      ...merged, ...publicationMetadata(document.data, merged.publicationStatus),
+    }, { expectedUpdateTime: document.updateTime });
     return jsonResponse(200, { ok: true });
   }
   if (request.method === "DELETE") {
@@ -597,8 +626,8 @@ async function handleDashboard(
   const [dogs, recycles, adoptions, expiringDocuments, statistics, notification] =
     await Promise.all([
       firestore.listDocuments<Record<string, unknown>>(MANAGED_COLLECTIONS.dogs)
-        .then((documents) => documents.filter((document) => !isDogArchived(document.data)).length),
-      firestore.countDocuments(MANAGED_COLLECTIONS.recycle),
+        .then((documents) => documents.filter((document) => !isDogArchived(document.data))),
+      firestore.listDocuments(MANAGED_COLLECTIONS.recycle),
       firestore.countDocuments(MANAGED_COLLECTIONS.adoptions),
       firestore.findDocumentsByTimestampRange<StoredAdoption>(
         MANAGED_COLLECTIONS.adoptions,
@@ -624,8 +653,10 @@ async function handleDashboard(
 
   return jsonResponse(200, {
     metrics: {
-      dogs,
-      recycles,
+      dogs: dogs.length,
+      recycles: recycles.length,
+      publishedDogs: dogs.filter(({ data }) => isPublished(data)).length,
+      publishedRecycles: recycles.filter(({ data }) => isPublished(data)).length,
       adoptions,
       adoptionsViaSite:
         typeof statistics?.data.adoptionsCount === "number"
@@ -783,6 +814,9 @@ async function routeAdminApi(
         throw new ApiError(400, "Invalid managed image URL.");
       }
       const dogs = await createFirestoreClient(env).listDocuments<Record<string, unknown>>("dogs");
+      if (dogs.some(({ data }) => !supportsDocumentVersion(data, DOG_DOCUMENT_SCHEMA_VERSION))) {
+        throw new ApiError(409, "Atualize a aplicação antes de excluir imagens de fichas com versões de dados mais recentes ou inválidas.");
+      }
       const isSameImage = (photo: unknown): boolean => {
         if (typeof photo !== "string") return false;
         try {

@@ -95,7 +95,7 @@ describe("mock admin API", () => {
     expect((await archive()).status).toBe(200);
     expect((await handleMockAdminRequest(request("/api/admin/dogs/103", {
       method: "DELETE",
-    }))).status).toBe(405);
+    }))).status).toBe(409);
 
     const active = await handleMockAdminRequest(request("/api/admin/dogs"));
     const archived = await handleMockAdminRequest(request("/api/admin/dogs?state=archived"));

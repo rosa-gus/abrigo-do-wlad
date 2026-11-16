@@ -45,7 +45,7 @@ export default function EditDog() {
   }, [dogId, id]);
 
   const handleUpdate = async (finalData: DogInput) => {
-    await updateDog(dogId, finalData);
+    await updateDog(dogId, { ...finalData, expectedUpdateTime: dogData?.revision });
   };
 
   if (loading) {

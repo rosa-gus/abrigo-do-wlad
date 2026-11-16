@@ -23,3 +23,15 @@ test('keeps the recycling fallback but rejects unavailable form settings', async
   expect(await getRecyclePoints()).toEqual([]);
   await expect(getSystemSettings()).rejects.toThrow('Não foi possível verificar a disponibilidade');
 });
+
+
+test('recycling does not reuse a formerly public browser cache when the server is unavailable', async () => {
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+  vi.stubGlobal('localStorage', { getItem: () => JSON.stringify({
+    updatedAt: Date.now(), data: [{ id: 'old', zone: 'Centro', neighborhood: 'Vila', address: 'Internal' }],
+  }) });
+  const fetchMock = vi.fn<typeof fetch>(async () => new Response(null, { status: 503 }));
+  vi.stubGlobal('fetch', fetchMock);
+  expect(await getRecyclePoints()).toEqual([]);
+  expect(fetchMock.mock.calls[0]?.[1]?.cache).toBe('no-store');
+});

@@ -1,10 +1,18 @@
 import assert from "node:assert/strict";
-import { test, vi } from "vitest";
+import { afterEach, beforeEach, test, vi } from "vitest";
 
+import { FirestoreRestClient } from "../_lib/firestore";
 import type { CloudflareEnv } from "../_lib/env";
 import type { DogFeed, PublicDog } from "./feed";
 import { getDogProfileBySlugResponse } from "./profile";
 import type { DogTombstone } from "./tombstone";
+
+beforeEach(() => {
+  vi.spyOn(FirestoreRestClient.prototype, "getDocument").mockResolvedValue({
+    id: "dog-1", name: "dogs/dog-1", data: { publicationStatus: "published" },
+  });
+});
+afterEach(() => vi.restoreAllMocks());
 
 function dog(id = "dog-1"): PublicDog {
   return {
@@ -54,6 +62,7 @@ function envWith(values: Record<string, unknown>): CloudflareEnv {
     ...values,
   };
   return {
+    FIREBASE_PROJECT_ID: "test",
     APP_ENV: "production",
     KV: {
       async get(key) {
@@ -136,6 +145,7 @@ test("returns a tombstone even when the current feed cannot be read", async () =
   const removedDog = tombstone();
   const errorLog = vi.spyOn(console, "error").mockImplementation(() => undefined);
   const env: CloudflareEnv = {
+    FIREBASE_PROJECT_ID: "test",
     APP_ENV: "production",
     KV: {
       async get(key) {
@@ -178,4 +188,24 @@ test("distinguishes unknown and invalid public slugs", async () => {
 
   assert.equal(missingResponse.status, 404);
   assert.equal(invalidResponse.status, 400);
+});
+
+
+test.each(["draft", undefined])("stale profiles and tombstones cannot expose a non-published dog (%s)", async publicationStatus => {
+  vi.mocked(FirestoreRestClient.prototype.getDocument).mockResolvedValue({
+    id: "dog-1", name: "dogs/dog-1", data: { publicationStatus },
+  });
+  const response = await getDogProfileBySlugResponse(new Request("https://abrigo.test/api/dogs/by-slug/pacoca"),
+    envWith({ "dogs-feed:current": feed([dog()]), "dogs-tombstone:dog-1": tombstone() }), "pacoca");
+  assert.equal(response.status, 404);
+  assert.equal((await response.text()).includes("Paçoca"), false);
+});
+
+test("archived never-published drafts remain private even if a stale tombstone exists", async () => {
+  vi.mocked(FirestoreRestClient.prototype.getDocument).mockResolvedValue({
+    id: "dog-1", name: "dogs/dog-1", data: { publicationStatus: "draft", archivedAt: "2026-11-01T12:00:00.000Z" },
+  });
+  const response = await getDogProfileBySlugResponse(new Request("https://abrigo.test/api/dogs/by-slug/pacoca"),
+    envWith({ "dogs-feed:current": feed([dog()]), "dogs-tombstone:dog-1": tombstone() }), "pacoca");
+  assert.equal(response.status, 404);
 });

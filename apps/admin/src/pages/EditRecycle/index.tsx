@@ -45,7 +45,7 @@ export default function EditRecycle() {
   }, [pointId]);
 
   const handleUpdate = async (finalData: RecyclePointInput) => {
-    await updateRecyclePoint(pointId, finalData);
+    await updateRecyclePoint(pointId, { ...finalData, expectedUpdateTime: pointData?.revision });
   };
 
   if (loading) {
@@ -65,7 +65,7 @@ export default function EditRecycle() {
 
   return (
     <RecycleForm
-      title={`Editar: ${pointData.neighborhood}`}
+      title={`Editar: ${pointData.name || pointData.neighborhood}`}
       buttonLabel="Salvar Alterações"
       initialData={pointData}
       onSubmit={handleUpdate}

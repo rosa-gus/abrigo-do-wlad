@@ -5,6 +5,7 @@ import { EmptyState } from "@jaci/ui/EmptyState";
 import { Textarea } from "@jaci/ui/Field";
 import { Label } from "@jaci/ui/Label";
 import { RadioGroup, RadioGroupItem } from "@jaci/ui/RadioGroup";
+import { Separator } from "@jaci/ui/Separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@jaci/ui/Select";
 import { KeyRound, RefreshCw, Save, ShieldCheck, Trash2 } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
@@ -205,6 +206,7 @@ export default function DeveloperOptions() {
       </header>
 
       <section className={styles.optionSection} aria-labelledby="admin-notification-title">
+        <Separator className={styles.optionSeparator} />
         <div className={styles.optionHeader}>
           <div>
             <h2 id="admin-notification-title" className={styles.optionTitle}>
@@ -309,6 +311,7 @@ export default function DeveloperOptions() {
       </section>
 
       <section className={styles.optionSection} aria-labelledby="system-keys-title">
+        <Separator className={styles.optionSeparator} />
         <div className={styles.optionHeader}>
           <div>
             <h2 id="system-keys-title" className={styles.optionTitle}>Chaves do sistema</h2>
@@ -331,15 +334,15 @@ export default function DeveloperOptions() {
           {notice && <p className={styles.notice}>{notice}</p>}
         </div>
 
-        <Card className={styles.summary} tone="info" size="sm" layout="inline">
-          <CardBody className={styles.summaryBody}>
-            <CardIcon className={styles.summaryIcon}>
+        <Card variant="callout" className={styles.summary} tone="info" size="lg" layout="inline">
+          <CardBody>
+            <CardIcon>
               <KeyRound size={28} />
             </CardIcon>
+            <CardTitle>Chave ativa</CardTitle>
             <CardContent className={styles.summaryContent}>
-              <span className={styles.summaryLabel}>Chave ativa</span>
               <strong>{activeKey?.version ?? (loading ? "Carregando..." : "Nenhuma")}</strong>
-              <span className={styles.summaryDetail}>
+              <span>
                 Acesso concedido a {user?.email ?? "desenvolvedor autenticado"}
               </span>
             </CardContent>
@@ -372,7 +375,7 @@ export default function DeveloperOptions() {
                       <dl>
                         <div><dt>Criada em</dt><dd>{formatDate(key.createdAt)}</dd></div>
                         <div><dt>Autor</dt><dd>{key.author ?? "Não informado"}</dd></div>
-                        <div><dt>Itens criptografados</dt><dd>{key.counter}</dd></div>
+                        <div><dt>Solicitações criptografadas</dt><dd>{key.counter}</dd></div>
                       </dl>
                     </CardContent>
                   </CardBody>
