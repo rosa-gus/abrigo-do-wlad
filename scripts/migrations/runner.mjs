@@ -167,6 +167,34 @@ export class MigrationRunner {
     return [...counts.values()];
   }
 
+  // A preview page is read-only. The browser aggregates counts and can restart
+  // the preview after a disconnect without creating migration metadata.
+  async planStep({ to, cursor = null } = {}) {
+    await this.history();
+    const migrations = this.select(to);
+    const collections = [...new Set(migrations.flatMap(m => m.collections.map(c => c.name)))];
+    const index = cursor?.collectionIndex ?? 0;
+    if (!Number.isInteger(index) || index < 0 || index >= collections.length) throw new Error("Invalid preview cursor.");
+    const collectionName = collections[index];
+    const page = await this.store.page(collectionName, cursor?.after ?? null, this.batchSize);
+    const counts = migrations.map(m => ({ id: m.id, scanned: 0, changes: 0 }));
+    const now = this.timestamp();
+    for (const source of page) {
+      let document = source;
+      for (const [i, migration] of migrations.entries()) {
+        const collection = migration.collections.find(c => c.name === collectionName);
+        if (!collection) continue;
+        counts[i].scanned++;
+        const patch = planDocument(migration, collection, document, now, this.latestVersions.get(collectionName));
+        if (patch) { counts[i].changes++; document = patch.document; }
+      }
+    }
+    const nextIndex = index + (page.length ? 0 : 1);
+    return { counts, cursor: nextIndex >= collections.length ? null : {
+      collectionIndex: nextIndex, after: page.length ? page.at(-1).name : null,
+    } };
+  }
+
   assertLease() {
     const lease = decodeMetadata(this.lease);
     if (!lease || lease.owner !== this.owner || Date.parse(lease.expiresAt) <= this.clock()) {
@@ -220,12 +248,14 @@ export class MigrationRunner {
     }, record);
   }
 
-  async up({ to, rescan = false } = {}) {
+  async up({ to, rescan = false, maxBatches = Infinity } = {}) {
+    if (!(maxBatches === Infinity || (Number.isInteger(maxBatches) && maxBatches > 0))) throw new Error("Invalid batch budget.");
     this.select(to);
     await this.history();
     await this.acquire();
     const results = [];
     let currentMigration;
+    let batches = 0;
     try {
       // Inspect again under the lock: another runner may have finished while
       // this process was reading history.
@@ -277,6 +307,10 @@ export class MigrationRunner {
           conflicts = 0;
           Object.assign(state, next);
           this.log({ id: migration.id, scanned: state.scanned, changed: state.changed });
+          if (++batches >= maxBatches) {
+            results.push({ id: migration.id, status: "running", scanned: state.scanned, changed: state.changed });
+            return results;
+          }
         }
         const completed = { ...state, status: "completed", finishedAt: this.timestamp() };
         await this.progress(migration, completed, record);

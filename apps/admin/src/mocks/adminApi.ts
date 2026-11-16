@@ -10,6 +10,7 @@ import type {
 } from "../types/notifications";
 import type { RecyclePoint } from "../types/recycle";
 import type { SystemKey } from "../types/systemKeys";
+import type { MigrationOverview } from "../../shared/migrations";
 import {
   dogInputSchema,
   dogUpdateSchema,
@@ -33,6 +34,7 @@ interface MockAdoption {
 }
 
 interface MockState {
+  migrations: MigrationOverview;
   systemSettings: SystemSettings;
   dogs: DogProps[];
   recyclePoints: RecyclePoint[];
@@ -57,6 +59,11 @@ function hoursFromNow(hours: number): string {
 
 function createInitialState(): MockState {
   return {
+    migrations: {
+      project: "abrigo-mock", environment: "mock", database: "(default)", release: "0".repeat(64),
+      migrations: [{ id: "0001-publication-status", description: "Publicação de cães e pontos de coleta (simulado).",
+        status: "pending", scanned: 0, changed: 0, attempts: 0, checkpoint: null }],
+    },
     systemSettings: { acceptingApplications: true },
     dogs: [
       {
@@ -601,6 +608,25 @@ export async function handleMockAdminRequest(request: Request): Promise<Response
   if (url.pathname === "/api/session") {
     if (request.method !== "GET") return methodNotAllowed(["GET"]);
     return jsonResponse({ email: MOCK_AUTHOR, role: "developer" });
+  }
+
+  if (url.pathname === "/api/admin/migrations") {
+    if (request.method !== "GET") return methodNotAllowed(["GET"]);
+    return jsonResponse(state.migrations);
+  }
+  if (url.pathname === "/api/admin/migrations/plan" || url.pathname === "/api/admin/migrations/apply") {
+    if (request.method !== "POST") return methodNotAllowed(["POST"]);
+    const input = await request.json().catch(() => null) as { project?: string; release?: string } | null;
+    if (input?.project !== state.migrations.project || input?.release !== state.migrations.release) {
+      return jsonResponse({ error: "Atualize o destino simulado." }, 409);
+    }
+    const scanned = state.dogs.length + state.recyclePoints.length;
+    if (url.pathname.endsWith("/plan")) {
+      return jsonResponse({ counts: [{ id: "0001-publication-status", scanned, changes: 0 }], cursor: null });
+    }
+    state.migrations.migrations = state.migrations.migrations.map(m => ({ ...m, status: "completed", scanned, attempts: m.attempts + 1 }));
+    recordMutation(request, "_migrations");
+    return jsonResponse(state.migrations);
   }
 
   if (url.pathname === "/api/admin/dashboard") {

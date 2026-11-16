@@ -3,9 +3,11 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 import react from "@vitejs/plugin-react";
 import { defineConfig, type ConfigEnv, type UserConfig } from "vite";
 import { createLocalAdminBoundary } from "./local-boundary";
+import { generateWorkerRegistry } from "../../scripts/migrations/generate-worker-registry.mjs";
 
 // https://vite.dev/config/
 export function createAdminViteConfig({ command, isPreview, mode }: ConfigEnv): UserConfig {
+  generateWorkerRegistry();
   const enableLocalAdmin = command === "serve" && !isPreview && mode === "local-admin";
   const enableMockAdmin = command === "serve" && !isPreview && mode === "mock";
   const enableLocalWorker = command === "serve" && !isPreview && !enableMockAdmin;

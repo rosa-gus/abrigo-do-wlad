@@ -242,6 +242,13 @@ migração, `0001-publication-status`, preserva os status explícitos, publica o
 registros legados sem status e introduz `schemaVersion: 1` em cães e pontos.
 Novos cadastros já recebem essa versão; não há renomeação de campos nesta etapa.
 
+Usuários com papel `developer` podem executar pelo próprio painel em **Opções de
+desenvolvedor → Migrações de dados**. Confira o projeto, simule e confirme
+**Aplicar / retomar**. Em produção, a operação usa os secrets do Worker no
+Cloudflare, sem alterar o ambiente local. Os lotes são retomáveis; fechar a página
+interrompe a solicitação dos lotes seguintes. Administradores não têm acesso às
+rotas de migração. A CLI permanece disponível:
+
 ```bash
 node --env-file=<runtime.env> scripts/migrate.mjs plan --project=<id>
 node --env-file=<runtime.env> scripts/migrate.mjs up --project=<id> --apply
