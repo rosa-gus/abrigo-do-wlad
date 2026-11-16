@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
 import { Button } from "@jaci/ui/Button";
 import { DogForm } from "../../components/DogForm";
-import { getDogById, updateDog } from "../../services/dogs";
+import { dogRouteId, getDogById, updateDog } from "../../services/dogs";
 import type { DogInput, DogProps } from "../../types/dogs";
 
 export default function EditDog() {
@@ -11,13 +11,13 @@ export default function EditDog() {
   const [dogData, setDogData] = useState<DogProps | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const dogId = Number(id);
+  const dogId = id ?? "";
 
   useEffect(() => {
     let active = true;
 
     async function load() {
-      if (!id || !Number.isInteger(dogId)) {
+      if (!/^(?:doc:[A-Za-z0-9_-]{1,128}|\d{1,16})$/.test(dogId)) {
         setLoadError("O identificador do cachorro é inválido.");
         setLoading(false);
         return;
@@ -45,7 +45,8 @@ export default function EditDog() {
   }, [dogId, id]);
 
   const handleUpdate = async (finalData: DogInput) => {
-    await updateDog(dogId, { ...finalData, expectedUpdateTime: dogData?.revision });
+    if (!dogData) return;
+    await updateDog(dogRouteId(dogData), { ...finalData, expectedUpdateTime: dogData.revision });
   };
 
   if (loading) {

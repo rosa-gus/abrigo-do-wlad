@@ -1,6 +1,7 @@
 export type AdoptionStatus = "pending" | "approved" | "rejected";
 
 export interface AdoptionRequestSummary {
+  revision?: string;
   id: string;
   nome_adotante?: string;
   telefone?: string;

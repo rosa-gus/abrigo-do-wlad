@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { test, vi } from "vitest";
+import { afterEach, beforeEach, test, vi } from "vitest";
 
-import { FirestoreRestClient } from "../../../workers/shared/api/_lib/firestore";
+import { FirestoreRestClient, type AtomicDocumentWrite, type FirestoreDocument } from "../../../workers/shared/api/_lib/firestore";
 
 import type { AccessIdentity } from "./access";
 import { handleAdminApi, type AdminApiDependencies } from "./admin-api";
@@ -74,10 +74,41 @@ function keyDependencies(
 }
 
 const linkedImage = "https://res.cloudinary.com/test-cloud/image/upload/v1/abrigo-do-wlad/dogs/image-id.jpg";
+const TEST_REVISION = "2026-11-01T12:00:00.000Z";
+
+// Exercise the real media service while keeping only its Firestore I/O synthetic.
+beforeEach(() => {
+  const assets = new Map<string, FirestoreDocument<Record<string, unknown>>>();
+  let revision = 0;
+  vi.spyOn(FirestoreRestClient.prototype, "getDocument").mockImplementation(async (path) => {
+    if (!path.startsWith("media_assets/")) throw new Error(`Unexpected unmocked document read: ${path}`);
+    return assets.get(path) ?? null;
+  });
+  vi.spyOn(FirestoreRestClient.prototype, "commitAtomic").mockImplementation(async (writes: AtomicDocumentWrite[]) => {
+    for (const write of writes) {
+      const current = assets.get(write.path);
+      if (write.kind === "delete") throw new Error("Unexpected registry delete");
+      if (write.kind === "create") assert.equal(current, undefined);
+      else assert.equal(write.updateTime, current?.updateTime);
+    }
+    return { writeResults: writes.map((write) => {
+      if (write.kind === "delete") throw new Error("Unexpected registry delete");
+      const updateTime = `registry-revision-${++revision}`;
+      assets.set(write.path, {
+        id: write.path.split("/").at(-1)!,
+        name: `projects/test-project/databases/(default)/documents/${write.path}`,
+        updateTime, data: { ...assets.get(write.path)?.data, ...write.data },
+      });
+      return { updateTime };
+    }) };
+  });
+});
+
+afterEach(() => vi.restoreAllMocks());
 
 test("an older writer cannot delete media whose references may use a newer schema", async () => {
   const list = vi.spyOn(FirestoreRestClient.prototype, "listDocuments").mockResolvedValue([{
-    id: "dog-1", name: "dogs/dog-1", data: { schemaVersion: 2, photos: [linkedImage] },
+    id: "dog-1", name: "dogs/dog-1", updateTime: TEST_REVISION, data: { schemaVersion: 2, photos: [linkedImage] },
   }]);
   const fetcher = vi.spyOn(globalThis, "fetch");
   try {
@@ -161,6 +192,7 @@ test("adoption list returns only the summary contract provided by the repository
     nome_adotante: "Lívia",
     status: "pending",
     submittedAt: "2026-08-24T12:00:00.000Z",
+    expiresAt: "2099-01-01T00:00:00.000Z",
   }];
   const response = await handleAdminApi(
     new Request("https://admin.example.test/api/admin/adoptions"),
@@ -190,7 +222,7 @@ test.each(["approved", "rejected", "pending"] as const)("adoption status %s save
   const update = vi.spyOn(FirestoreRestClient.prototype, "updateDocument").mockResolvedValue({});
   try {
     const response = await handleAdminApi(new Request("https://admin.example.test/api/admin/adoptions/application-1/status", {
-      method: "PATCH", headers: { Origin: "https://admin.example.test", "Content-Type": "application/json" },
+      method: "PATCH", headers: { Origin: "https://admin.example.test", "Content-Type": "application/json", "If-Match": `"${updateTime}"` },
       body: JSON.stringify({ status }),
     }), env, identity, keyDependencies());
     assert.equal(response.status, 200);
@@ -212,6 +244,7 @@ test("adoption detail validates the id and loads one full application", async ()
     id: "application-1",
     nome_adotante: "Lívia",
     email: "livia@example.test",
+    expiresAt: "2099-01-01T00:00:00.000Z",
   };
   const response = await handleAdminApi(
     new Request("https://admin.example.test/api/admin/adoptions/application-1"),
@@ -244,13 +277,13 @@ test("admin API rejects state changes without a same-origin Origin header", asyn
 });
 
 test("admin API rejects permanent deletion of published dogs", async () => {
-  const find = vi.spyOn(FirestoreRestClient.prototype, "findFirstDocumentByField").mockResolvedValue({
-    id: "dog-1", name: "dogs/dog-1", data: { publicationStatus: "published" },
-  });
+  const find = vi.spyOn(FirestoreRestClient.prototype, "findDocumentsByField").mockResolvedValue([{
+    id: "dog-1", name: "dogs/dog-1", updateTime: TEST_REVISION, data: { publicationStatus: "published" },
+  }]);
   try {
     const response = await handleAdminApi(
       new Request("https://admin.example.test/api/admin/dogs/123", {
-        method: "DELETE", headers: { Origin: "https://admin.example.test" },
+        method: "DELETE", headers: { Origin: "https://admin.example.test", "If-Match": `"${TEST_REVISION}"` },
       }), env, identity, keyDependencies(),
     );
     assert.equal(response.status, 409);
@@ -536,16 +569,18 @@ test("only developer identities can read the bounded audit trail", async () => {
 
 test("developer identities can rotate system keys", async () => {
   let receivedIdentity: AccessIdentity | undefined;
+  let receivedRevision: string | undefined;
   const response = await handleAdminApi(
     new Request("https://admin.example.test/api/admin/system-keys/rotate", {
       method: "POST",
-      headers: { Origin: "https://admin.example.test" },
+      headers: { Origin: "https://admin.example.test", "If-Match": '"absent"' },
     }),
     env,
     developerIdentity,
     keyDependencies({
-      rotateSystemKey: async (_env, requestIdentity) => {
+      rotateSystemKey: async (_env, requestIdentity, revision) => {
         receivedIdentity = requestIdentity;
+        receivedRevision = revision;
         return { id: "new-key-id", version: "v2" };
       },
     }),
@@ -554,6 +589,7 @@ test("developer identities can rotate system keys", async () => {
   assert.equal(response.status, 201);
   assert.deepEqual(await response.json(), { id: "new-key-id", version: "v2" });
   assert.deepEqual(receivedIdentity, developerIdentity);
+  assert.equal(receivedRevision, "absent");
 });
 
 test("administrator identities can read the current admin notification", async () => {
@@ -608,12 +644,14 @@ test("administrator identities cannot change the admin notification", async () =
 
 test("developer identities can replace the single admin notification", async () => {
   let receivedInput: NotificationInput | undefined;
+  let receivedRevision: string | undefined;
   const response = await handleAdminApi(
     new Request("https://admin.example.test/api/admin/notifications", {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
         Origin: "https://admin.example.test",
+        "If-Match": '"absent"',
       },
       body: JSON.stringify({
         message: "  Atenção ao prazo.  ",
@@ -624,14 +662,17 @@ test("developer identities can replace the single admin notification", async () 
     env,
     developerIdentity,
     keyDependencies({
-      saveAdminNotification: async (_env, input, requestIdentity) => {
+      saveAdminNotification: async (_env, input, requestIdentity, now, revision) => {
         receivedInput = input;
+        receivedRevision = revision;
+        assert.equal(now, undefined);
         return notificationResponse(input, requestIdentity);
       },
     }),
   );
 
   assert.equal(response.status, 200);
+  assert.equal(receivedRevision, "absent");
   assert.deepEqual(receivedInput, {
     message: "Atenção ao prazo.",
     type: "urgent",
@@ -708,22 +749,25 @@ test("notification updates reject unsupported expiration options", async () => {
 
 test("developer identities can remove the admin notification", async () => {
   let receivedIdentity: AccessIdentity | undefined;
+  let receivedRevision: string | undefined;
   const response = await handleAdminApi(
     new Request("https://admin.example.test/api/admin/notifications", {
       method: "DELETE",
-      headers: { Origin: "https://admin.example.test" },
+      headers: { Origin: "https://admin.example.test", "If-Match": '"absent"' },
     }),
     env,
     developerIdentity,
     keyDependencies({
-      deleteAdminNotification: async (_env, requestIdentity) => {
+      deleteAdminNotification: async (_env, requestIdentity, revision) => {
         receivedIdentity = requestIdentity;
+        receivedRevision = revision;
       },
     }),
   );
 
   assert.equal(response.status, 204);
   assert.deepEqual(receivedIdentity, developerIdentity);
+  assert.equal(receivedRevision, "absent");
 });
 
 const completeDog = {
@@ -732,7 +776,7 @@ const completeDog = {
 };
 function publicationRequest(path: string, method: string, body?: unknown) {
   return new Request(`https://admin.example.test/api/admin/${path}`, {
-    method, headers: { Origin: "https://admin.example.test", "Content-Type": "application/json" },
+    method, headers: { Origin: "https://admin.example.test", "Content-Type": "application/json", "If-Match": `"${body && typeof body === "object" && "expectedUpdateTime" in body ? body.expectedUpdateTime : TEST_REVISION}"` },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
 }
@@ -756,9 +800,9 @@ test.each([
   [{ nome: "Nina", publicationStatus: "draft" }, { publicationStatus: "published" }],
   [{ ...completeDog, publicationStatus: "published" }, { idade: "" }],
 ])("publication and published edits validate the entire resulting dog", async (stored, patch) => {
-  const find = vi.spyOn(FirestoreRestClient.prototype, "findFirstDocumentByField").mockResolvedValue({
-    id: "dog-1", name: "dogs/dog-1", data: stored,
-  });
+  const find = vi.spyOn(FirestoreRestClient.prototype, "findDocumentsByField").mockResolvedValue([{
+    id: "dog-1", name: "dogs/dog-1", updateTime: TEST_REVISION, data: stored,
+  }]);
   const update = vi.spyOn(FirestoreRestClient.prototype, "updateDocument").mockResolvedValue({});
   try {
     const response = await handleAdminApi(publicationRequest("dogs/123", "PATCH", patch), env, identity, keyDependencies());
@@ -769,9 +813,9 @@ test.each([
 
 test("publishing a complete draft sets its first-publication timestamp and a write precondition", async () => {
   const updateTime = "2026-11-01T12:00:00.000Z";
-  const find = vi.spyOn(FirestoreRestClient.prototype, "findFirstDocumentByField").mockResolvedValue({
+  const find = vi.spyOn(FirestoreRestClient.prototype, "findDocumentsByField").mockResolvedValue([{
     id: "dog-1", name: "dogs/dog-1", updateTime, data: { ...completeDog, publicationStatus: "draft" },
-  });
+  }]);
   const update = vi.spyOn(FirestoreRestClient.prototype, "updateDocument").mockResolvedValue({});
   try {
     const response = await handleAdminApi(publicationRequest("dogs/123", "PATCH", { publicationStatus: "published" }), env, identity, keyDependencies());
@@ -783,9 +827,9 @@ test("publishing a complete draft sets its first-publication timestamp and a wri
 });
 
 test("unpublishing preserves photos and does not archive or count an adoption", async () => {
-  const find = vi.spyOn(FirestoreRestClient.prototype, "findFirstDocumentByField").mockResolvedValue({
-    id: "dog-1", name: "dogs/dog-1", data: { ...completeDog, publicationStatus: "published", publishedAt: "2026-11-01T12:00:00.000Z" },
-  });
+  const find = vi.spyOn(FirestoreRestClient.prototype, "findDocumentsByField").mockResolvedValue([{
+    id: "dog-1", name: "dogs/dog-1", updateTime: TEST_REVISION, data: { ...completeDog, publicationStatus: "published", publishedAt: "2026-11-01T12:00:00.000Z" },
+  }]);
   const update = vi.spyOn(FirestoreRestClient.prototype, "updateDocument").mockResolvedValue({});
   try {
     const response = await handleAdminApi(publicationRequest("dogs/123", "PATCH", { publicationStatus: "draft", idade: "" }), env, identity, keyDependencies());
@@ -800,9 +844,9 @@ test("unpublishing preserves photos and does not archive or count an adoption", 
 });
 
 test("restoring an archived dog always returns it as a draft", async () => {
-  const find = vi.spyOn(FirestoreRestClient.prototype, "findFirstDocumentByField").mockResolvedValue({
-    id: "dog-1", name: "dogs/dog-1", data: { ...completeDog, archivedAt: "2026-11-01T12:00:00.000Z", publicationStatus: "published" },
-  });
+  const find = vi.spyOn(FirestoreRestClient.prototype, "findDocumentsByField").mockResolvedValue([{
+    id: "dog-1", name: "dogs/dog-1", updateTime: TEST_REVISION, data: { ...completeDog, archivedAt: "2026-11-01T12:00:00.000Z", publicationStatus: "published" },
+  }]);
   const update = vi.spyOn(FirestoreRestClient.prototype, "updateDocument").mockResolvedValue({});
   try {
     const response = await handleAdminApi(publicationRequest("dogs/123/restore", "POST"), env, identity, keyDependencies());
@@ -813,9 +857,9 @@ test("restoring an archived dog always returns it as a draft", async () => {
 });
 
 test.each([undefined, "2026-11-01T00:00:00.000Z"])("archiving a draft does not expose its unpublished name (publishedAt %s)", async publishedAt => {
-  const find = vi.spyOn(FirestoreRestClient.prototype, "findFirstDocumentByField").mockResolvedValue({
-    id: "dog-1", name: "dogs/dog-1", data: { nome: "Nome interno", publicationStatus: "draft", publishedAt },
-  });
+  const find = vi.spyOn(FirestoreRestClient.prototype, "findDocumentsByField").mockResolvedValue([{
+    id: "dog-1", name: "dogs/dog-1", updateTime: TEST_REVISION, data: { nome: "Nome interno", publicationStatus: "draft", publishedAt },
+  }]);
   const update = vi.spyOn(FirestoreRestClient.prototype, "updateDocument").mockResolvedValue({});
   const saveDogTombstone = vi.fn();
   try {
@@ -827,9 +871,9 @@ test.each([undefined, "2026-11-01T00:00:00.000Z"])("archiving a draft does not e
 
 test("draft deletion requires the read document version", async () => {
   const updateTime = "2026-11-01T12:00:00.000Z";
-  const find = vi.spyOn(FirestoreRestClient.prototype, "findFirstDocumentByField").mockResolvedValue({
+  const find = vi.spyOn(FirestoreRestClient.prototype, "findDocumentsByField").mockResolvedValue([{
     id: "dog-1", name: "dogs/dog-1", updateTime, data: { nome: "Nina", publicationStatus: "draft" },
-  });
+  }]);
   const remove = vi.spyOn(FirestoreRestClient.prototype, "deleteDocumentsIfUnchanged").mockResolvedValue({ deleted: 1 });
   try {
     const response = await handleAdminApi(publicationRequest("dogs/123", "DELETE"), env, identity, keyDependencies());
@@ -841,7 +885,7 @@ test("draft deletion requires the read document version", async () => {
 test("recycle points accept partial drafts but reject incomplete publication", async () => {
   const create = vi.spyOn(FirestoreRestClient.prototype, "createDocument").mockResolvedValue({ id: "point-1" });
   const get = vi.spyOn(FirestoreRestClient.prototype, "getDocument").mockResolvedValue({
-    id: "point-1", name: "recycle_points/point-1", data: { name: "Mercado", publicationStatus: "draft" },
+    id: "point-1", name: "recycle_points/point-1", updateTime: TEST_REVISION, data: { name: "Mercado", publicationStatus: "draft" },
   });
   const update = vi.spyOn(FirestoreRestClient.prototype, "updateDocument").mockResolvedValue({});
   try {
@@ -857,7 +901,7 @@ test("recycle points accept partial drafts but reject incomplete publication", a
 
 test.each(["dogs/123", "recycle-points/point-1"])("an older writer cannot mutate newer document versions at %s", async path => {
   const stored = { id: "record", name: "record", data: { ...completeDog, schemaVersion: 2, publicationStatus: "draft" } };
-  const find = vi.spyOn(FirestoreRestClient.prototype, "findFirstDocumentByField").mockResolvedValue(stored);
+  const find = vi.spyOn(FirestoreRestClient.prototype, "findDocumentsByField").mockResolvedValue([stored]);
   const get = vi.spyOn(FirestoreRestClient.prototype, "getDocument").mockResolvedValue(stored);
   const update = vi.spyOn(FirestoreRestClient.prototype, "updateDocument").mockResolvedValue({});
   try {
@@ -872,14 +916,14 @@ test.each(["dogs/123", "recycle-points/point-1"])("stale editors cannot republis
     id: "record", name: "record", updateTime: "2026-11-02T00:00:00.000Z",
     data: { ...completeDog, name: "Mercado", zone: "Centro", neighborhood: "Vila", address: "Rua 1", publicationStatus: "draft" },
   };
-  const find = vi.spyOn(FirestoreRestClient.prototype, "findFirstDocumentByField").mockResolvedValue(stored);
+  const find = vi.spyOn(FirestoreRestClient.prototype, "findDocumentsByField").mockResolvedValue([stored]);
   const get = vi.spyOn(FirestoreRestClient.prototype, "getDocument").mockResolvedValue(stored);
   const update = vi.spyOn(FirestoreRestClient.prototype, "updateDocument").mockResolvedValue({});
   try {
     const response = await handleAdminApi(publicationRequest(path, "PATCH", {
       publicationStatus: "published", expectedUpdateTime: "2026-11-01T00:00:00.000Z",
     }), env, identity, keyDependencies());
-    assert.equal(response.status, 409);
+    assert.equal(response.status, 412);
     assert.equal(update.mock.calls.length, 0);
   } finally { find.mockRestore(); get.mockRestore(); update.mockRestore(); }
 });

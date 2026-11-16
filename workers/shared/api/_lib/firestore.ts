@@ -101,6 +101,11 @@ export interface FirestoreRestClientOptions {
   documentIdGenerator?: () => string;
 }
 
+export type AtomicDocumentWrite =
+  | { kind: "create"; path: string; data: Record<string, unknown> }
+  | { kind: "update"; path: string; data: Record<string, unknown>; updateTime: string }
+  | { kind: "delete"; path: string; updateTime: string };
+
 let cachedAccessToken: CachedAccessToken | undefined;
 
 function requireEnvValue(
@@ -630,23 +635,39 @@ export class FirestoreRestClient {
       direction?: "ASCENDING" | "DESCENDING";
       limit?: number;
       orderBy?: string;
+      timestampAfter?: { fieldPath: string; cutoff: Date };
     } = {},
   ): Promise<FirestoreDocument<T>[]> {
     assertCollectionId(collectionId);
     const limit = options.limit;
     const orderBy = options.orderBy ?? "__name__";
     assertFieldPath(orderBy);
+    const timestampAfter = options.timestampAfter;
+    if (timestampAfter) {
+      assertFieldPath(timestampAfter.fieldPath);
+      if (!Number.isFinite(timestampAfter.cutoff.getTime())) {
+        throw new TypeError("Firestore query cutoff must be a valid Date.");
+      }
+    }
 
     if (limit !== undefined && (!Number.isInteger(limit) || limit < 1)) {
       throw new RangeError("Firestore query limit must be a positive integer.");
     }
 
     const direction = options.direction ?? "ASCENDING";
-    const cursorFieldPaths =
-      orderBy === "__name__" ? ["__name__"] : [orderBy, "__name__"];
+    // Firestore requires the inequality field first; use __name__ as the final tie breaker.
+    const cursorFieldPaths = Array.from(new Set([
+      ...(timestampAfter ? [timestampAfter.fieldPath] : []),
+      ...(orderBy === "__name__" ? [] : [orderBy]),
+      "__name__",
+    ]));
     return this.runPaginatedQuery<T>(
       {
         from: [{ collectionId }],
+        ...(timestampAfter ? { where: { fieldFilter: {
+          field: { fieldPath: timestampAfter.fieldPath }, op: "GREATER_THAN",
+          value: encodeFirestoreValue(timestampAfter.cutoff),
+        } } } : {}),
         orderBy: cursorFieldPaths.map((fieldPath) => ({
           field: { fieldPath },
           direction,
@@ -657,8 +678,18 @@ export class FirestoreRestClient {
     );
   }
 
-  async countDocuments(collectionId: string): Promise<number> {
+  async countDocuments(
+    collectionId: string,
+    options: { timestampAfter?: { fieldPath: string; cutoff: Date } } = {},
+  ): Promise<number> {
     assertCollectionId(collectionId);
+    const timestampAfter = options.timestampAfter;
+    if (timestampAfter) {
+      assertFieldPath(timestampAfter.fieldPath);
+      if (!Number.isFinite(timestampAfter.cutoff.getTime())) {
+        throw new TypeError("Firestore query cutoff must be a valid Date.");
+      }
+    }
     const results = await this.request<RunAggregationQueryResult[]>(
       `${this.documentsRoot}:runAggregationQuery`,
       {
@@ -666,7 +697,13 @@ export class FirestoreRestClient {
         body: JSON.stringify({
           structuredAggregationQuery: {
             aggregations: [{ alias: "count", count: {} }],
-            structuredQuery: { from: [{ collectionId }] },
+            structuredQuery: {
+              from: [{ collectionId }],
+              ...(timestampAfter ? { where: { fieldFilter: {
+                field: { fieldPath: timestampAfter.fieldPath }, op: "GREATER_THAN",
+                value: encodeFirestoreValue(timestampAfter.cutoff),
+              } } } : {}),
+            },
           },
         }),
       },
@@ -765,6 +802,26 @@ export class FirestoreRestClient {
     const document = results.find((result) => result.document)?.document;
 
     return document ? decodeDocument<T>(document) : null;
+  }
+
+  async findDocumentsByField<T extends Record<string, unknown>>(
+    collectionId: string,
+    fieldPath: string,
+    value: unknown,
+    limit = 2,
+  ): Promise<FirestoreDocument<T>[]> {
+    assertCollectionId(collectionId);
+    assertFieldPath(fieldPath);
+    if (!Number.isInteger(limit) || limit < 1 || limit > MAX_QUERY_LIMIT) {
+      throw new RangeError("Firestore equality query limit is invalid.");
+    }
+    return this.runPaginatedQuery<T>({
+      from: [{ collectionId }],
+      where: { fieldFilter: {
+        field: { fieldPath }, op: "EQUAL", value: encodeFirestoreValue(value),
+      } },
+      orderBy: [{ field: { fieldPath: "__name__" }, direction: "ASCENDING" }],
+    }, ["__name__"], limit);
   }
 
   async findDocumentsByTimestampBefore<T extends Record<string, unknown>>(
@@ -958,6 +1015,44 @@ export class FirestoreRestClient {
     );
 
     return { deleted: 1, commitTime: result.commitTime };
+  }
+
+  /** All writes succeed together, with a mandatory create/version precondition. */
+  async commitAtomic(writes: AtomicDocumentWrite[]): Promise<{
+    commitTime?: string;
+    writeResults?: Array<{ updateTime?: string }>;
+  }> {
+    if (writes.length < 1 || writes.length > MAX_COMMIT_WRITES) {
+      throw new RangeError("Firestore atomic commit must contain 1–500 writes.");
+    }
+    const names = new Set<string>();
+    const encodedWrites = writes.map((write) => {
+      const segments = write.path.split("/");
+      if (segments.length !== 2 || segments.some(segment => !/^[A-Za-z0-9_-]{1,128}$/.test(segment))) {
+        throw new TypeError("Atomic write must target a root document path.");
+      }
+      const name = `${this.documentsRoot}/${write.path}`;
+      if (names.has(name)) throw new TypeError("Atomic write list contains duplicate documents.");
+      names.add(name);
+      if (write.kind !== "create" && !Number.isFinite(Date.parse(write.updateTime))) {
+        throw new TypeError("Expected update time must be a valid timestamp.");
+      }
+      const currentDocument = write.kind === "create"
+        ? { exists: false }
+        : { updateTime: write.updateTime };
+      if (write.kind === "delete") return { delete: name, currentDocument };
+      const fieldPaths = Object.keys(write.data);
+      if (!fieldPaths.length) throw new TypeError("Atomic update cannot be empty.");
+      fieldPaths.forEach(assertFieldPath);
+      return {
+        update: { name, fields: encodeDocumentFields(write.data) },
+        ...(write.kind === "update" ? { updateMask: { fieldPaths } } : {}),
+        currentDocument,
+      };
+    });
+    return this.request(`${this.databaseRoot}/documents:commit`, {
+      method: "POST", body: JSON.stringify({ writes: encodedWrites }),
+    });
   }
 
   async updateDocument(
@@ -1154,7 +1249,7 @@ export class FirestoreRestClient {
     collectionId: string,
     data: Record<string, unknown>,
     options: CreateDocumentOptions = {},
-  ): Promise<{ id: string; commitTime?: string }> {
+  ): Promise<{ id: string; commitTime?: string; updateTime?: string }> {
     assertCollectionId(collectionId);
 
     const id = options.documentId ?? this.documentIdGenerator();
@@ -1181,7 +1276,7 @@ export class FirestoreRestClient {
       currentDocument: { exists: false },
       ...(updateTransforms.length > 0 ? { updateTransforms } : {}),
     };
-    const result = await this.request<{ commitTime?: string }>(
+    const result = await this.request<{ commitTime?: string; writeResults?: Array<{ updateTime?: string }> }>(
       `${this.databaseRoot}/documents:commit`,
       {
         method: "POST",
@@ -1189,7 +1284,8 @@ export class FirestoreRestClient {
       },
     );
 
-    return { id, commitTime: result.commitTime };
+    const updateTime = result.writeResults?.[0]?.updateTime;
+    return { id, commitTime: result.commitTime, ...(updateTime ? { updateTime } : {}) };
   }
 }
 

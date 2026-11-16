@@ -75,6 +75,38 @@ test("rotation stops after three conflicting attempts", async () => {
   assert.equal(firestore.updateDocument.mock.calls.length, 3);
 });
 
+test("rotation with an observed stale revision rejects before creating a new key", async () => {
+  firestore.getDocument.mockResolvedValue({
+    name: "projects/test/databases/(default)/documents/system/keys",
+    updateTime: "2026-11-16T10:00:00.123456Z",
+    data: {},
+  });
+  await assert.rejects(
+    () => rotateSystemKey(env, identity, "2026-11-16T09:00:00.123456Z"),
+    (error: unknown) => error instanceof Error && "status" in error && error.status === 412,
+  );
+  assert.equal(firestore.getDocument.mock.calls.length, 1);
+  assert.equal(firestore.createDocument.mock.calls.length, 0);
+  assert.equal(firestore.updateDocument.mock.calls.length, 0);
+});
+
+test("rotation never retries against a refreshed revision after a conflicting write", async () => {
+  const key = { id: "existing-key", key: "encrypted-key", version: "v1", createdAt: "2026-08-22T12:00:00.000Z", counter: 3 };
+  const revision = "2026-11-16T10:00:00.123456Z";
+  firestore.getDocument.mockResolvedValue({
+    name: "projects/test/databases/(default)/documents/system/keys",
+    updateTime: revision,
+    data: { active_key_id: key.id, keys: { [key.id]: key } },
+  });
+  const conflict = new FirestoreRestError("Concurrent change after read", 400, { error: { status: "FAILED_PRECONDITION" } });
+  firestore.updateDocument.mockRejectedValueOnce(conflict);
+  await assert.rejects(() => rotateSystemKey(env, identity, revision), (error: unknown) => error === conflict);
+  assert.equal(firestore.getDocument.mock.calls.length, 1);
+  assert.equal(firestore.updateDocument.mock.calls.length, 1);
+  assert.deepEqual(firestore.updateDocument.mock.calls[0][2], { expectedUpdateTime: revision });
+  assert.equal(firestore.createDocument.mock.calls.length, 0);
+});
+
 test("rotation initializes the first system key when the document does not exist", async () => {
   firestore.getDocument.mockResolvedValue(null);
   firestore.createDocument.mockResolvedValue({ id: "keys" });

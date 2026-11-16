@@ -16,6 +16,7 @@ interface ErrorModalProps {
   onClose: () => void;
   title?: string;
   message?: string;
+  onReload?: () => void;
 }
 
 export function ErrorModal({
@@ -23,6 +24,7 @@ export function ErrorModal({
   onClose,
   title = "Ops! Algo deu errado",
   message = "Ocorreu um erro inesperado. Tente novamente.",
+  onReload,
 }: ErrorModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -37,6 +39,7 @@ export function ErrorModal({
           </DialogHeading>
         </DialogHeader>
         <DialogFooter>
+          {onReload && <Button variant="outline" onClick={onReload}>Recarregar e revisar</Button>}
           <Button variant="secondary" onClick={onClose}>
             Fechar
           </Button>

@@ -221,7 +221,9 @@ export const dogUpdateSchema = dogDraftFieldsSchema.extend({
 );
 
 export const dogEntitySchema = dogInputFieldsSchema.extend({
-  id: z.number().int().nonnegative(),
+  // Only legacy records have the timestamp business ID. Document identity is canonical.
+  id: z.number().int().nonnegative().optional(),
+  documentId: z.string().regex(/^[A-Za-z0-9_-]{1,128}$/),
   archivedAt: z.string().datetime().nullish(),
   purgeAfter: z.string().datetime().nullish(),
   archiveReason: z.enum(["adopted_via_site", "other"]).nullish(),

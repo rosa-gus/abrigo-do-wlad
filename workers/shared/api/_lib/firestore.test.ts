@@ -8,6 +8,58 @@ import {
   FirestoreRestError,
 } from "./firestore.ts";
 
+test("atomic commits send every document precondition together and return exact write revisions", async () => {
+  const bodies: Array<{ writes: Array<Record<string, unknown>> }> = [];
+  const revision = "2026-11-16T12:00:00.123456Z";
+  const client = new FirestoreRestClient("test-project", {
+    tokenProvider: async () => "synthetic",
+    fetcher: mockFetch((_url, init) => {
+      bodies.push(JSON.parse(String(init?.body)));
+      return Response.json({ writeResults: [{ updateTime: revision }, { updateTime: revision }] });
+    }),
+  });
+  const result = await client.commitAtomic([
+    { kind: "create", path: "dogs/new-dog", data: { fotos: ["https://example.test/a.jpg"] } },
+    { kind: "update", path: "media_assets/asset", updateTime: revision, data: { state: "ready", referencedBy: ["dogs/new-dog"] } },
+  ]);
+  assert.equal(bodies.length, 1);
+  assert.deepEqual(bodies[0].writes[0].currentDocument, { exists: false });
+  assert.deepEqual(bodies[0].writes[1].currentDocument, { updateTime: revision });
+  assert.deepEqual(bodies[0].writes[1].updateMask, { fieldPaths: ["state", "referencedBy"] });
+  assert.equal(result.writeResults?.[0].updateTime, revision);
+  await assert.rejects(() => client.commitAtomic([
+    { kind: "delete", path: "dogs/new-dog", updateTime: "bad" },
+  ]), /valid timestamp/);
+  await assert.rejects(() => client.commitAtomic([
+    { kind: "create", path: "dogs/new-dog", data: { name: "a" } },
+    { kind: "create", path: "dogs/new-dog", data: { name: "b" } },
+  ]), /duplicate/);
+  await assert.rejects(() => client.commitAtomic([
+    { kind: "create", path: "../dogs/new-dog", data: { name: "a" } },
+  ]), /root document/);
+  assert.equal(bodies.length, 1);
+});
+
+test("bounded equality queries retain both duplicate legacy identities", async () => {
+  let query: Record<string, unknown> = {};
+  const client = new FirestoreRestClient("test-project", {
+    tokenProvider: async () => "synthetic",
+    fetcher: mockFetch((_url, init) => {
+      query = JSON.parse(String(init?.body)).structuredQuery;
+      return Response.json(["dog-a", "dog-b"].map(id => ({ document: {
+        name: `projects/test-project/databases/(default)/documents/dogs/${id}`,
+        fields: { id: { integerValue: "123" } },
+      } })));
+    }),
+  });
+  const matches = await client.findDocumentsByField("dogs", "id", 123);
+  assert.equal(matches.length, 2);
+  assert.deepEqual(query.where, { fieldFilter: {
+    field: { fieldPath: "id" }, op: "EQUAL", value: { integerValue: "123" },
+  } });
+  assert.equal(query.limit, 2);
+});
+
 test("encrypted creation uses the same guarded commit for the document and key counter", async () => {
   const commits: Array<{ writes: Array<Record<string, unknown>> }> = [];
   const client = new FirestoreRestClient("test-project", {

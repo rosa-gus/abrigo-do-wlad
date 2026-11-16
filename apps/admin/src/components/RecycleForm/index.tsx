@@ -104,6 +104,7 @@ export function RecycleForm({ initialData, onSubmit, title, buttonLabel }: Recyc
       />
 
       <ErrorModal
+        onReload={() => window.location.reload()}
         isOpen={errorInfo.show}
         onClose={() => setErrorInfo({ show: false, message: "" })}
         message={errorInfo.message}

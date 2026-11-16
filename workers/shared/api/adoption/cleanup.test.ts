@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { test, vi } from "vitest";
 import { FirestoreRestClient, FirestoreRestError, type FirestoreDocument } from "../_lib/firestore";
 
 import {
+  ADOPTION_RETENTION_ALERT_DELAY_MS,
   cleanupExpiredAdoptionApplications,
   type AdoptionCleanupDependencies,
   type AdoptionCleanupRepository,
@@ -11,6 +12,41 @@ import {
 const CUTOFF = new Date("2026-08-21T03:00:00.000Z");
 const DOCUMENT_ROOT =
   "projects/test-project/databases/(default)/documents/adoption_application";
+
+test("cleanup alerts on overdue persisted records with aggregate metrics and no personal data", async () => {
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  const info = vi.spyOn(console, "info").mockImplementation(() => {});
+  try {
+    const old = { ...application("private-id"), data: {
+      expiresAt: new Date(CUTOFF.getTime() - ADOPTION_RETENTION_ALERT_DELAY_MS - 1).toISOString(),
+      nome_adotante: "private-person", sensitive: "private-cipher", keyVersion: "private-key",
+    } };
+    const fixture = createDependencies([[old]]);
+    const result = await cleanupExpiredAdoptionApplications(undefined,
+      { cutoff: CUTOFF, dryRun: true }, fixture.dependencies);
+    assert.equal(result.deleted, 0);
+    assert.deepEqual(JSON.parse(String(error.mock.calls[0][0])), {
+      event: "adoption.retention.overdue", observedExpiredCount: 1, overdueCount: 1,
+      oldestExpirationAgeMs: ADOPTION_RETENTION_ALERT_DELAY_MS + 1,
+      toleranceMs: ADOPTION_RETENTION_ALERT_DELAY_MS,
+    });
+    assert.ok(!JSON.stringify(error.mock.calls).includes("private"));
+    assert.deepEqual(fixture.deletedNames, []);
+  } finally { error.mockRestore(); info.mockRestore(); }
+});
+
+test("cleanup records ordinary expiration lag without an overdue alert at the tolerance boundary", async () => {
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  const info = vi.spyOn(console, "info").mockImplementation(() => {});
+  try {
+    const fixture = createDependencies([[{
+      ...application("boundary"), data: { expiresAt: new Date(CUTOFF.getTime() - ADOPTION_RETENTION_ALERT_DELAY_MS).toISOString() },
+    }]]);
+    await cleanupExpiredAdoptionApplications(undefined, { cutoff: CUTOFF }, fixture.dependencies);
+    assert.equal(error.mock.calls.length, 0);
+    assert.equal(JSON.parse(String(info.mock.calls[0][0])).event, "adoption.retention.observed");
+  } finally { error.mockRestore(); info.mockRestore(); }
+});
 
 test("cleanup decrements encrypted documents by their own key and ignores plaintext records", async () => {
   const documents = [

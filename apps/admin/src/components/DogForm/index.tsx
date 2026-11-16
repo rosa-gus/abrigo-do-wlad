@@ -320,6 +320,7 @@ export function DogForm({ initialData, onSubmit, title, buttonLabel }: DogFormPr
       />
 
       <ErrorModal
+        onReload={() => window.location.reload()}
         isOpen={errorInfo.show}
         onClose={() => setErrorInfo({ show: false, message: "" })}
         message={errorInfo.message}

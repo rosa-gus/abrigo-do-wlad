@@ -10,14 +10,15 @@ import {
 } from "@abrigo/media/cloudinary";
 import { PUBLICATION_LABELS } from "../../../shared/entities";
 import type { DogProps } from "../../types/dogs";
+import { dogRouteId } from "../../services/dogs";
 import { resolveMockMediaUrl } from "../../mocks/media";
 import styles from "./DogCard.module.css";
 
 interface DogCardProps {
   dog: DogProps;
-  onArchive: (id: number, nome: string) => void;
+  onArchive: (dog: DogProps) => void;
   priority?: boolean;
-  onDiscard: (id: number, nome: string) => void;
+  onDiscard: (dog: DogProps) => void;
 }
 
 const CARD_IMAGE_WIDTH = 320;
@@ -94,7 +95,7 @@ export function DogCard({ dog, onArchive, onDiscard, priority = false }: DogCard
             emphasis="soft"
             size="sm"
             align="center"
-            onClick={() => navigate(`/admin/dog/edit/${dog.id}`)}
+            onClick={() => navigate(`/admin/dog/edit/${encodeURIComponent(dogRouteId(dog))}`)}
             className={styles.editButton}
             title="Editar"
           >
@@ -103,7 +104,7 @@ export function DogCard({ dog, onArchive, onDiscard, priority = false }: DogCard
 
           {dog.publicationStatus === "draft" && (
             <Button variant="danger" size="icon-sm" shape="circle" aria-label={`Excluir rascunho de ${dog.nome}`}
-              onClick={() => onDiscard(dog.id, dog.nome)} title="Excluir rascunho">
+              onClick={() => onDiscard(dog)} title="Excluir rascunho">
               <Trash2 size={18} />
             </Button>
           )}
@@ -112,7 +113,7 @@ export function DogCard({ dog, onArchive, onDiscard, priority = false }: DogCard
             size="icon-sm"
             shape="circle"
             aria-label={`Finalizar jornada de ${dog.nome}`}
-            onClick={() => onArchive(dog.id, dog.nome)}
+            onClick={() => onArchive(dog)}
             className={styles.deleteBtn}
             title="Arquivar"
           >

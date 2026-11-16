@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { CircleAlert, Plus, Dog, RefreshCw } from "lucide-react";
 import { Button } from "@jaci/ui/Button";
 import { EmptyState } from "@jaci/ui/EmptyState";
-import { getDogs, archiveDog, deleteDraftDog } from "../../services/dogs";
+import { getDogs, archiveDog, deleteDraftDog, dogRouteId } from "../../services/dogs";
 import { ListingFilters } from "../../components/ListingFilters";
 import { ConfirmModal } from "../../components/ConfirmModal";
 import { DogCard } from "../../components/DogCard";
@@ -27,9 +27,9 @@ export default function DogDashboard() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [publicationFilter, setPublicationFilter] = useState("all");
-  const [draftToDelete, setDraftToDelete] = useState<{ id: number; nome: string } | null>(null);
+  const [draftToDelete, setDraftToDelete] = useState<DogProps | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [dogToProcess, setDogToProcess] = useState<{id: number, nome: string} | null>(null);
+  const [dogToProcess, setDogToProcess] = useState<DogProps | null>(null);
   const [isProcessingDog, setIsProcessingDog] = useState(false);
   const [operationError, setOperationError] = useState<string | null>(null);
 
@@ -45,7 +45,10 @@ export default function DogDashboard() {
 
     getDogs()
       .then((data) => {
-        if (active) setDogs([...data].sort((a, b) => b.id - a.id));
+        if (active) setDogs([...data].sort((a, b) =>
+          (b.updatedAt ?? b.publishedAt ?? "").localeCompare(a.updatedAt ?? a.publishedAt ?? "")
+          || b.documentId.localeCompare(a.documentId)
+        ));
       })
       .catch(() => {
         if (active) setLoadError("Não foi possível carregar os cachorros.");
@@ -60,8 +63,8 @@ export default function DogDashboard() {
     if (!draftToDelete || isProcessingDog) return;
     setIsProcessingDog(true);
     try {
-      await deleteDraftDog(draftToDelete.id);
-      setDogs(current => current.filter(dog => dog.id !== draftToDelete.id));
+      await deleteDraftDog(dogRouteId(draftToDelete), draftToDelete.revision);
+      setDogs(current => current.filter(dog => dog.documentId !== draftToDelete.documentId));
       setDraftToDelete(null);
     } catch (error) {
       setDraftToDelete(null);
@@ -85,8 +88,8 @@ export default function DogDashboard() {
     visiblePage * ITEMS_PER_PAGE
   );
 
-  function openAdoptionModal(id: number, nome: string) {
-    setDogToProcess({ id, nome });
+  function openAdoptionModal(dog: DogProps) {
+    setDogToProcess(dog);
   }
 
   async function confirmRemoval(adoptedViaSite: boolean) {
@@ -95,9 +98,9 @@ export default function DogDashboard() {
     setIsProcessingDog(true);
 
     try {
-      await archiveDog(selectedDog.id, adoptedViaSite);
+      await archiveDog(dogRouteId(selectedDog), adoptedViaSite, selectedDog.revision);
 
-      setDogs(prev => prev.filter(dog => dog.id !== selectedDog.id));
+      setDogs(prev => prev.filter(dog => dog.documentId !== selectedDog.documentId));
 
       setDogToProcess(null);
 
@@ -115,9 +118,9 @@ export default function DogDashboard() {
         });
       }
 
-    } catch {
+    } catch (error) {
       setDogToProcess(null);
-      setOperationError("Não foi possível finalizar a jornada do animal.");
+      setOperationError(error instanceof Error ? error.message : "Não foi possível finalizar a jornada do animal.");
     } finally {
       setIsProcessingDog(false);
     }
@@ -200,10 +203,10 @@ export default function DogDashboard() {
           <div className={styles.grid}>
             {currentDogs.map((dog, index) => (
               <DogCard
-                key={dog.id}
+                key={dog.documentId}
                 dog={dog}
                 onArchive={openAdoptionModal}
-                onDiscard={(id, nome) => setDraftToDelete({ id, nome })}
+                onDiscard={setDraftToDelete}
                 priority={index < 3}
               />
             ))}
@@ -231,6 +234,7 @@ export default function DogDashboard() {
       />
 
       <ErrorModal
+        onReload={() => window.location.reload()}
         isOpen={operationError !== null}
         onClose={() => setOperationError(null)}
         message={operationError ?? undefined}

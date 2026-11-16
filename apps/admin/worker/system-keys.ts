@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { encryptSystemKey } from "../../../workers/shared/api/_lib/encryption";
 import { createFirestoreClient, FirestoreRestError } from "../../../workers/shared/api/_lib/firestore";
+import { assertRevision } from "./revision";
 import type { AccessIdentity } from "./access";
 
 const storedKeySchema = z.object({
@@ -48,22 +49,25 @@ function toMetadata(key: StoredSystemKey, activeKeyId: string): SystemKeyMetadat
 }
 
 export async function listSystemKeys(env: Env): Promise<SystemKeyMetadata[]> {
-  const document = await createFirestoreClient(env).getDocument("system/keys");
-  if (!document) return [];
+  return (await listSystemKeysState(env)).value;
+}
 
+export async function listSystemKeysState(env: Env): Promise<{ value: SystemKeyMetadata[]; revision: string | undefined }> {
+  const document = await createFirestoreClient(env).getDocument("system/keys");
+  if (!document) return { value: [], revision: undefined };
   const { active_key_id: activeKeyId, keys } = keyDocumentSchema.parse(document.data);
-  return Object.values(keys)
-    .map((key) => toMetadata(key, activeKeyId))
-    .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt));
+  return { value: Object.values(keys).map((key) => toMetadata(key, activeKeyId))
+    .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt)), revision: document.updateTime };
 }
 
 export async function rotateSystemKey(
   env: Env,
   identity: AccessIdentity,
+  expected?: string,
 ): Promise<RotatedSystemKey> {
   for (let attempt = 0; ; attempt++) {
     try {
-      return await rotateSystemKeyOnce(env, identity);
+      return await rotateSystemKeyOnce(env, identity, expected);
     } catch (error) {
       const details = error instanceof FirestoreRestError ? error.details : undefined;
       const code = typeof details === "object" && details !== null && "error" in details
@@ -71,14 +75,15 @@ export async function rotateSystemKey(
         ? details.error.status : undefined;
       const conflict = error instanceof FirestoreRestError
         && ([409, 412].includes(error.status) || code === "FAILED_PRECONDITION" || code === "ABORTED");
-      if (attempt >= 2 || !conflict) throw error;
+      if (expected !== undefined || attempt >= 2 || !conflict) throw error;
     }
   }
 }
 
-async function rotateSystemKeyOnce(env: Env, identity: AccessIdentity): Promise<RotatedSystemKey> {
+async function rotateSystemKeyOnce(env: Env, identity: AccessIdentity, expected?: string): Promise<RotatedSystemKey> {
   const firestore = createFirestoreClient(env);
   const document = await firestore.getDocument("system/keys");
+  if (expected !== undefined) assertRevision(expected, document?.updateTime);
   const current = document ? keyDocumentSchema.parse(document.data) : undefined;
   const nextVersionNumber = current
     ? Object.values(current.keys).reduce((highest, key) => {

@@ -83,12 +83,12 @@ export default function RecycleDashboard() {
     setIsDeleting(true);
 
     try {
-      await deleteRecyclePoint(selectedPoint.id);
+      await deleteRecyclePoint(selectedPoint.id, points.find(point => point.id === selectedPoint.id)?.revision);
       setPoints(prev => prev.filter(p => p.id !== selectedPoint.id));
       setPointToDelete(null);
-    } catch {
+    } catch (cause) {
       setPointToDelete(null);
-      setOperationError("Não foi possível excluir o ponto de coleta.");
+      setOperationError(cause instanceof Error ? cause.message : "Não foi possível excluir o ponto de coleta.");
     } finally {
       setIsDeleting(false);
     }
@@ -265,6 +265,7 @@ export default function RecycleDashboard() {
       />
 
       <ErrorModal
+        onReload={() => window.location.reload()}
         isOpen={operationError !== null}
         onClose={() => setOperationError(null)}
         message={operationError ?? undefined}

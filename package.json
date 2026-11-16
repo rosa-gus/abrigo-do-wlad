@@ -48,7 +48,8 @@
     "deploy": "npm run build:app && wrangler deploy",
     "deploy:public": "npm run deploy",
     "deploy:admin": "npm run build:admin && wrangler deploy --config apps/admin/wrangler.jsonc",
-    "deploy:cron": "wrangler deploy --config workers/cron/wrangler.jsonc"
+    "deploy:cron": "wrangler deploy --config workers/cron/wrangler.jsonc",
+    "test:media": "firebase emulators:exec --only firestore --project demo-abrigo-media \"vitest run --config vitest.config.ts --project unit apps/admin/worker/media-assets.emulator.test.ts --maxWorkers=2\""
   },
   "dependencies": {
     "jose": "^6.2.9",

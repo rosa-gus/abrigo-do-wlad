@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { createFirestoreClient } from "../../../workers/shared/api/_lib/firestore";
 import type { AccessIdentity } from "./access";
+import { assertRevision } from "./revision";
 
 const notificationCoreSchema = z.object({
   message: z.string().trim().min(1).max(240),
@@ -19,6 +20,7 @@ const adminNotificationSchema = notificationCoreSchema.extend({
   author: z.string().email(),
   expiration: notificationExpirationSchema,
   expiresAt: z.string().datetime().nullable(),
+  revision: z.string().optional(),
 });
 const storedAdminNotificationSchema = adminNotificationSchema.extend({
   expiration: notificationExpirationSchema.optional(),
@@ -59,14 +61,31 @@ export async function getAdminNotification(
   return notification;
 }
 
+export async function getAdminNotificationState(env: Env): Promise<{
+  value: AdminNotification | null;
+  revision: string | undefined;
+}> {
+  const document = await createFirestoreClient(env).getDocument(NOTIFICATION_DOCUMENT);
+  if (!document) return { value: null, revision: undefined };
+  const stored = storedAdminNotificationSchema.parse(document.data);
+  const value = adminNotificationSchema.parse({ ...stored,
+    expiration: stored.expiration ?? "until_deleted", expiresAt: stored.expiresAt ?? null });
+  return {
+    value: value.expiresAt && Date.parse(value.expiresAt) <= Date.now() ? null : { ...value, revision: document.updateTime },
+    revision: document.updateTime,
+  };
+}
+
 export async function saveAdminNotification(
   env: Env,
   input: NotificationInput,
   identity: AccessIdentity,
   now: Date = new Date(),
+  expected?: string,
 ): Promise<AdminNotification> {
   const firestore = createFirestoreClient(env);
   const existing = await firestore.getDocument(NOTIFICATION_DOCUMENT);
+  if (expected !== undefined) assertRevision(expected, existing?.updateTime);
   const updatedAt = now.toISOString();
   const notification = adminNotificationSchema.parse({
     ...input,
@@ -79,14 +98,17 @@ export async function saveAdminNotification(
         : new Date(now.getTime() + EXPIRATION_MS[input.expiration]).toISOString(),
   });
 
+  let revision: string | undefined;
   if (existing) {
-    await firestore.updateDocument(existing.name, notification, {
+    const result = await firestore.updateDocument(existing.name, notification, {
       expectedUpdateTime: existing.updateTime,
     });
+    revision = result.updateTime;
   } else {
-    await firestore.createDocument("system", notification, {
+    const result = await firestore.createDocument("system", notification, {
       documentId: "notifications",
     });
+    revision = result.updateTime;
   }
 
   console.info(JSON.stringify({
@@ -97,15 +119,17 @@ export async function saveAdminNotification(
     expiresAt: notification.expiresAt,
   }));
 
-  return notification;
+  return { ...notification, ...(revision ? { revision } : {}) };
 }
 
-export async function deleteAdminNotification(env: Env, identity: AccessIdentity): Promise<void> {
+export async function deleteAdminNotification(env: Env, identity: AccessIdentity, expected?: string): Promise<void> {
   const firestore = createFirestoreClient(env);
   const existing = await firestore.getDocument(NOTIFICATION_DOCUMENT);
+  if (expected !== undefined) assertRevision(expected, existing?.updateTime);
 
   if (existing) {
-    await firestore.deleteDocument(existing.name);
+    if (!existing.updateTime) throw new Error("Notification revision is unavailable.");
+    await firestore.deleteDocumentsIfUnchanged([{ name: existing.name, updateTime: existing.updateTime }]);
   }
 
   console.info(JSON.stringify({

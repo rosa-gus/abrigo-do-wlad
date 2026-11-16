@@ -4,7 +4,7 @@ import { Badge } from "@jaci/ui/Badge";
 import { Button } from "@jaci/ui/Button";
 import { Input } from "@jaci/ui/Field";
 import { EmptyState } from "@jaci/ui/EmptyState";
-import { getDogs, restoreDog } from "../../services/dogs";
+import { dogRouteId, getDogs, restoreDog } from "../../services/dogs";
 import type { DogProps } from "../../types/dogs";
 import { ErrorModal } from "../../components/ErrorModal";
 import styles from "./DogArchive.module.css";
@@ -25,7 +25,7 @@ export default function DogArchive() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
-  const [restoringId, setRestoringId] = useState<number | null>(null);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [reloadToken, setReloadToken] = useState(0);
 
@@ -46,14 +46,14 @@ export default function DogArchive() {
     dog.nome.toLocaleLowerCase("pt-BR").includes(searchTerm.toLocaleLowerCase("pt-BR"))
   ), [dogs, searchTerm]);
 
-  async function restore(id: number) {
+  async function restore(selected: DogProps) {
     if (restoringId !== null) return;
-    setRestoringId(id);
+    setRestoringId(selected.documentId);
     try {
-      await restoreDog(id);
-      setDogs((current) => current.filter((dog) => dog.id !== id));
-    } catch {
-      setOperationError("Não foi possível restaurar o cão.");
+      await restoreDog(dogRouteId(selected), selected.revision);
+      setDogs((current) => current.filter((dog) => dog.documentId !== selected.documentId));
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Não foi possível restaurar o cão.");
     } finally {
       setRestoringId(null);
     }
@@ -109,7 +109,7 @@ export default function DogArchive() {
       {!loading && !loadError && filteredDogs.length > 0 && (
         <div className={styles.list}>
           {filteredDogs.map((dog) => (
-            <article className={styles.item} key={dog.id}>
+            <article className={styles.item} key={dog.documentId}>
               <div className={styles.details}>
                 <h2>{dog.nome}</h2>
                 <p>{dog.archiveReason === "adopted_via_site" ? "Adotado pelo site" : "Outro motivo"}</p>
@@ -122,10 +122,10 @@ export default function DogArchive() {
               <Button
                 variant="outline"
                 disabled={restoringId !== null}
-                onClick={() => void restore(dog.id)}
+                onClick={() => void restore(dog)}
               >
                 <ArchiveRestore size={18} />
-                {restoringId === dog.id ? "Restaurando..." : "Restaurar como rascunho"}
+                {restoringId === dog.documentId ? "Restaurando..." : "Restaurar como rascunho"}
               </Button>
             </article>
           ))}
@@ -133,6 +133,7 @@ export default function DogArchive() {
       )}
 
       <ErrorModal
+        onReload={() => window.location.reload()}
         isOpen={operationError !== null}
         onClose={() => setOperationError(null)}
         message={operationError ?? undefined}
