@@ -3,7 +3,7 @@ import { createFirestoreClient } from "../firestore";
 import type { CloudflareEnv } from "../env";
 import { jsonResponse } from "../env";
 import { getKvStore } from "../kv";
-import { acquireFeedPublicationLease, promoteFeedSnapshot, currentFeedSnapshotVersion } from "./publication-state";
+import { acquireFeedPublicationLease, promoteFeedSnapshot, currentFeedSnapshotVersion, PublicationBusyError } from "./publication-state";
 import { isDogArchived } from "@abrigo/domain/dogs/archive";
 import { isPublished } from "@abrigo/domain/publication";
 import {
@@ -412,6 +412,12 @@ export async function getDogFeedResponse(
       "Cache-Control": "no-store",
     });
   } catch (error) {
+    if (error instanceof PublicationBusyError) {
+      console.info(JSON.stringify({ event: "dogs.feed.publication.busy" }));
+      return jsonResponse(503, {
+        message: "Dog feed is temporarily unavailable.",
+      }, { "Retry-After": "1" });
+    }
     console.error(JSON.stringify({
       event: "dogs.feed.request.failed",
       message: error instanceof Error ? error.message : "Unknown failure",

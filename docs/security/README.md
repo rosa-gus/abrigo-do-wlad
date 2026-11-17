@@ -255,6 +255,15 @@ Sem execução imediata, a recuperação depende do próximo cron e do backlog e
 lotes. `dogs.publication.batch` registra processados, falhas, deferimentos,
 `oldestDueAgeMs` e `maxAttempts`; erros remotos são persistidos como classificação.
 
+Disputas de revisão são reconhecidas pelos códigos estruturados
+`FAILED_PRECONDITION`, `ABORTED` e `ALREADY_EXISTS`, inclusive quando chegam como
+HTTP 400, além dos HTTP 409/412. A proteção vale na aquisição e na promoção do
+snapshot; claims concorrentes na outbox são adiados sem interromper o lote.
+Quando uma leitura depende de reconstrução e encontra a publicação ocupada,
+responde 503 com `Retry-After: 1` e registra `dogs.feed.publication.busy`.
+Outros erros 400 permanecem falhas operacionais; o texto do provedor não é usado
+para classificá-los como conflito.
+
 [feed.ts](../../workers/shared/api/dogs/feed.ts) grava snapshots imutáveis em
 `dogs-feed:AAAA-MM-DD_UUID`, com retenção de três dias. O embaralhamento usa a
 semente diária, separada da identidade do snapshot. Um lease de 60 segundos e

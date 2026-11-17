@@ -3,7 +3,7 @@ import { afterEach, test, vi } from "vitest";
 
 import type { CloudflareEnv } from "../_lib/env";
 import type { FirestoreDocument } from "../_lib/firestore";
-import { FirestoreRestClient } from "../_lib/firestore";
+import { FirestoreRestClient, FirestoreRestError } from "../_lib/firestore";
 import {
   getDogFeedResponse,
   getCurrentDogFeed,
@@ -439,4 +439,40 @@ test("same-day rebuilds retain immutable snapshots and ignore a stale compatibil
   assert.equal(values.get(`dogs-feed:${first.version}`), firstBytes);
   values.set("dogs-feed:current", JSON.stringify(first));
   assert.equal((await getCurrentDogFeed(env)).version, second.version);
+});
+
+test("a structured HTTP 400 publication conflict reports retryable contention without publishing an empty feed", async () => {
+  const { env, writes } = kvEnv();
+  vi.mocked(FirestoreRestClient.prototype.createDocument).mockRejectedValueOnce(
+    new FirestoreRestError("stored version does not match required base version", 400,
+      { error: { status: "FAILED_PRECONDITION" } }),
+  );
+  const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+  const infoLog = vi.spyOn(console, "info").mockImplementation(() => {});
+
+  const response = await getDogFeedResponse(new Request("https://abrigo.test/api/dogs"), env);
+
+  assert.equal(response.status, 503);
+  assert.equal(response.headers.get("Retry-After"), "1");
+  assert.deepEqual(await response.json(), { message: "Dog feed is temporarily unavailable." });
+  assert.equal(errorLog.mock.calls.length, 0);
+  assert.deepEqual(infoLog.mock.calls, [[JSON.stringify({ event: "dogs.feed.publication.busy" })]]);
+  assert.equal(writes.length, 0);
+  assert.equal(vi.mocked(FirestoreRestClient.prototype.listDocuments).mock.calls.length, 0);
+});
+
+test("an unrelated HTTP 400 keeps its failure classification even if its message mentions versions", async () => {
+  const { env, writes } = kvEnv();
+  vi.mocked(FirestoreRestClient.prototype.createDocument).mockRejectedValueOnce(
+    new FirestoreRestError("stored version does not match required base version", 400,
+      { error: { status: "INVALID_ARGUMENT" } }),
+  );
+  const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+
+  const response = await getDogFeedResponse(new Request("https://abrigo.test/api/dogs"), env);
+
+  assert.equal(response.status, 503);
+  assert.equal(response.headers.get("Retry-After"), null);
+  assert.equal(JSON.parse(String(errorLog.mock.calls[0][0])).event, "dogs.feed.request.failed");
+  assert.equal(writes.length, 0);
 });

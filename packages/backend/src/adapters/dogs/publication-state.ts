@@ -18,7 +18,12 @@ export class PublicationBusyError extends Error {
 }
 
 export function isPublicationConflict(error: unknown): boolean {
-  return error instanceof FirestoreRestError && [409, 412].includes(error.status);
+  return error instanceof FirestoreRestError && (
+    [409, 412].includes(error.status)
+    || error.code === "FAILED_PRECONDITION"
+    || error.code === "ABORTED"
+    || error.code === "ALREADY_EXISTS"
+  );
 }
 
 export interface FeedPublicationLease {
@@ -64,12 +69,17 @@ export async function promoteFeedSnapshot(
   if (!current || current.data.leaseId !== lease.id || current.updateTime !== lease.updateTime) {
     throw new PublicationBusyError();
   }
-  await repository.updateDocument(current.name, {
-    version,
-    publishedAt: now.toISOString(),
-    leaseId: null,
-    leaseExpiresAt: null,
-  }, { expectedUpdateTime: lease.updateTime });
+  try {
+    await repository.updateDocument(current.name, {
+      version,
+      publishedAt: now.toISOString(),
+      leaseId: null,
+      leaseExpiresAt: null,
+    }, { expectedUpdateTime: lease.updateTime });
+  } catch (error) {
+    if (isPublicationConflict(error)) throw new PublicationBusyError();
+    throw error;
+  }
 }
 
 export async function currentFeedSnapshotVersion(repository: Repository): Promise<string | undefined> {

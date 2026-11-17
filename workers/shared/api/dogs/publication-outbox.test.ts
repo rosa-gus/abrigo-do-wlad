@@ -4,7 +4,7 @@ vi.mock("@abrigo/backend/adapters/dogs/tombstone", () => ({ saveDogTombstone: pr
 vi.mock("@abrigo/backend/adapters/dogs/feed", () => ({ updateDogFeed: async () => ({}) }));
 vi.mock("@abrigo/backend/adapters/hero-dog/update", () => ({ updateHeroDog: async () => ({ status: 200 }) }));
 import { processDogPublicationOutbox } from "./publication-outbox";
-import type { FirestoreDocument } from "../_lib/firestore";
+import { FirestoreRestError, type FirestoreDocument } from "../_lib/firestore";
 
 test("a failed publication backs off durably and a later batch completes without replaying a mutation", async () => {
   let data: Record<string, unknown> = { state: "pending", attempts: 0 };
@@ -54,4 +54,29 @@ test("a source change while KV is pending leaves a recovery job instead of ackno
   expect(result.failed).toBe(1);
   expect(jobState).toBe("pending");
   expect(projections.saveTombstone).toHaveBeenCalledOnce();
+});
+
+test("a structured HTTP 400 claim conflict defers only that job and continues the batch", async () => {
+  const repository = {
+    async getDocument<T extends Record<string, unknown>>() { return null as FirestoreDocument<T> | null; },
+    async findDocumentsByTimestampBefore<T extends Record<string, unknown>>() {
+      return ["claimed-elsewhere", "available"].map(id => ({
+        id, name: `publication_outbox/${id}`, updateTime: "observed",
+        data: { state: "pending", attempts: 0 } as T,
+      }));
+    },
+    updateDocument: vi.fn<(name: string, data: Record<string, unknown>, options?: { expectedUpdateTime?: string }) => Promise<{ updateTime: string }>>(async name => {
+      if (name.endsWith("/claimed-elsewhere")) {
+        throw new FirestoreRestError("conflict", 400, { error: { status: "FAILED_PRECONDITION" } });
+      }
+      return { updateTime: "claimed" };
+    }),
+  };
+  const publish = vi.fn().mockResolvedValue(undefined);
+
+  expect(await processDogPublicationOutbox({}, { repository, publish })).toEqual({ processed: 1, failed: 0, deferred: 1 });
+  expect(publish).toHaveBeenCalledTimes(1);
+  const conflictedWrites = repository.updateDocument.mock.calls.filter(([name]) => name.endsWith("/claimed-elsewhere"));
+  expect(conflictedWrites).toHaveLength(1);
+  expect(conflictedWrites[0][2]).toEqual({ expectedUpdateTime: "observed" });
 });
