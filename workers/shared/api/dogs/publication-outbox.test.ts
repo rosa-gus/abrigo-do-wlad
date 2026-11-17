@@ -1,8 +1,8 @@
 import { expect, test, vi } from "vitest";
 const projections = vi.hoisted(() => ({ saveTombstone: vi.fn(), deleteTombstone: vi.fn() }));
-vi.mock("./tombstone", () => ({ saveDogTombstone: projections.saveTombstone, deleteDogTombstone: projections.deleteTombstone }));
-vi.mock("./feed", () => ({ updateDogFeed: async () => ({}) }));
-vi.mock("../hero-dog/update", () => ({ updateHeroDog: async () => ({ status: 200 }) }));
+vi.mock("@abrigo/backend/adapters/dogs/tombstone", () => ({ saveDogTombstone: projections.saveTombstone, deleteDogTombstone: projections.deleteTombstone }));
+vi.mock("@abrigo/backend/adapters/dogs/feed", () => ({ updateDogFeed: async () => ({}) }));
+vi.mock("@abrigo/backend/adapters/hero-dog/update", () => ({ updateHeroDog: async () => ({ status: 200 }) }));
 import { processDogPublicationOutbox } from "./publication-outbox";
 import type { FirestoreDocument } from "../_lib/firestore";
 

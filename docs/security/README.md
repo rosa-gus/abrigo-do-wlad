@@ -5,10 +5,11 @@ serviço. Firestore é a fonte de verdade; KV contém projeções de leitura com
 consistência eventual. O navegador usa as APIs e não recebe credenciais do banco,
 chaves de descriptografia ou secrets do Cloudinary.
 
-Esta referência descreve os contratos e invariantes do backend. A evolução
-arquitetural e as pendências estão no [plano de auditoria e arquitetura](api-audit-and-architecture-plan.md). Configuração
-local, rotas e comandos do painel estão no [README administrativo](../../apps/admin/README.md);
-o executor de migrações está em [Migrações do Firestore](../firestore-migrations.md).
+Esta referência descreve os contratos, invariantes e verificações operacionais
+do backend. A organização dos pacotes está na [arquitetura do backend](backend-architecture.md).
+Configuração local, rotas e comandos do painel estão no
+[README administrativo](../../apps/admin/README.md); o executor de migrações está
+em [Migrações do Firestore](../firestore-migrations.md).
 
 ## Autenticação e autorização
 
@@ -22,10 +23,10 @@ audience configurados. Exige `exp`, `iat`, `iss`, `aud`, `sub` e `email`.
 Identidade ausente, token inválido ou configuração necessária ausente nega acesso.
 Tokens de serviço sem identidade humana não autorizam o painel.
 
-| Papel | Configuração | Capacidades |
-| --- | --- | --- |
-| `administrator` | `ADMIN_ADMINISTRATOR_EMAILS` | Conteúdo, candidaturas, disponibilidade e leitura dos avisos. |
-| `developer` | `ADMIN_DEVELOPER_EMAILS` | Capacidades administrativas, chaves, migrações, escrita de avisos, auditoria e inventário de IDs. |
+| Papel           | Configuração                 | Capacidades                                                                                       |
+| --------------- | ---------------------------- | ------------------------------------------------------------------------------------------------- |
+| `administrator` | `ADMIN_ADMINISTRATOR_EMAILS` | Conteúdo, candidaturas, disponibilidade e leitura dos avisos.                                     |
+| `developer`     | `ADMIN_DEVELOPER_EMAILS`     | Capacidades administrativas, chaves, migrações, escrita de avisos, auditoria e inventário de IDs. |
 
 E-mails são normalizados; a lista de developer tem precedência quando a identidade
 aparece nas duas listas. A autorização ocorre no servidor. Mutações exigem
@@ -86,11 +87,11 @@ Mutações enviam a revisão observada em `If-Match`, e o commit aplica a mesma
 precondição Firestore. [revision.ts](../../apps/admin/worker/revision.ts)
 preserva a precisão do timestamp do banco.
 
-| Condição | Resposta |
-| --- | --- |
-| Precondição ausente | 428 |
-| Revisão divergente ou validador inválido | 412 |
-| Singleton inexistente | ETag `"absent"` |
+| Condição                                 | Resposta        |
+| ---------------------------------------- | --------------- |
+| Precondição ausente                      | 428             |
+| Revisão divergente ou validador inválido | 412             |
+| Singleton inexistente                    | ETag `"absent"` |
 
 PATCH de cães e reciclagem ainda aceita `expectedUpdateTime` quando `If-Match`
 está ausente. Um aviso vencido pode retornar `null` com a revisão do documento
@@ -106,11 +107,11 @@ As listagens GET de cães, reciclagem e candidaturas retornam
 busca até `limit + 1` documentos. Cursores são vinculados ao projeto, coleção,
 ordenação e filtros; cursores inválidos retornam 400 e não conferem autorização.
 
-| Recurso | Ordenação | Filtros da API |
-| --- | --- | --- |
-| Cães | ID do documento | `state=active\|archived`, `publicationStatus=draft\|published` |
-| Reciclagem | ID do documento | `publicationStatus=draft\|published` |
-| Candidaturas | `expiresAt`, com ID como desempate | `status=pending\|approved\|rejected` |
+| Recurso      | Ordenação                          | Filtros da API                                                 |
+| ------------ | ---------------------------------- | -------------------------------------------------------------- |
+| Cães         | ID do documento                    | `state=active\|archived`, `publicationStatus=draft\|published` |
+| Reciclagem   | ID do documento                    | `publicationStatus=draft\|published`                           |
+| Candidaturas | `expiresAt`, com ID como desempate | `status=pending\|approved\|rejected`                           |
 
 O filtro de arquivo é aplicado à janela limitada para preservar registros sem
 `archivedAt`; uma página vazia ainda pode ter `nextCursor`. O painel carrega mais
@@ -217,11 +218,11 @@ evento e outbox conjuntamente. O evento usa o alvo canônico escrito e contém
 subject, papel, e-mail do ator, método, caminho, request ID, resultado e horário;
 não copia formulário, plaintext, token ou chave.
 
-| Fase | Significado |
-| --- | --- |
-| `committed` | Alteração e evento persistidos atomicamente. |
+| Fase         | Significado                                                    |
+| ------------ | -------------------------------------------------------------- |
+| `committed`  | Alteração e evento persistidos atomicamente.                   |
 | `authorized` | Acesso ao detalhe autorizado antes da leitura/descriptografia. |
-| `response` | Resultado HTTP registrado separadamente. |
+| `response`   | Resultado HTTP registrado separadamente.                       |
 
 Falha ao persistir `authorized` bloqueia o detalhe. A fase não comprova entrega
 ao navegador. Diagnóstico de resposta pode usar `waitUntil`, mas o evento crítico
@@ -275,13 +276,13 @@ Os overrides do [package.json](../../package.json) também alcançam ferramentas
 de desenvolvimento. A tabela registra seu propósito e o teste de compatibilidade;
 as versões efetivas estão no lockfile.
 
-| Override | Propósito | Validação |
-| --- | --- | --- |
-| `@grpc/grpc-js` | Validação de certificados nas dependências Firestore. | Emulador e Rules. |
-| Pool de testes → `zod` da raiz | Unificar a versão de validação usada por aplicação e ferramentas. | Unitários e workerd. |
-| Miniflare → `sharp`, `undici` | Correções das bibliotecas de imagem e HTTP, mantendo o pareamento Miniflare/workerd. | Runtime e empacotamento. |
-| Pub/Sub → `@opentelemetry/core` | Correção do parser de baggage, preservando `W3CTraceContextPropagator`. | Firebase CLI e emulador. |
-| Gaxios 6 → `uuid` | Verificação de limites de buffer com compatibilidade da API CommonJS `v4`. | Firebase CLI e emulador. |
+| Override                        | Propósito                                                                            | Validação                |
+| ------------------------------- | ------------------------------------------------------------------------------------ | ------------------------ |
+| `@grpc/grpc-js`                 | Validação de certificados nas dependências Firestore.                                | Emulador e Rules.        |
+| Pool de testes → `zod` da raiz  | Unificar a versão de validação usada por aplicação e ferramentas.                    | Unitários e workerd.     |
+| Miniflare → `sharp`, `undici`   | Correções das bibliotecas de imagem e HTTP, mantendo o pareamento Miniflare/workerd. | Runtime e empacotamento. |
+| Pub/Sub → `@opentelemetry/core` | Correção do parser de baggage, preservando `W3CTraceContextPropagator`.              | Firebase CLI e emulador. |
+| Gaxios 6 → `uuid`               | Verificação de limites de buffer com compatibilidade da API CommonJS `v4`.           | Firebase CLI e emulador. |
 
 Cada override pode ser removido quando a dependência de origem declarar uma faixa
 compatível que inclua a correção, atualizando o lockfile e repetindo a validação.
@@ -294,8 +295,45 @@ disputa entre vínculo e exclusão. Tipos, lint, secret scan, build e dry-runs d
 três Workers complementam esses testes; não comprovam políticas Access/IAM,
 restauração ou configuração TTL de um ambiente publicado.
 
-O backend ainda concentra rotas e regras em `admin-api.ts`, compartilha módulos
-em `workers/shared/api` e depende do schema de uma página do frontend no formulário.
-Algumas rotas dinâmicas aceitam prefixos alternativos após autenticação. Esses
-acoplamentos descrevem a estrutura atual; não existe uma camada separada de
-contratos/domínio por pacote.
+Os testes opt-in de concorrência de mídia exigem `FIRESTORE_EMULATOR_HOST` em
+loopback e são executados por `npm run test:media` no CI.
+
+O backend separa contratos seguros, domínio puro e aplicação/portas/adaptadores/HTTP
+em `packages/contracts`, `packages/domain` e `packages/backend`. Os três Workers
+montam suas dependências em `composition.ts`; o administrativo delega a rotas por
+recurso. Um registro exato centraliza caminhos, métodos, capacidades, auditoria e
+labels de logs. Prefixos alternativos são rejeitados com 404; métodos incorretos
+em rotas conhecidas retornam 405 com `Allow`, antes de I/O.
+
+As fachadas antigas em `workers/shared` e nos módulos administrativos preservam
+compatibilidade por reexport. `npm run check:architecture`, também no CI, impede
+dependências invertidas, ciclos de execução e imports transitivos de servidor no
+frontend. A [referência de arquitetura](backend-architecture.md) descreve as portas,
+composição lazy por requisição e preservação dos commits de negócio/auditoria/outbox.
+
+## Verificações operacionais de implantação
+
+As migrações concluídas e os testes do código não comprovam a configuração do
+ambiente publicado. As verificações abaixo devem ter evidências por ambiente:
+
+- **Access:** MFA, negação padrão, usuários/grupos permitidos, duração de sessão,
+  AUD/issuer, hostnames alternativos e proteção do hostname publicado.
+- **IAM:** inventário das contas de serviço de público/admin/cron, permissões e
+  chaves ativas; separação de identidades e privilégio mínimo. Rules de clientes
+  não limitam o acesso OAuth privilegiado. Se houver necessidade de isolamento
+  por coleção, verificar as capacidades efetivas de IAM e avaliar separação de
+  banco/projeto; papéis diferentes no Worker não comprovam esse isolamento.
+- **Ambientes:** as configurações Wrangler local e de produção ainda declaram
+  o mesmo ID de namespace KV. Isso não comprova acesso remoto durante o
+  desenvolvimento. Antes de permitir bindings remotos, separar namespaces e
+  conferir automaticamente o destino das operações.
+- **Chaves:** entropia e armazenamento da `MASTER_KEY`, responsáveis pela rotação,
+  recuperação testada e resposta a comprometimento. Alterações no algoritmo,
+  derivação ou formato criptográfico exigem fixtures e leitura compatível com os
+  dados existentes.
+- **Observabilidade:** definir eventos, amostragem e alertas por serviço sem PII
+  ou credenciais. A configuração administrativa habilita logs/traces; a pública
+  mantém `observability.enabled: false`, e o cron não habilita traces.
+- **Recuperação e retenção:** validar restauração, atraso do cron, limites por
+  execução, TTL e retenção de backups/logs. Prazos e tolerâncias devem ser
+  definidos com o responsável pelo produto.

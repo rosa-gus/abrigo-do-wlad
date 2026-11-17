@@ -34,10 +34,11 @@
     "test:rules": "firebase emulators:exec --only firestore --project abrigo-rules-test \"node --test tests/firestore-rules.test.mjs\"",
     "typecheck:worker": "tsc --noEmit -p tests/worker/tsconfig.json",
     "typecheck:admin-worker": "tsc --noEmit -p apps/admin/worker/tsconfig.json",
+    "typecheck:backend": "tsc --noEmit -p packages/backend/tsconfig.json",
     "test:e2e": "playwright test --project=chromium --pass-with-no-tests",
     "test:e2e:all": "playwright test --pass-with-no-tests",
     "test:coverage": "vitest run --config vitest.config.ts --coverage",
-    "lint": "eslint --no-warn-ignored apps packages workers tests scripts/migrate.mjs scripts/migrations *.ts",
+    "lint": "eslint --no-warn-ignored apps packages workers tests scripts/migrate.mjs scripts/migrations scripts/check-architecture*.mjs *.ts",
     "lint:public": "eslint apps/public/src apps/public/vite.config.ts",
     "lint:admin": "npm run lint --workspace @abrigo/admin",
     "lint:jaci": "eslint packages/ui/src",
@@ -49,11 +50,16 @@
     "deploy:public": "npm run deploy",
     "deploy:admin": "npm run build:admin && wrangler deploy --config apps/admin/wrangler.jsonc",
     "deploy:cron": "wrangler deploy --config workers/cron/wrangler.jsonc",
-    "test:media": "firebase emulators:exec --only firestore --project demo-abrigo-media \"vitest run --config vitest.config.ts --project unit apps/admin/worker/media-assets.emulator.test.ts --maxWorkers=2\""
+    "test:media": "firebase emulators:exec --only firestore --project demo-abrigo-media \"vitest run --config vitest.config.ts --project unit apps/admin/worker/media-assets.emulator.test.ts --maxWorkers=2\"",
+    "check:architecture": "node scripts/check-architecture.mjs",
+    "test:backend": "vitest run --config vitest.config.ts --project unit apps/admin/worker workers packages/backend packages/contracts packages/domain scripts/migrations scripts/check-architecture.test.mjs --maxWorkers=2"
   },
   "dependencies": {
     "jose": "^6.2.9",
-    "zod": "^4.6.7"
+    "zod": "^4.6.7",
+    "@abrigo/contracts": "*",
+    "@abrigo/domain": "*",
+    "@abrigo/backend": "*"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.65.0",

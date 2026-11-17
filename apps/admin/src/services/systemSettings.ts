@@ -1,4 +1,4 @@
-import { systemSettingsSchema, type SystemSettings } from "../../shared/system-settings";
+import { systemSettingsSchema, type SystemSettings } from "@abrigo/contracts/system-settings";
 import { apiRequest, revisionHeaders } from "./api";
 
 export async function getSystemSettings(): Promise<SystemSettings & { revision?: string }> {

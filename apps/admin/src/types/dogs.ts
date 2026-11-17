@@ -1,4 +1,4 @@
-import { DOG_TAG_VALUES, type DogTag } from "../../shared/entities";
+import { DOG_TAG_VALUES, type DogTag } from "@abrigo/contracts/entities";
 
 export {
   DOG_HEALTH_STATUSES,
@@ -8,7 +8,7 @@ export {
   MAX_DOG_PHOTOS,
   MAX_DOG_TAGS,
   MAX_DOG_TEMPERAMENT_LENGTH,
-} from "../../shared/entities";
+} from "@abrigo/contracts/entities";
 export type {
   Dog as DogProps,
   DogDetailsInput,
@@ -18,7 +18,7 @@ export type {
   DogAgeUnit,
   DogInput,
   DogUpdate,
-} from "../../shared/entities";
+} from "@abrigo/contracts/entities";
 
 export const CORES_MAP: Record<string, string> = {
   caramelo: "Caramelo (Patrimônio Nacional)",

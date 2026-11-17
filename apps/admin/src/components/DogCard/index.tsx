@@ -8,7 +8,7 @@ import {
   getOptimizedImageUrl,
   getResponsiveImageSrcSet,
 } from "@abrigo/media/cloudinary";
-import { PUBLICATION_LABELS } from "../../../shared/entities";
+import { PUBLICATION_LABELS } from "@abrigo/contracts/entities";
 import type { DogProps } from "../../types/dogs";
 import { dogRouteId } from "../../services/dogs";
 import { resolveMockMediaUrl } from "../../mocks/media";

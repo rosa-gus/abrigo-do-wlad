@@ -1,10 +1,11 @@
+import { adminRouteOperation, matchAdminRoute } from "./routes/registry";
 import {
   AccessAuthenticationError,
   authenticateAccessRequest,
   type AccessIdentity,
 } from "./access";
 import { handleAdminApi as handleAuthenticatedAdminApi } from "./admin-api";
-import { apiErrorResponse, logApiFailure, normalizeApiResponse, operationalErrorResponse, requestIdFor } from "./api-errors";
+import { apiErrorResponse, logApiFailure, normalizeApiResponse, operationalErrorResponse, requestIdFor } from "@abrigo/backend/http/admin-errors";
 
 const NO_INDEX_POLICY = "noindex, nofollow, noarchive, nosnippet";
 
@@ -73,11 +74,12 @@ export async function handleAdminApi(
   const url = new URL(request.url);
   const requestId = requestIdFor(request);
 
-  if (url.pathname === "/api/session" && request.method !== "GET") {
+  const route = matchAdminRoute(url.pathname);
+  if (route?.id === "session" && !adminRouteOperation(route, request.method)) {
     return normalizeApiResponse(new Response(null, {
       status: 405,
       headers: {
-        Allow: "GET",
+        Allow: Object.keys(route.methods).join(", "),
         "Cache-Control": "no-store",
         "X-Robots-Tag": NO_INDEX_POLICY,
       },
@@ -91,7 +93,7 @@ export async function handleAdminApi(
     return unauthorizedResponse(error, requestId);
   }
   try {
-    if (url.pathname === "/api/session") {
+    if (route?.id === "session") {
       const response = jsonResponse(200, {
         email: identity.email,
         role: identity.role,

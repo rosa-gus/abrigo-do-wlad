@@ -3,7 +3,7 @@ import {
   type RecyclePoint,
   type RecyclePointInput,
   type RecyclePointUpdate,
-} from "../../shared/entities";
+} from "@abrigo/contracts/entities";
 import { ApiError, apiRequest, revisionHeaders } from "./api";
 import { pageQuery, type AdminPage } from "./pagination";
 

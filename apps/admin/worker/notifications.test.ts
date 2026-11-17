@@ -10,7 +10,7 @@ const firestore = vi.hoisted(() => ({
   updateDocument: vi.fn(),
 }));
 
-vi.mock("../../../workers/shared/api/_lib/firestore", () => ({
+vi.mock("@abrigo/backend/adapters/firestore", () => ({
   createFirestoreClient: () => firestore,
 }));
 

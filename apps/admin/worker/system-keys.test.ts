@@ -9,17 +9,17 @@ const firestore = vi.hoisted(() => ({
   updateDocument: vi.fn(),
 }));
 
-vi.mock("../../../workers/shared/api/_lib/encryption", () => ({
+vi.mock("@abrigo/backend/adapters/encryption", () => ({
   encryptSystemKey: () => "encrypted-system-key",
 }));
 
-vi.mock("../../../workers/shared/api/_lib/firestore", async (importOriginal) => ({
-  ...await importOriginal<typeof import("../../../workers/shared/api/_lib/firestore")>(),
+vi.mock("@abrigo/backend/adapters/firestore", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@abrigo/backend/adapters/firestore")>(),
   createFirestoreClient: () => firestore,
 }));
 
 import { rotateSystemKey } from "./system-keys";
-import { FirestoreRestError } from "../../../workers/shared/api/_lib/firestore";
+import { FirestoreRestError } from "@abrigo/backend/adapters/firestore";
 
 const env = {} as Env;
 const identity: AccessIdentity = {

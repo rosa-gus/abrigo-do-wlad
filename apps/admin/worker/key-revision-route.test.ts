@@ -3,8 +3,8 @@ import { FirestoreRestClient } from "../../../workers/shared/api/_lib/firestore"
 import { handleAdminApi } from "./admin-api";
 import type { AccessIdentity } from "./access";
 
-vi.mock("./audit", async (original) => ({
-  ...await original<typeof import("./audit")>(),
+vi.mock("@abrigo/backend/adapters/admin/audit", async (original) => ({
+  ...await original<typeof import("@abrigo/backend/adapters/admin/audit")>(),
   recordAdminAuditEvent: vi.fn(async () => undefined),
 }));
 

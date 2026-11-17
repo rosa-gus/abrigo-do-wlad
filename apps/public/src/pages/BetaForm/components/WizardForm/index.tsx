@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router";
 
 import * as Step from "./steps";
 import { STEP_TITLES, useWizardForm, WIZARD_STORAGE_ERROR } from "./useWizardForm";
-import type { FormData } from "./schema";
+import type { FormData } from "@abrigo/contracts/adoption-form";
 
 import { Button, ButtonLink } from "@jaci/ui/Button";
 import * as CardComponent from "@jaci/ui/Card";

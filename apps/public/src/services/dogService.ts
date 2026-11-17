@@ -7,15 +7,7 @@ import {
   type DogTombstone,
 } from "@/types/dogs";
 
-export interface DogFeedPage {
-  dogs: Dog[];
-  totalItems: number;
-  currentPage: number;
-  totalPages: number;
-  itemsPerPage: number;
-  version: string;
-  tagCounts: DogTagCounts;
-}
+export type DogFeedPage = import("@abrigo/contracts/public").DogFeedPage<Dog, DogTagCounts>;
 
 export class DogFeedVersionError extends Error {
   constructor() {

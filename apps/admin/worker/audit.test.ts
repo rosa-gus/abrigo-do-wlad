@@ -6,7 +6,7 @@ const firestoreMocks = vi.hoisted(() => ({
   listDocuments: vi.fn(),
 }));
 
-vi.mock("../../../workers/shared/api/_lib/firestore", () => ({
+vi.mock("@abrigo/backend/adapters/firestore", () => ({
   createFirestoreClient: () => firestoreMocks,
 }));
 

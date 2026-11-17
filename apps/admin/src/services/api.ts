@@ -1,4 +1,4 @@
-import { errorCodeForStatus, readAdminError, validRequestId } from "../../shared/api-error";
+import { errorCodeForStatus, readAdminError, validRequestId } from "@abrigo/contracts/errors";
 
 export class ApiError extends Error {
   readonly status: number;

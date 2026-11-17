@@ -1,5 +1,5 @@
 import { FieldWrapper } from "../FieldWrapper";
-import type { FormData } from "../schema";
+import type { FormData } from "@abrigo/contracts/adoption-form";
 import type { FieldError } from "../useWizardForm";
 import styles from "../WizardForm.module.css";
 

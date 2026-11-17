@@ -1,6 +1,6 @@
 import * as React from "react";
 import { z } from "zod";
-import { adoptionFormSchema, stepSchemas, type FormData } from "./schema";
+import { adoptionFormSchema, stepSchemas, type FormData } from "@abrigo/contracts/adoption-form";
 import { useNavigate, useParams } from "react-router";
 
 import * as Lucide from "lucide-react";

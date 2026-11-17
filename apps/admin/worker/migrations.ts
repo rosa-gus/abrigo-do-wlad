@@ -1,8 +1,10 @@
+import { adminRouteOperation, matchAdminRoute } from "./routes/registry";
+import { hasAdminCapability } from "./policies";
 import { z } from "zod";
 import {
   applyMigrationBatch, migrationStatus, migrationTarget, previewMigrations,
 } from "../../../scripts/migrations/worker-service.mjs";
-import type { AccessIdentity } from "./access";
+import type { AccessIdentity } from "@abrigo/contracts/admin";
 
 const targetSchema = z.object({
   project: z.string().min(1).max(100),
@@ -23,15 +25,15 @@ export async function handleMigrations(
   const json = (status: number, body: unknown) => Response.json(body, {
     status, headers: { "Cache-Control": "no-store", "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'", "X-Content-Type-Options": "nosniff" },
   });
-  // Defense in depth: every route, including status and preview, is dev-only.
-  if (identity.role !== "developer") return json(403, { error: "Developer access required." });
-  const path = new URL(request.url).pathname;
-  const operation = path === "/api/admin/migrations" ? "status"
-    : path === "/api/admin/migrations/plan" ? "plan"
-    : path === "/api/admin/migrations/apply" ? "apply" : null;
-  if (!operation) return json(404, { error: "Not found" });
-  const method = operation === "status" ? "GET" : "POST";
-  if (request.method !== method) return new Response(null, { status: 405, headers: { Allow: method, "Cache-Control": "no-store" } });
+  const route = matchAdminRoute(new URL(request.url).pathname);
+  const operation = route?.id === "migrations" ? "status"
+    : route?.id === "migrationPlan" ? "plan"
+    : route?.id === "migrationApply" ? "apply" : null;
+  if (!route || !operation) return json(404, { error: "Not found" });
+  const routeOperation = adminRouteOperation(route, request.method);
+  if (!routeOperation) return new Response(null, { status: 405, headers: { Allow: Object.keys(route.methods).join(", "), "Cache-Control": "no-store" } });
+  // Defense in depth uses the same capability policy as the API dispatcher.
+  if (!hasAdminCapability(identity.role, routeOperation.capability)) return json(403, { error: "Developer access required." });
   // Keep parsing errors in the admin API's existing 400/413/415 handling.
   const input = operation === "status" ? null : (operation === "plan" ? previewSchema : targetSchema.strict()).parse(await parseJson(request));
   try {

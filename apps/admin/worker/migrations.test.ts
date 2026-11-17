@@ -1,14 +1,14 @@
 import { beforeEach, expect, test, vi } from "vitest";
 import { handleAdminApi } from "./admin-api";
-import { recordAdminAuditEvent } from "./audit";
+import { recordAdminAuditEvent } from "@abrigo/backend/adapters/admin/audit";
 import { applyMigrationBatch, migrationStatus, migrationTarget, previewMigrations } from "../../../scripts/migrations/worker-service.mjs";
 
 vi.mock("../../../scripts/migrations/worker-service.mjs", async importOriginal => ({
   ...await importOriginal<typeof import("../../../scripts/migrations/worker-service.mjs")>(),
   migrationStatus: vi.fn(), previewMigrations: vi.fn(), applyMigrationBatch: vi.fn(),
 }));
-vi.mock("./audit", async importOriginal => ({
-  ...await importOriginal<typeof import("./audit")>(),
+vi.mock("@abrigo/backend/adapters/admin/audit", async importOriginal => ({
+  ...await importOriginal<typeof import("@abrigo/backend/adapters/admin/audit")>(),
   recordAdminAuditEvent: vi.fn().mockResolvedValue(undefined),
 }));
 

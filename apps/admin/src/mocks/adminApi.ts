@@ -1,9 +1,9 @@
-import { errorCodeForStatus } from "../../shared/api-error";
-import { DOG_DOCUMENT_SCHEMA_VERSION, RECYCLE_POINT_DOCUMENT_SCHEMA_VERSION, supportsDocumentVersion } from "../../../../workers/shared/document-schema";
-import { isPublished, publicationMetadata } from "../../../../workers/shared/publication";
+import { errorCodeForStatus } from "@abrigo/contracts/errors";
+import { DOG_DOCUMENT_SCHEMA_VERSION, RECYCLE_POINT_DOCUMENT_SCHEMA_VERSION, supportsDocumentVersion } from "@abrigo/domain/document-schema";
+import { isPublished, publicationMetadata } from "@abrigo/domain/publication";
 import type { DogProps } from "../types/dogs";
-import { systemSettingsSchema, type SystemSettings } from "../../shared/system-settings";
-import { adoptionStatusUpdate, AdoptionTransitionError } from "../../shared/adoption-retention";
+import { systemSettingsSchema, type SystemSettings } from "@abrigo/contracts/system-settings";
+import { adoptionStatusUpdate, AdoptionTransitionError } from "@abrigo/domain/adoptions/transitions";
 import type {
   AdminNotification,
   NotificationExpiration,
@@ -11,17 +11,17 @@ import type {
 } from "../types/notifications";
 import type { RecyclePoint } from "../types/recycle";
 import type { SystemKey } from "../types/systemKeys";
-import type { MigrationOverview } from "../../shared/migrations";
+import type { MigrationOverview } from "@abrigo/contracts/migrations";
 import {
   dogInputSchema,
   dogUpdateSchema,
   recyclePointInputSchema,
   recyclePointUpdateSchema,
-} from "../../shared/entities";
-import { dogArchiveDates, isDogArchived } from "../../../../workers/shared/api/dogs/archive";
+} from "@abrigo/contracts/entities";
+import { dogArchiveDates, isDogArchived } from "@abrigo/domain/dogs/archive";
 import { createMockMediaUrl, deleteMockMediaUrl, resetMockMedia } from "./media";
 
-type AdoptionStatus = "pending" | "approved" | "rejected";
+import type { AdoptionStatus } from "@abrigo/contracts/adoptions";
 
 interface MockAdoption {
   id: string;

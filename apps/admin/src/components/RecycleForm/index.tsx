@@ -5,7 +5,7 @@ import { Field, Input } from "@jaci/ui/Field";
 import * as SelectComponent from "@jaci/ui/Select";
 import { ConfirmModal } from "../ConfirmModal";
 import { PublicationActions, PublicationSection } from "../Publication";
-import type { PublicationStatus } from "../../../shared/entities";
+import type { PublicationStatus } from "@abrigo/contracts/entities";
 import { SuccessModal } from "../SuccessModal";
 import { ErrorModal } from "../ErrorModal";
 import {
@@ -15,7 +15,7 @@ import {
 } from "../FormShell";
 import { areFormValuesEqual } from "../FormShell/changes";
 import type { RecyclePoint, RecyclePointInput } from "../../types/recycle";
-import { recyclePointInputSchema } from "../../../shared/entities";
+import { recyclePointInputSchema } from "@abrigo/contracts/entities";
 
 interface RecycleFormProps {
   initialData?: RecyclePoint;

@@ -115,6 +115,7 @@ Comandos principais:
 - [Migrações do Firestore](docs/firestore-migrations.md)
 - [Segurança e consistência das APIs](docs/security/README.md)
 - [Diagrama da arquitetura](docs/architecture.svg)
+- [Arquitetura modular do backend](docs/security/backend-architecture.md)
 - [Diagrama da arquitetura do painel administrativo](docs/admin-architecture.svg)
 
 ## Autores

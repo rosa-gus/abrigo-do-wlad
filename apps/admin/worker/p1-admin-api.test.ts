@@ -1,17 +1,17 @@
 import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
 import { FirestoreRestClient, FirestoreRestError, type FirestoreDocument } from "../../../workers/shared/api/_lib/firestore";
-import { decryptDataBatch } from "../../../workers/shared/api/_lib/encryption";
-import { recordAdminAuditEvent } from "./audit";
+import { decryptDataBatch } from "@abrigo/backend/adapters/encryption";
+import { recordAdminAuditEvent } from "@abrigo/backend/adapters/admin/audit";
 import { handleAdminApi } from "./admin-api";
 import type { AccessIdentity } from "./access";
 
-vi.mock("./audit", async (original) => ({
-  ...await original<typeof import("./audit")>(),
+vi.mock("@abrigo/backend/adapters/admin/audit", async (original) => ({
+  ...await original<typeof import("@abrigo/backend/adapters/admin/audit")>(),
   recordAdminAuditEvent: vi.fn(async () => undefined),
 }));
-vi.mock("../../../workers/shared/api/_lib/encryption", async (original) => ({
-  ...await original<typeof import("../../../workers/shared/api/_lib/encryption")>(),
+vi.mock("@abrigo/backend/adapters/encryption", async (original) => ({
+  ...await original<typeof import("@abrigo/backend/adapters/encryption")>(),
   decryptDataBatch: vi.fn(),
 }));
 

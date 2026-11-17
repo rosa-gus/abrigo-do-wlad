@@ -37,11 +37,13 @@ jobs:
           java-version: "21"
       - run: npm ci
       - run: npm run check:secrets
+      - run: npm run check:architecture
       - run: npm audit --audit-level=high
       - run: npm run lint
       - run: npm run build
       - run: npm run typecheck:worker
       - run: npm run typecheck:admin-worker
+      - run: npm run typecheck:backend
       - run: npm run test:unit
       - run: npm run test:frontend
       - run: npm run test:worker

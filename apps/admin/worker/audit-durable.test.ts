@@ -4,9 +4,9 @@ const state = vi.hoisted(() => ({
   calls: [] as Array<{ writes: Array<Record<string, unknown>> }>,
   status: 200,
 }));
-vi.mock("../../../workers/shared/api/_lib/firestore", async importOriginal => {
-  const actual = await importOriginal<typeof import("../../../workers/shared/api/_lib/firestore")>();
-  return { ...actual, createFirestoreClient: (_env: Env, options: import("../../../workers/shared/api/_lib/firestore").FirestoreRestClientOptions) =>
+vi.mock("@abrigo/backend/adapters/firestore", async importOriginal => {
+  const actual = await importOriginal<typeof import("@abrigo/backend/adapters/firestore")>();
+  return { ...actual, createFirestoreClient: (_env: Env, options: import("@abrigo/backend/adapters/firestore").FirestoreRestClientOptions) =>
     new actual.FirestoreRestClient("test", { ...options, tokenProvider: async () => "synthetic", fetcher: async (_input, init) => {
       state.calls.push(JSON.parse(init?.body as string));
       return Response.json(state.status === 200 ? { writeResults: [{ updateTime: "2026-11-17T10:00:00Z" }] } : { error: { status: "FAILED_PRECONDITION" } }, { status: state.status });
@@ -46,7 +46,21 @@ test("a precondition failure rejects the single commit and never writes a separa
   expect(state.calls[0].writes).toHaveLength(3);
 });
 
-test("accepted legacy creation aliases receive the same atomic audit protocol", async () => {
+test("canonical creation keeps the atomic audit protocol", async () => {
+  state.calls = [];
+  state.status = 200;
+  const { handleAdminApi } = await import("./admin-api");
+  const response = await handleAdminApi(new Request("https://admin.test/api/admin/recycle-points", {
+    method: "POST", headers: { Origin: "https://admin.test", "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "Test draft", publicationStatus: "draft" }),
+  }), {} as Env, { email: input.actor, subject: input.actorSubject, role: "administrator" });
+  expect(response.status).toBe(201);
+  expect(state.calls[0].writes).toHaveLength(2);
+  expect((state.calls[0].writes[1].update as { name: string }).name).toContain("/admin_audit_log/");
+});
+
+
+test("unknown creation aliases cannot write documents or audit events", async () => {
   state.calls = [];
   state.status = 200;
   const { handleAdminApi } = await import("./admin-api");
@@ -54,7 +68,6 @@ test("accepted legacy creation aliases receive the same atomic audit protocol", 
     method: "POST", headers: { Origin: "https://admin.test", "Content-Type": "application/json" },
     body: JSON.stringify({ name: "Test draft", publicationStatus: "draft" }),
   }), {} as Env, { email: input.actor, subject: input.actorSubject, role: "administrator" });
-  expect(response.status).toBe(201);
-  expect(state.calls[0].writes).toHaveLength(2);
-  expect((state.calls[0].writes[1].update as { name: string }).name).toContain("/admin_audit_log/");
+  expect(response.status).toBe(404);
+  expect(state.calls).toHaveLength(0);
 });

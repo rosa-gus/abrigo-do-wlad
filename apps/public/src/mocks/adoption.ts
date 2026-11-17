@@ -10,7 +10,7 @@ import type {
   Step8Data,
   Step9Data,
   Step10Data,
-} from "../pages/BetaForm/components/WizardForm/schema";
+} from "@abrigo/contracts/adoption-form";
 
 export const VALID_STEP_1 = {
   nome_adotante: "Pessoa Candidata Teste",

@@ -9,7 +9,7 @@ import { EmptyState } from "@jaci/ui/EmptyState";
 import { getRecyclePointsPage, deleteRecyclePoint } from "../../services/recycle";
 import type { RecyclePoint } from "../../types/recycle";
 import { ListingFilters } from "../../components/ListingFilters";
-import { PUBLICATION_LABELS } from "../../../shared/entities";
+import { PUBLICATION_LABELS } from "@abrigo/contracts/entities";
 import { DeleteModal } from "../../components/DeleteModal";
 import { ErrorModal } from "../../components/ErrorModal";
 import { Pagination } from "@jaci/ui/Pagination";

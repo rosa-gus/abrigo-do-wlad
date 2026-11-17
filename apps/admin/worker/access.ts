@@ -7,7 +7,8 @@ import {
 const ACCESS_ASSERTION_HEADER = "Cf-Access-Jwt-Assertion";
 const ACCESS_DOMAIN_PATTERN = /^[a-z0-9-]+\.cloudflareaccess\.com$/i;
 
-export type AdminRole = "administrator" | "developer";
+import type { AdminRole, AccessIdentity } from "@abrigo/contracts/admin";
+export type { AdminRole, AccessIdentity } from "@abrigo/contracts/admin";
 
 export type AccessEnv = Pick<
   Env,
@@ -16,12 +17,6 @@ export type AccessEnv = Pick<
   | "CF_ACCESS_AUD"
   | "CF_ACCESS_TEAM_DOMAIN"
 >;
-
-export interface AccessIdentity {
-  email: string;
-  role: AdminRole;
-  subject: string;
-}
 
 export interface AccessDependencies {
   verifyJwt(token: string, env: AccessEnv): Promise<JWTPayload>;

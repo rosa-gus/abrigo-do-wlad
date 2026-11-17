@@ -1,10 +1,8 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { apiRequest, apiErrorMessage } from "../services/api";
 
-export interface AdminSession {
-  email: string;
-  role: "administrator" | "developer";
-}
+import type { AdminSession } from "@abrigo/contracts/admin";
+export type { AdminSession } from "@abrigo/contracts/admin";
 
 interface AuthContextType {
   user: AdminSession | null;
@@ -44,7 +42,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 // The hook intentionally shares this module with its provider and private context.
-// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
   if (!context) throw new Error("useAuth must be used inside AuthProvider.");

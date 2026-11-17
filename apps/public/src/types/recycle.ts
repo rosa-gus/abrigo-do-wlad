@@ -1,8 +1,1 @@
-export interface RecyclePoint {
-  id?: string;
-  zone: string;
-  neighborhood: string;
-  name?: string;
-  address: string;
-  googleMapsUrl?: string;
-}
+export type { PublicRecyclePoint as RecyclePoint } from "@abrigo/contracts/public";
