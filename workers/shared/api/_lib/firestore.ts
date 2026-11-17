@@ -460,12 +460,35 @@ async function requestGoogleAccessToken(
 export class FirestoreRestError extends Error {
   readonly status: number;
   readonly details?: unknown;
+  readonly code?: string;
+  readonly upstreamMessage?: string;
+  readonly operationType?: "query" | "write" | "read";
+  readonly rpcMethod?: string;
+  readonly collection?: string;
 
-  constructor(message: string, status: number, details?: unknown) {
+  constructor(message: string, status: number, details?: unknown,
+    context: { operationType?: "query" | "write" | "read"; rpcMethod?: string; collection?: string } = {}) {
     super(message);
     this.name = "FirestoreRestError";
     this.status = status;
     this.details = details;
+    const upstream = firestoreErrorPayload(details);
+    this.code = typeof upstream?.status === "string" ? upstream.status : undefined;
+    this.upstreamMessage = typeof upstream?.message === "string" ? upstream.message : undefined;
+    this.operationType = context.operationType;
+    this.rpcMethod = context.rpcMethod;
+    this.collection = context.collection;
+  }
+}
+
+/** Streaming REST RPCs may return their error inside an array. Keep raw details private to the caller. */
+export function firestoreErrorPayload(details: unknown): Record<string, unknown> | undefined {
+  const entries = Array.isArray(details) ? details : [details];
+  for (const entry of entries) {
+    if (entry && typeof entry === "object" && "error" in entry
+      && entry.error && typeof entry.error === "object" && !Array.isArray(entry.error)) {
+      return entry.error as Record<string, unknown>;
+    }
   }
 }
 
@@ -534,21 +557,23 @@ export class FirestoreRestClient {
           // The API occasionally returns a plain-text error response.
         }
 
-        const apiMessage =
-          typeof details === "object" &&
-          details !== null &&
-          "error" in details &&
-          typeof details.error === "object" &&
-          details.error !== null &&
-          "message" in details.error &&
-          typeof details.error.message === "string"
-            ? details.error.message
-            : response.statusText;
+        const upstream = firestoreErrorPayload(details);
+        const apiMessage = typeof upstream?.message === "string" ? upstream.message : response.statusText;
+        const rpcMethod = path.endsWith(":runAggregationQuery") ? "runAggregationQuery"
+          : path.endsWith(":runQuery") ? "runQuery"
+          : path.endsWith(":commit") ? "commit" : "getDocument";
+        let collection: string | undefined;
+        if ((rpcMethod === "runQuery" || rpcMethod === "runAggregationQuery") && typeof init.body === "string") {
+          const query = JSON.parse(init.body);
+          const candidate = (query.structuredQuery ?? query.structuredAggregationQuery?.structuredQuery)?.from?.[0]?.collectionId;
+          if (typeof candidate === "string" && /^[A-Za-z0-9_-]{1,128}$/.test(candidate)) collection = candidate;
+        }
 
         throw new FirestoreRestError(
           `Firestore request failed (${response.status}): ${apiMessage}`,
           response.status,
           details,
+          { rpcMethod, collection, operationType: rpcMethod === "commit" ? "write" : rpcMethod === "getDocument" ? "read" : "query" },
         );
       }
 

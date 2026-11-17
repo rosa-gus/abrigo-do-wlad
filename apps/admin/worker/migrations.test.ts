@@ -92,5 +92,7 @@ test("locks and failures are recoverable and do not expose upstream values", asy
   vi.mocked(applyMigrationBatch).mockRejectedValue(new Error("Another migration runner holds the database lock."));
   const locked = await handleAdminApi(request("/apply", { project: target.project, release: target.release }), env, developer);
   expect(locked.status).toBe(409);
-  expect(await locked.json()).toEqual({ error: "Outra execução está usando a trava do banco. Aguarde e tente retomar." });
+  expect(await locked.json()).toEqual({ error: {
+    code: "CONFLICT", message: "Outra execução está usando a trava do banco. Aguarde e tente retomar.", requestId: locked.headers.get("X-Request-ID"),
+  } });
 });

@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { apiRequest } from "../services/api";
+import { apiRequest, apiErrorMessage } from "../services/api";
 
 export interface AdminSession {
   email: string;
@@ -26,7 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then(setUser)
       .catch((cause: unknown) => {
         if (cause instanceof DOMException && cause.name === "AbortError") return;
-        setError("Sua sessão administrativa não pôde ser validada.");
+        setError(apiErrorMessage(cause, "Sua sessão administrativa não pôde ser validada."));
       })
       .finally(() => setLoading(false));
     return () => controller.abort();

@@ -18,7 +18,7 @@ import {
 import { Button } from "@jaci/ui/Button";
 import { EmptyState } from "@jaci/ui/EmptyState";
 import { Card, CardBody, CardContent, CardFooter, CardIcon } from "@jaci/ui/Card";
-import { apiRequest } from "../../services/api";
+import { apiRequest, apiErrorMessage } from "../../services/api";
 import type { AdminNotification, NotificationType } from "../../types/notifications";
 
 import styles from "./Dashboard.module.css";
@@ -81,8 +81,8 @@ export default function Dashboard() {
         setMetrics(data.metrics);
         setExpiringAdoptions(data.expiringAdoptions);
         setNotification(data.notification);
-      } catch {
-        if (active) setLoadError("Não foi possível carregar a visão geral.");
+      } catch (error) {
+        if (active) setLoadError(apiErrorMessage(error, "Não foi possível carregar a visão geral."));
       } finally {
         if (active) setLoading(false);
       }

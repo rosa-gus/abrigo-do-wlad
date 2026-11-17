@@ -384,7 +384,7 @@ test("dog updates reject more than six photos before accessing Firestore", async
 
   assert.equal(response.status, 400);
   assert.equal(
-    (await response.json() as { error: string }).error,
+    (await response.json() as { error: { message: string } }).error.message,
     "Um cachorro pode ter no máximo 6 fotos.",
   );
 });
@@ -407,7 +407,7 @@ test("dog updates reject more than five tags before accessing Firestore", async 
 
   assert.equal(response.status, 400);
   assert.equal(
-    (await response.json() as { error: string }).error,
+    (await response.json() as { error: { message: string } }).error.message,
     "Um cachorro pode ter no máximo 5 tags.",
   );
 });
@@ -428,7 +428,7 @@ test("dog updates reject temperament longer than 80 characters before accessing 
 
   assert.equal(response.status, 400);
   assert.equal(
-    (await response.json() as { error: string }).error,
+    (await response.json() as { error: { message: string } }).error.message,
     "O temperamento deve ter no máximo 80 caracteres.",
   );
 });
@@ -449,7 +449,7 @@ test("dog updates reject free-form ages before accessing Firestore", async () =>
 
   assert.equal(response.status, 400);
   assert.equal(
-    (await response.json() as { error: string }).error,
+    (await response.json() as { error: { message: string } }).error.message,
     "Informe uma idade válida, como 1 ano, 8 meses ou 2-3 anos.",
   );
 });

@@ -1,3 +1,4 @@
+import { errorCodeForStatus } from "../../shared/api-error";
 import { DOG_DOCUMENT_SCHEMA_VERSION, RECYCLE_POINT_DOCUMENT_SCHEMA_VERSION, supportsDocumentVersion } from "../../../../workers/shared/document-schema";
 import { isPublished, publicationMetadata } from "../../../../workers/shared/publication";
 import type { DogProps } from "../types/dogs";
@@ -689,7 +690,7 @@ async function handleMedia(request: Request, operation: string): Promise<Respons
   return jsonResponse({ error: "Not found" }, 404);
 }
 
-export async function handleMockAdminRequest(request: Request): Promise<Response> {
+async function routeMockAdminRequest(request: Request): Promise<Response> {
   await Promise.resolve();
 
   const url = new URL(request.url);
@@ -848,4 +849,21 @@ export async function handleMockAdminRequest(request: Request): Promise<Response
   }
 
   return jsonResponse({ error: "Not found" }, 404);
+}
+
+export async function handleMockAdminRequest(request: Request): Promise<Response> {
+  const requestId = crypto.randomUUID();
+  const response = await routeMockAdminRequest(request);
+  response.headers.set("X-Request-ID", requestId);
+  if (response.ok) return response;
+  let message = "Não foi possível concluir a operação.";
+  try {
+    const payload = await response.json() as { error?: unknown };
+    if (typeof payload.error === "string") message = payload.error;
+  } catch { /* Empty method errors use the fallback. */ }
+  const headers = new Headers(response.headers);
+  headers.delete("Content-Type");
+  headers.delete("Content-Length");
+  headers.delete("ETag");
+  return Response.json({ error: { code: errorCodeForStatus(response.status), message, requestId } }, { status: response.status, headers });
 }

@@ -1,8 +1,8 @@
+import { errorCause, logApiFailure, normalizeApiResponse, observeOperation, operationalErrorResponse, requestIdFor, requestRouteForLog } from "./api-errors";
 import { z } from "zod";
 import { processDogPublicationOutbox } from "../../../workers/shared/api/dogs/publication-outbox";
 import type { FirestoreRestClient } from "../../../workers/shared/api/_lib/firestore";
 import { readJsonBodyWithLimit, RequestBodyTooLargeError } from "../../../workers/shared/api/_lib/body";
-import { UpstreamTimeoutError } from "../../../workers/shared/api/_lib/timeout";
 import { uploadManagedMedia } from "./media-upload";
 import { createFirestoreDocumentId } from "../../../workers/shared/api/_lib/firestore";
 import { resolveAdminDog, DogIdentityError, inventoryLegacyDogIds } from "./dog-identity";
@@ -23,7 +23,6 @@ import {
 import { decryptDataBatch } from "../../../workers/shared/api/_lib/encryption";
 import {
   createFirestoreClient,
-  FirestoreRestError,
   FirestoreCursorError,
   type FirestoreQueryFilter,
   type FirestoreDocument,
@@ -284,13 +283,6 @@ function describeAuditedMutation(request: Request): AuditDescriptor | null {
   return null;
 }
 
-function requestAuditId(request: Request): string {
-  const rayId = request.headers.get("Cf-Ray")?.trim();
-  return rayId && /^[A-Za-z0-9:-]{1,128}$/.test(rayId)
-    ? rayId
-    : crypto.randomUUID();
-}
-
 function requestFirestore(request: Request, env: Env, identity: AccessIdentity): FirestoreRestClient {
   const descriptor = describeAuditedMutation(request);
   if (!descriptor) return createFirestoreClient(env);
@@ -326,15 +318,11 @@ async function scheduleAuditRecord(
     method: descriptor.method,
     outcome,
     path: new URL(request.url).pathname,
-    requestId: request.headers.get("X-Request-ID") ?? requestAuditId(request),
+    requestId: request.headers.get("X-Request-ID") ?? requestIdFor(request),
     status: response.status,
     target: descriptor.target,
   }).catch((error: unknown) => {
-    console.error(JSON.stringify({
-      event: "admin.audit.failed",
-      action: descriptor.action,
-      reason: error instanceof Error ? error.name : "UnknownFailure",
-    }));
+    logApiFailure("admin.audit.failed", request.headers.get("X-Request-ID")!, error);
   });
 
   if (executionContext) {
@@ -670,30 +658,28 @@ async function handleRecycle(request: Request, env: Env, pathId?: string, identi
 async function handleDashboard(
   env: Env,
   dependencies: AdminApiDependencies,
+  requestId: string,
 ): Promise<Response> {
+  const run = <T>(name: string, operation: () => Promise<T>) => observeOperation(`dashboard.${name}`, requestId, operation);
   const firestore = createFirestoreClient(env);
   const now = new Date();
   const alertWindowEnd = new Date(now.getTime() + 5 * 86_400_000);
   const [dogTotal, archivedDogs, recycles, publishedDogTotal, archivedPublishedDogs, publishedRecycles, adoptions, expiringDocuments, statistics, notification] =
     await Promise.all([
-      firestore.countDocuments(MANAGED_COLLECTIONS.dogs),
-      firestore.countDocuments(MANAGED_COLLECTIONS.dogs, { filters: [{ fieldPath: "archivedAt", op: "GREATER_THAN", value: "" }] }),
-      firestore.countDocuments(MANAGED_COLLECTIONS.recycle),
-      firestore.countDocuments(MANAGED_COLLECTIONS.dogs, { filters: [{ fieldPath: "publicationStatus", op: "EQUAL", value: "published" }] }),
-      firestore.countDocuments(MANAGED_COLLECTIONS.dogs, { filters: [{ fieldPath: "archivedAt", op: "GREATER_THAN", value: "" }, { fieldPath: "publicationStatus", op: "EQUAL", value: "published" }] }),
-      firestore.countDocuments(MANAGED_COLLECTIONS.recycle, { filters: [{ fieldPath: "publicationStatus", op: "EQUAL", value: "published" }] }),
-      firestore.countDocuments(MANAGED_COLLECTIONS.adoptions, { timestampAfter: { fieldPath: "expiresAt", cutoff: now } }),
-      firestore.findDocumentsByTimestampRange<StoredAdoption>(
-        MANAGED_COLLECTIONS.adoptions,
-        "expiresAt",
-        now,
-        alertWindowEnd,
-        25,
-      ),
-      firestore.getDocument<{ adoptionsCount?: unknown }>("system/statistics"),
-      dependencies.getAdminNotification(env),
+      run("dogs.countTotal", () => firestore.countDocuments(MANAGED_COLLECTIONS.dogs)),
+      run("dogs.countArchived", () => firestore.countDocuments(MANAGED_COLLECTIONS.dogs, { filters: [{ fieldPath: "archivedAt", op: "GREATER_THAN", value: "" }] })),
+      run("recycle.countTotal", () => firestore.countDocuments(MANAGED_COLLECTIONS.recycle)),
+      run("dogs.countPublished", () => firestore.countDocuments(MANAGED_COLLECTIONS.dogs, { filters: [{ fieldPath: "publicationStatus", op: "EQUAL", value: "published" }] })),
+      run("dogs.countArchivedPublished", () => firestore.countDocuments(MANAGED_COLLECTIONS.dogs, { filters: [{ fieldPath: "archivedAt", op: "GREATER_THAN", value: "" }, { fieldPath: "publicationStatus", op: "EQUAL", value: "published" }] })),
+      run("recycle.countPublished", () => firestore.countDocuments(MANAGED_COLLECTIONS.recycle, { filters: [{ fieldPath: "publicationStatus", op: "EQUAL", value: "published" }] })),
+      run("adoptions.countActive", () => firestore.countDocuments(MANAGED_COLLECTIONS.adoptions, { timestampAfter: { fieldPath: "expiresAt", cutoff: now } })),
+      run("adoptions.expiring", () => firestore.findDocumentsByTimestampRange<StoredAdoption>(
+        MANAGED_COLLECTIONS.adoptions, "expiresAt", now, alertWindowEnd, 25,
+      )),
+      run("statistics.read", () => firestore.getDocument<{ adoptionsCount?: unknown }>("system/statistics")),
+      run("notification.read", () => dependencies.getAdminNotification(env)),
     ]);
-  const expiring = await serializeAdoptions(expiringDocuments, env);
+  const expiring = await run("adoptions.decryptSummaries", () => serializeAdoptions(expiringDocuments, env));
   const expiringAdoptions = expiring.flatMap((adoption) => {
     if (typeof adoption.expiresAt !== "string") return [];
     const expiresAt = Date.parse(adoption.expiresAt);
@@ -766,7 +752,7 @@ async function routeAdminApi(
     }
 
     if (url.pathname === "/api/admin/dashboard" && request.method === "GET") {
-      return await handleDashboard(env, dependencies);
+      return await handleDashboard(env, dependencies, request.headers.get("X-Request-ID")!);
     }
     if (url.pathname === "/api/admin/adoptions" && request.method === "GET") {
       const result = await dependencies.listAdoptionApplications(env, request);
@@ -876,18 +862,19 @@ async function routeAdminApi(
         response.headers.set("Retry-After", "60");
         return response;
       }
-      const uploaded = await dependencies.uploadCloudinaryImage(request, env, { actorSubject: identity.subject, actorRole: identity.role, requestId: request.headers.get("X-Request-ID") ?? crypto.randomUUID() });
+      const uploaded = await observeOperation("media.upload", request.headers.get("X-Request-ID")!, () => dependencies.uploadCloudinaryImage(request, env, { actorSubject: identity.subject, actorRole: identity.role, requestId: request.headers.get("X-Request-ID")! }));
       await registerUploadedMedia(env, uploaded, requestFirestore(request, env, identity));
       return jsonResponse(201, uploaded);
     }
     if (url.pathname === "/api/admin/media/delete") {
       if (request.method !== "POST") return methodNotAllowed(["POST"]);
       const { imageUrl } = imageDeleteSchema.parse(await parseJson(request));
-      await deleteManagedMedia(env, imageUrl, requestFirestore(request, env, identity));
+      await observeOperation("media.delete", request.headers.get("X-Request-ID")!, () => deleteManagedMedia(env, imageUrl, requestFirestore(request, env, identity)));
       return jsonResponse(200, { ok: true });
     }
     return jsonResponse(404, { error: "Not found" });
-  } catch (error) {
+  } catch (caught) {
+    const error = errorCause(caught);
     if (error instanceof FirestoreCursorError) return jsonResponse(400, { error: error.message });
     if (error instanceof z.ZodError) {
       const dogCollectionLimitIssue = error.issues.find(
@@ -910,22 +897,9 @@ async function routeAdminApi(
     if (error instanceof CloudinaryUploadError) {
       return jsonResponse(error.status, { error: error.message });
     }
-    if (error instanceof FirestoreRestError && error.status === 404) {
-      return jsonResponse(404, { error: "Document not found" });
-    }
-    const firestoreCode = error instanceof FirestoreRestError && typeof error.details === "object" && error.details !== null
-      && "error" in error.details && typeof error.details.error === "object" && error.details.error !== null
-      && "status" in error.details.error ? error.details.error.status : undefined;
-    if (error instanceof FirestoreRestError && ([409, 412].includes(error.status) || firestoreCode === "FAILED_PRECONDITION" || firestoreCode === "ABORTED")) {
-      return jsonResponse(412, { error: "O registro mudou. Recarregue e revise antes de tentar novamente." });
-    }
-    console.error(JSON.stringify({
-      event: "admin.api.error",
-      message: error instanceof Error ? error.message : "Unknown failure",
-    }));
-    const requestId = request.headers.get("X-Request-ID") ?? crypto.randomUUID();
-    if (error instanceof UpstreamTimeoutError) return jsonResponse(504, { error: "Upstream request timed out", requestId });
-    return jsonResponse(500, { error: "Internal server error", requestId });
+    const requestId = request.headers.get("X-Request-ID")!;
+    logApiFailure("admin.api.error", requestId, caught);
+    return operationalErrorResponse(caught, requestId, new URL(request.url).pathname === "/api/admin/dashboard");
   }
 }
 
@@ -935,19 +909,21 @@ export async function handleAdminApi(
   identity: AccessIdentity,
   dependencies: AdminApiDependencies = productionDependencies,
   executionContext?: Pick<ExecutionContext, "waitUntil">,
+  requestId: string = requestIdFor(request),
 ): Promise<Response> {
   const startedAt = Date.now();
   const headers = new Headers(request.headers);
-  headers.set("X-Request-ID", requestAuditId(request));
+  headers.set("X-Request-ID", requestId);
   request = new Request(request, { headers });
   const auditDescriptor = describeAuditedMutation(request);
-  const response = await routeAdminApi(
+  console.info(JSON.stringify({ event: "admin.api.request", requestId, method: request.method, route: requestRouteForLog(request) }));
+  const response = await normalizeApiResponse(await routeAdminApi(
     request,
     env,
     identity,
     dependencies,
     executionContext,
-  );
+  ), requestId);
 
   if (auditDescriptor?.action.startsWith("dog.") && response.ok) response.headers.set("X-Publication-State", "pending");
   response.headers.set("X-Request-ID", request.headers.get("X-Request-ID")!);
@@ -965,5 +941,6 @@ export async function handleAdminApi(
     );
   }
 
+  console.info(JSON.stringify({ event: "admin.api.completed", requestId, status: response.status, durationMs: Date.now() - startedAt }));
   return response;
 }

@@ -60,6 +60,27 @@ inventário completo persistido e de referências atualizadas por todos os escri
 
 ## Revisões e contratos HTTP
 
+Erros administrativos retornam `{ error: { code, message, requestId } }` e o mesmo
+identificador em `X-Request-ID`. O cliente preserva esses campos em `ApiError`;
+JSON legado continua aceito durante a atualização dos consumidores. A visão geral
+exibe a referência para correlacionar a falha com os logs do servidor.
+
+`DATA_QUERY_FAILED` identifica falha de consulta (500), `REVISION_MISMATCH` indica
+conflito de escrita (412), `SERVICE_UNAVAILABLE` indica indisponibilidade (503)
+e `UPSTREAM_TIMEOUT` indica timeout (504). `FAILED_PRECONDITION` do Firestore só
+representa revisão obsoleta quando a operação rejeitada é uma escrita; consulta
+sem índice não recebe o contrato de conflito de edição.
+
+O adaptador Firestore extrai código e mensagem de respostas em objeto ou array,
+preservando os detalhes na exceção. Logs incluem request ID, RPC, coleção e tipo
+de operação. Cada dependência do dashboard tem nome próprio, como
+`dashboard.dogs.countArchivedPublished`; falhas concorrentes geram eventos
+`admin.dependency.failed` correlacionados, mesmo após a primeira rejeição.
+`admin.api.request`, `admin.api.error` e `admin.api.completed` usam o mesmo ID.
+Os diagnósticos registrados são limitados a categorias conhecidas, como índice
+ausente ou JSON inválido; payloads, stacks e texto arbitrário do provedor não são
+copiados para logs ou respostas. `api-errors.ts` centraliza esse contrato.
+
 Leituras individuais de recursos versionados fornecem revisão opaca em `ETag`.
 Mutações enviam a revisão observada em `If-Match`, e o commit aplica a mesma
 precondição Firestore. [revision.ts](../../apps/admin/worker/revision.ts)

@@ -208,7 +208,7 @@ describe("mock admin API", () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
-      error: "O temperamento deve ter no máximo 80 caracteres.",
+      error: { code: "INVALID_REQUEST", message: "O temperamento deve ter no máximo 80 caracteres.", requestId: expect.any(String) },
     });
   });
 
@@ -221,7 +221,7 @@ describe("mock admin API", () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
-      error: "Informe uma idade válida, como 1 ano, 8 meses ou 2-3 anos.",
+      error: { code: "INVALID_REQUEST", message: "Informe uma idade válida, como 1 ano, 8 meses ou 2-3 anos.", requestId: expect.any(String) },
     });
   });
 

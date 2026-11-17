@@ -78,7 +78,7 @@ test("production recycling delete commits the version observed by the client", a
 test.each(["FAILED_PRECONDITION", "ABORTED"])("post-read Firestore %s uses the conflict contract instead of a generic failure", async (status) => {
   vi.spyOn(FirestoreRestClient.prototype, "getDocument").mockResolvedValue(doc("point-1", { name: "Ponto", publicationStatus: "draft", schemaVersion: 1 }, "recycle_points"));
   const update = vi.spyOn(FirestoreRestClient.prototype, "updateDocument").mockRejectedValue(
-    new FirestoreRestError("Concurrent change", 400, { error: { status } }),
+    new FirestoreRestError("Concurrent change", 400, { error: { status } }, { operationType: "write", rpcMethod: "commit" }),
   );
   const response = await handleAdminApi(request("recycle-points/point-1", "PATCH", { name: "Novo ponto" }, revision), env, identity);
   assert.equal(update.mock.calls.length, 1);
