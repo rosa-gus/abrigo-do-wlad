@@ -5,12 +5,12 @@ import type { AccessIdentity } from "./access";
 
 const firestore = vi.hoisted(() => ({
   createDocument: vi.fn(),
-  deleteDocument: vi.fn(),
+  deleteDocumentsIfUnchanged: vi.fn(),
   getDocument: vi.fn(),
   updateDocument: vi.fn(),
 }));
 
-vi.mock("../../../workers/shared/api/_lib/firestore", () => ({
+vi.mock("@abrigo/backend/adapters/firestore", () => ({
   createFirestoreClient: () => firestore,
 }));
 
@@ -149,10 +149,10 @@ test("treats legacy notifications without expiration fields as until deleted", a
 test("deletes the notification document when it exists", async () => {
   const documentName =
     "projects/project/databases/(default)/documents/system/notifications";
-  firestore.getDocument.mockResolvedValue({ name: documentName, data: {} });
-  firestore.deleteDocument.mockResolvedValue({ deleted: 1 });
+  firestore.getDocument.mockResolvedValue({ name: documentName, updateTime: "2026-08-24T12:00:00.000Z", data: {} });
+  firestore.deleteDocumentsIfUnchanged.mockResolvedValue({ deleted: 1 });
 
   await deleteAdminNotification(env, identity);
 
-  assert.deepEqual(firestore.deleteDocument.mock.calls[0], [documentName]);
+  assert.deepEqual(firestore.deleteDocumentsIfUnchanged.mock.calls[0], [[{ name: documentName, updateTime: "2026-08-24T12:00:00.000Z" }]]);
 });

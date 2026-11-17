@@ -1,9 +1,11 @@
+import { adminRouteOperation, matchAdminRoute } from "./routes/registry";
 import {
   AccessAuthenticationError,
   authenticateAccessRequest,
   type AccessIdentity,
 } from "./access";
 import { handleAdminApi as handleAuthenticatedAdminApi } from "./admin-api";
+import { apiErrorResponse, logApiFailure, normalizeApiResponse, operationalErrorResponse, requestIdFor } from "@abrigo/backend/http/admin-errors";
 
 const NO_INDEX_POLICY = "noindex, nofollow, noarchive, nosnippet";
 
@@ -35,15 +37,17 @@ export function secureAssetResponse(response: Response): Response {
   return secured;
 }
 
-function unauthorizedResponse(error: unknown): Response {
+function unauthorizedResponse(error: unknown, requestId: string): Response {
   const message =
     error instanceof AccessAuthenticationError
       ? error.message
       : "Unexpected authentication failure.";
   console.error(
-    JSON.stringify({ event: "admin.access.denied", reason: message }),
+    JSON.stringify({ event: "admin.access.denied", reason: message, requestId }),
   );
-  return jsonResponse(401, { error: "Unauthorized" });
+  const response = apiErrorResponse(401, "UNAUTHORIZED", "Unauthorized", requestId);
+  response.headers.set("X-Robots-Tag", NO_INDEX_POLICY);
+  return response;
 }
 
 export async function handleAdminAsset(
@@ -51,10 +55,11 @@ export async function handleAdminAsset(
   env: Env,
   authenticate: AssetAuthenticator = authenticateAccessRequest,
 ): Promise<Response> {
+  const requestId = requestIdFor(request);
   try {
     await authenticate(request, env);
   } catch (error) {
-    return unauthorizedResponse(error);
+    return unauthorizedResponse(error, requestId);
   }
 
   return secureAssetResponse(await env.ASSETS.fetch(request));
@@ -67,35 +72,50 @@ export async function handleAdminApi(
   authenticate: AssetAuthenticator = authenticateAccessRequest,
 ): Promise<Response> {
   const url = new URL(request.url);
+  const requestId = requestIdFor(request);
 
-  if (url.pathname === "/api/session" && request.method !== "GET") {
-    return new Response(null, {
+  const route = matchAdminRoute(url.pathname);
+  if (route?.id === "session" && !adminRouteOperation(route, request.method)) {
+    return normalizeApiResponse(new Response(null, {
       status: 405,
       headers: {
-        Allow: "GET",
+        Allow: Object.keys(route.methods).join(", "),
         "Cache-Control": "no-store",
         "X-Robots-Tag": NO_INDEX_POLICY,
       },
-    });
+    }), requestId);
   }
 
+  let identity: AccessIdentity;
   try {
-    const identity = await authenticate(request, env);
-    if (url.pathname === "/api/session") {
-      return jsonResponse(200, {
+    identity = await authenticate(request, env);
+  } catch (error) {
+    return unauthorizedResponse(error, requestId);
+  }
+  try {
+    if (route?.id === "session") {
+      const response = jsonResponse(200, {
         email: identity.email,
         role: identity.role,
       });
+      response.headers.set("X-Request-ID", requestId);
+      return response;
     }
-    return handleAuthenticatedAdminApi(
+    const response = await handleAuthenticatedAdminApi(
       request,
       env,
       identity,
       undefined,
       executionContext,
+      requestId,
     );
+    response.headers.set("X-Request-ID", response.headers.get("X-Request-ID") ?? requestId);
+    return response;
   } catch (error) {
-    return unauthorizedResponse(error);
+    logApiFailure("admin.api.unhandled", requestId, error);
+    const response = operationalErrorResponse(error, requestId);
+    response.headers.set("X-Robots-Tag", NO_INDEX_POLICY);
+    return response;
   }
 }
 

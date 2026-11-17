@@ -1,6 +1,5 @@
-export interface SystemSettings {
-  acceptingApplications: boolean;
-}
+import type { PublicSystemSettings as SystemSettings } from "@abrigo/contracts/public";
+export type { PublicSystemSettings as SystemSettings } from "@abrigo/contracts/public";
 
 function isSystemSettings(value: unknown): value is SystemSettings {
   return typeof value === 'object' && value !== null &&

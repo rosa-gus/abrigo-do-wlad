@@ -1,14 +1,14 @@
 import { beforeEach, expect, test, vi } from "vitest";
 import { handleAdminApi } from "./admin-api";
-import { recordAdminAuditEvent } from "./audit";
+import { recordAdminAuditEvent } from "@abrigo/backend/adapters/admin/audit";
 import { applyMigrationBatch, migrationStatus, migrationTarget, previewMigrations } from "../../../scripts/migrations/worker-service.mjs";
 
 vi.mock("../../../scripts/migrations/worker-service.mjs", async importOriginal => ({
   ...await importOriginal<typeof import("../../../scripts/migrations/worker-service.mjs")>(),
   migrationStatus: vi.fn(), previewMigrations: vi.fn(), applyMigrationBatch: vi.fn(),
 }));
-vi.mock("./audit", async importOriginal => ({
-  ...await importOriginal<typeof import("./audit")>(),
+vi.mock("@abrigo/backend/adapters/admin/audit", async importOriginal => ({
+  ...await importOriginal<typeof import("@abrigo/backend/adapters/admin/audit")>(),
   recordAdminAuditEvent: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -78,7 +78,7 @@ test("application uses Worker bindings and the authenticated developer, and reco
   await Promise.all(waits);
   // The migration engine receives the human actor rather than the service-account identity.
   expect(response.status).toBe(200);
-  expect(applyMigrationBatch).toHaveBeenCalledWith(env, developer.email);
+  expect(applyMigrationBatch).toHaveBeenCalledWith(env, developer.email, { subject: developer.subject, requestId: expect.any(String) });
   expect(recordAdminAuditEvent).toHaveBeenCalledWith(env, expect.objectContaining({
     action: "migration.batch.applied", actor: developer.email, outcome: "success",
   }));
@@ -92,5 +92,7 @@ test("locks and failures are recoverable and do not expose upstream values", asy
   vi.mocked(applyMigrationBatch).mockRejectedValue(new Error("Another migration runner holds the database lock."));
   const locked = await handleAdminApi(request("/apply", { project: target.project, release: target.release }), env, developer);
   expect(locked.status).toBe(409);
-  expect(await locked.json()).toEqual({ error: "Outra execução está usando a trava do banco. Aguarde e tente retomar." });
+  expect(await locked.json()).toEqual({ error: {
+    code: "CONFLICT", message: "Outra execução está usando a trava do banco. Aguarde e tente retomar.", requestId: locked.headers.get("X-Request-ID"),
+  } });
 });

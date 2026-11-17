@@ -36,7 +36,7 @@ test("unpublishing a dog requires confirmation and preserves the saved data", as
   const user = userEvent.setup();
   const onSubmit = vi.fn().mockResolvedValue(undefined);
   const initialData = dogEntitySchema.parse({
-    id: 1, nome: "Nina", publicationStatus: "published", idade: "2 anos", cateIdade: "adulto",
+    id: 1, documentId: "dog-1", revision: "2026-11-16T12:00:00.000Z", nome: "Nina", publicationStatus: "published", idade: "2 anos", cateIdade: "adulto",
     sexo: "Fêmea", temperamento: "Dócil", status: "Apenas Castrado", cor: "caramelo",
   });
   render(<MemoryRouter><DogForm title="Editar" buttonLabel="Salvar" initialData={initialData} onSubmit={onSubmit} /></MemoryRouter>);

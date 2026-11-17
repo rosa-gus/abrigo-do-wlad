@@ -2,8 +2,6 @@ name: CI
 
 on:
   pull_request:
-  push:
-    branches: [main]
 
 permissions:
   contents: read
@@ -37,15 +35,32 @@ jobs:
           java-version: "21"
       - run: npm ci
       - run: npm run check:secrets
-      - run: npm audit --audit-level=high
+      - run: npm run check:architecture
+      - run: npm audit --omit=dev --audit-level=high
       - run: npm run lint
       - run: npm run build
       - run: npm run typecheck:worker
       - run: npm run typecheck:admin-worker
+      - run: npm run typecheck:backend
       - run: npm run test:unit
       - run: npm run test:frontend
       - run: npm run test:worker
       - run: npm run test:rules
+      - run: npm run test:media
       - run: npm run check:public-worker
       - run: npm run check:admin-worker
       - run: npm run check:cron
+
+  audit-full:
+    name: Full dependency audit (non-blocking)
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Audit production and development dependencies
+        # Audit the lockfile without installing dependencies; keep findings visible
+        # in the logs without blocking the required CI checks.
+        run: npm audit --include=dev --package-lock-only --audit-level=high
+        continue-on-error: true

@@ -1,4 +1,4 @@
-import type { MigrationOverview, MigrationPreview, MigrationTarget, PreviewCursor } from "../../shared/migrations";
+import type { MigrationOverview, MigrationPreview, MigrationTarget, PreviewCursor } from "@abrigo/contracts/migrations";
 import { apiRequest } from "./api";
 
 export function getMigrations(signal?: AbortSignal): Promise<MigrationOverview> {

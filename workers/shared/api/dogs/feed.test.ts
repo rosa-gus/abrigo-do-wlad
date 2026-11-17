@@ -3,7 +3,7 @@ import { afterEach, test, vi } from "vitest";
 
 import type { CloudflareEnv } from "../_lib/env";
 import type { FirestoreDocument } from "../_lib/firestore";
-import { FirestoreRestClient } from "../_lib/firestore";
+import { FirestoreRestClient, FirestoreRestError } from "../_lib/firestore";
 import {
   getDogFeedResponse,
   getCurrentDogFeed,
@@ -73,6 +73,17 @@ function kvEnv(initial: Record<string, unknown> = {}): {
   values: Map<string, string>;
   writes: Array<{ key: string; expirationTtl?: number }>;
 } {
+  let state: FirestoreDocument<Record<string, unknown>> | null = null;
+  let revision = 0;
+  vi.spyOn(FirestoreRestClient.prototype, "getDocument").mockImplementation(async () => state);
+  vi.spyOn(FirestoreRestClient.prototype, "createDocument").mockImplementation(async (_collection, data) => {
+    state = { id: "dog-feed-publication", name: "projects/test/databases/(default)/documents/system/dog-feed-publication", data, updateTime: `2026-01-01T00:00:00.${String(++revision).padStart(3, "0")}Z` };
+    return { id: state.id, updateTime: state.updateTime };
+  });
+  vi.spyOn(FirestoreRestClient.prototype, "updateDocument").mockImplementation(async (_name, data) => {
+    state = { ...state!, data: { ...state!.data, ...data }, updateTime: `2026-01-01T00:00:00.${String(++revision).padStart(3, "0")}Z` };
+    return { updateTime: state.updateTime };
+  });
   const snapshots = Object.values(initial).filter((value): value is DogFeed =>
     Boolean(value && typeof value === "object" && "dogs" in value));
   vi.spyOn(FirestoreRestClient.prototype, "listDocuments").mockResolvedValue(
@@ -124,14 +135,14 @@ test("updateDogFeed stores a versioned daily feed before its current pointer", a
     },
   });
 
-  assert.equal(feed.version, "2026-08-24");
+  assert.match(feed.version, /^2026-08-24_[0-9a-f-]{36}$/);
   assert.equal(feed.dogs.length, 2);
   assert.deepEqual(writes.map((write) => write.key), [
     "dogs-public-slug:slug:cao-dog-1",
     "dogs-public-slug:id:dog-1",
     "dogs-public-slug:slug:cao-dog-2",
     "dogs-public-slug:id:dog-2",
-    "dogs-feed:2026-08-24",
+    `dogs-feed:${feed.version}`,
     "dogs-feed:current",
   ]);
   assert.ok(writes[4]?.expirationTtl);
@@ -416,4 +427,52 @@ test("a failed visibility check never serves a stale public catalog", async () =
   assert.equal(response.status, 503);
   assert.equal((await response.text()).includes("secret"), false);
   log.mockRestore();
+});
+
+test("same-day rebuilds retain immutable snapshots and ignore a stale compatibility current value", async () => {
+  const { env, values } = kvEnv();
+  const options = { now: new Date("2026-11-17T12:00:00Z"), source: { async listDocuments() { return [document(dog("one"))]; } } };
+  const first = await updateDogFeed(env, options);
+  const firstBytes = values.get(`dogs-feed:${first.version}`);
+  const second = await updateDogFeed(env, options);
+  assert.notEqual(first.version, second.version);
+  assert.equal(values.get(`dogs-feed:${first.version}`), firstBytes);
+  values.set("dogs-feed:current", JSON.stringify(first));
+  assert.equal((await getCurrentDogFeed(env)).version, second.version);
+});
+
+test("a structured HTTP 400 publication conflict reports retryable contention without publishing an empty feed", async () => {
+  const { env, writes } = kvEnv();
+  vi.mocked(FirestoreRestClient.prototype.createDocument).mockRejectedValueOnce(
+    new FirestoreRestError("stored version does not match required base version", 400,
+      { error: { status: "FAILED_PRECONDITION" } }),
+  );
+  const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+  const infoLog = vi.spyOn(console, "info").mockImplementation(() => {});
+
+  const response = await getDogFeedResponse(new Request("https://abrigo.test/api/dogs"), env);
+
+  assert.equal(response.status, 503);
+  assert.equal(response.headers.get("Retry-After"), "1");
+  assert.deepEqual(await response.json(), { message: "Dog feed is temporarily unavailable." });
+  assert.equal(errorLog.mock.calls.length, 0);
+  assert.deepEqual(infoLog.mock.calls, [[JSON.stringify({ event: "dogs.feed.publication.busy" })]]);
+  assert.equal(writes.length, 0);
+  assert.equal(vi.mocked(FirestoreRestClient.prototype.listDocuments).mock.calls.length, 0);
+});
+
+test("an unrelated HTTP 400 keeps its failure classification even if its message mentions versions", async () => {
+  const { env, writes } = kvEnv();
+  vi.mocked(FirestoreRestClient.prototype.createDocument).mockRejectedValueOnce(
+    new FirestoreRestError("stored version does not match required base version", 400,
+      { error: { status: "INVALID_ARGUMENT" } }),
+  );
+  const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+
+  const response = await getDogFeedResponse(new Request("https://abrigo.test/api/dogs"), env);
+
+  assert.equal(response.status, 503);
+  assert.equal(response.headers.get("Retry-After"), null);
+  assert.equal(JSON.parse(String(errorLog.mock.calls[0][0])).event, "dogs.feed.request.failed");
+  assert.equal(writes.length, 0);
 });

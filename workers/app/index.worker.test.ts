@@ -2,7 +2,7 @@ import { generateKeyPairSync } from "node:crypto";
 import { env } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { FirestoreRestClient } from "../shared/api/_lib/firestore";
+import { FirestoreRestClient, FirestoreRestError } from "../shared/api/_lib/firestore";
 
 import worker, { type AppEnv } from "./index";
 
@@ -137,6 +137,22 @@ describe("Worker app runtime", () => {
     expect(blockedFetch).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+  });
+
+  it("reports structured HTTP 400 feed contention with Retry-After in the Workers runtime", async () => {
+    vi.mocked(FirestoreRestClient.prototype.getDocument).mockResolvedValue(null);
+    vi.spyOn(FirestoreRestClient.prototype, "createDocument").mockRejectedValueOnce(
+      new FirestoreRestError("version mismatch", 400, { error: { status: "FAILED_PRECONDITION" } }),
+    );
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const response = await worker.fetch(new Request("https://abrigo.test/api/dogs"), createEnv());
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get("Retry-After")).toBe("1");
+    await expect(response.json()).resolves.toEqual({ message: "Dog feed is temporarily unavailable." });
+    expect(errorLog).not.toHaveBeenCalled();
+    expect(await env.KV.get("dogs-feed:current")).toBeNull();
   });
 
   it("reads the hero dog through the local KV binding", async () => {

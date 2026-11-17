@@ -10,4 +10,4 @@ interface MigrationEnvironment {
 export function migrationTarget(env: MigrationEnvironment): MigrationTarget;
 export function migrationStatus(env: MigrationEnvironment): Promise<MigrationOverview>;
 export function previewMigrations(env: MigrationEnvironment, cursor: PreviewCursor | null): Promise<MigrationPreview>;
-export function applyMigrationBatch(env: MigrationEnvironment, actor: string): Promise<MigrationOverview>;
+export function applyMigrationBatch(env: MigrationEnvironment, actor: string, audit?: { subject: string; requestId: string }): Promise<MigrationOverview>;

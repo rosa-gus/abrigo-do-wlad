@@ -14,10 +14,10 @@ import { ConfirmModal } from "../../components/ConfirmModal";
 import { useAuth } from "../../contexts/AuthContext";
 import {
   deleteAdminNotification,
-  getAdminNotification,
+  getAdminNotificationResource,
   saveAdminNotification,
 } from "../../services/notifications";
-import { getSystemKeys, rotateSystemKey } from "../../services/systemKeys";
+import { getSystemKeysResource, rotateSystemKey } from "../../services/systemKeys";
 import type {
   NotificationExpiration,
   NotificationType,
@@ -59,6 +59,7 @@ function isNotificationType(value: string): value is NotificationType {
 
 export default function DeveloperOptions() {
   const { user } = useAuth();
+  const [keysRevision, setKeysRevision] = useState<string | undefined>();
   const [keys, setKeys] = useState<SystemKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [rotating, setRotating] = useState(false);
@@ -69,6 +70,7 @@ export default function DeveloperOptions() {
   const [notificationType, setNotificationType] = useState<NotificationType>("info");
   const [notificationExpiration, setNotificationExpiration] =
     useState<NotificationExpiration>("6h");
+  const [notificationRevision, setNotificationRevision] = useState<string | undefined>();
   const [notificationExists, setNotificationExists] = useState(false);
   const [notificationLoading, setNotificationLoading] = useState(true);
   const [notificationSaving, setNotificationSaving] = useState(false);
@@ -79,7 +81,9 @@ export default function DeveloperOptions() {
     setLoading(true);
     setError(null);
     try {
-      setKeys(await getSystemKeys());
+      const loaded = await getSystemKeysResource();
+      setKeys(loaded.value);
+      setKeysRevision(loaded.revision);
     } catch (cause) {
       console.error("Erro ao carregar metadados das chaves:", cause);
       setError("Não foi possível carregar as chaves do sistema.");
@@ -91,9 +95,9 @@ export default function DeveloperOptions() {
   useEffect(() => {
     let active = true;
 
-    getSystemKeys()
-      .then((loadedKeys) => {
-        if (active) setKeys(loadedKeys);
+    getSystemKeysResource()
+      .then(({ value, revision }) => {
+        if (active) { setKeys(value); setKeysRevision(revision); }
       })
       .catch((cause: unknown) => {
         console.error("Erro ao carregar metadados das chaves:", cause);
@@ -111,9 +115,11 @@ export default function DeveloperOptions() {
   useEffect(() => {
     let active = true;
 
-    getAdminNotification()
-      .then((notification) => {
-        if (!active || !notification) return;
+    getAdminNotificationResource()
+      .then(({ value: notification, revision }) => {
+        if (!active) return;
+        setNotificationRevision(revision);
+        if (!notification) return;
         setNotificationMessage(notification.message);
         setNotificationType(notification.type);
         setNotificationExpiration(notification.expiration);
@@ -138,12 +144,12 @@ export default function DeveloperOptions() {
     setError(null);
     setNotice(null);
     try {
-      const created = await rotateSystemKey();
+      const created = await rotateSystemKey(keysRevision);
       setNotice(`A chave ${created.version} foi criada e ativada.`);
       await loadKeys();
     } catch (cause) {
       console.error("Erro ao rotacionar chave do sistema:", cause);
-      setError("A rotação não foi concluída. Nenhuma confirmação de alteração foi recebida.");
+      setError(cause instanceof Error ? cause.message : "A rotação não foi concluída. Nenhuma confirmação de alteração foi recebida.");
     } finally {
       setRotating(false);
     }
@@ -160,7 +166,8 @@ export default function DeveloperOptions() {
         message: notificationMessage,
         type: notificationType,
         expiration: notificationExpiration,
-      });
+      }, notificationRevision);
+      setNotificationRevision(saved.revision);
       setNotificationMessage(saved.message);
       setNotificationType(saved.type);
       setNotificationExpiration(saved.expiration);
@@ -168,7 +175,7 @@ export default function DeveloperOptions() {
       setNotificationNotice("A notificação do painel foi publicada.");
     } catch (cause) {
       console.error("Erro ao salvar notificação do painel:", cause);
-      setNotificationError("Não foi possível publicar a notificação.");
+      setNotificationError(cause instanceof Error ? cause.message : "Não foi possível publicar a notificação.");
     } finally {
       setNotificationSaving(false);
     }
@@ -180,7 +187,8 @@ export default function DeveloperOptions() {
     setNotificationNotice(null);
 
     try {
-      await deleteAdminNotification();
+      await deleteAdminNotification(notificationRevision);
+      setNotificationRevision("absent");
       setNotificationMessage("");
       setNotificationType("info");
       setNotificationExpiration("6h");
@@ -188,7 +196,7 @@ export default function DeveloperOptions() {
       setNotificationNotice("A notificação foi removida da visão geral.");
     } catch (cause) {
       console.error("Erro ao remover notificação do painel:", cause);
-      setNotificationError("Não foi possível remover a notificação.");
+      setNotificationError(cause instanceof Error ? cause.message : "Não foi possível remover a notificação.");
     } finally {
       setNotificationSaving(false);
     }
@@ -222,7 +230,7 @@ export default function DeveloperOptions() {
         </div>
 
         <div className={styles.feedback} aria-live="polite">
-          {notificationError && <p className={styles.error}>{notificationError}</p>}
+          {notificationError && <div><p className={styles.error}>{notificationError}</p><Button type="button" variant="outline" onClick={() => window.location.reload()}>Recarregar e revisar</Button></div>}
           {notificationNotice && <p className={styles.notice}>{notificationNotice}</p>}
         </div>
 
@@ -333,7 +341,7 @@ export default function DeveloperOptions() {
         </div>
 
         <div className={styles.feedback} aria-live="polite">
-          {error && <p className={styles.error}>{error}</p>}
+          {error && <div><p className={styles.error}>{error}</p><Button type="button" variant="outline" onClick={() => void loadKeys()}>Recarregar e revisar</Button></div>}
           {notice && <p className={styles.notice}>{notice}</p>}
         </div>
 

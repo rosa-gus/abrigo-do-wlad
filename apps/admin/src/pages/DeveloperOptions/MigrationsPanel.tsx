@@ -4,7 +4,7 @@ import { Badge } from "@jaci/ui/Badge";
 import { Card, CardBody, CardContent, CardFooter, CardHeader, CardTitle } from "@jaci/ui/Card";
 import { Separator } from "@jaci/ui/Separator";
 import { ConfirmModal } from "../../components/ConfirmModal";
-import type { MigrationOverview, MigrationPreview, MigrationTarget, PreviewCursor } from "../../../shared/migrations";
+import type { MigrationOverview, MigrationPreview, MigrationTarget, PreviewCursor } from "@abrigo/contracts/migrations";
 import { applyMigrationBatch, getMigrations, planMigrationPage } from "../../services/migrations";
 import styles from "./DeveloperOptions.module.css";
 

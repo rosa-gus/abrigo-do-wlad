@@ -100,7 +100,7 @@ test("admin assets reject missing Access credentials before reading ASSETS", asy
 
     assert.equal(response.status, 401);
     assert.equal(assetReads, 0);
-    assert.deepEqual(await response.json(), { error: "Unauthorized" });
+    assert.deepEqual(await response.json(), { error: { code: "UNAUTHORIZED", message: "Unauthorized", requestId: response.headers.get("X-Request-ID") } });
   } finally {
     errorLog.mockRestore();
   }
@@ -117,7 +117,7 @@ test("admin session rejects requests without a Cloudflare Access assertion", asy
 
     assert.equal(response.status, 401);
     assert.equal(response.headers.get("Cache-Control"), "no-store");
-    assert.deepEqual(await response.json(), { error: "Unauthorized" });
+    assert.deepEqual(await response.json(), { error: { code: "UNAUTHORIZED", message: "Unauthorized", requestId: response.headers.get("X-Request-ID") } });
   } finally {
     errorLog.mockRestore();
   }
@@ -131,4 +131,20 @@ test("admin session only accepts GET before authenticating the request", async (
 
   assert.equal(response.status, 405);
   assert.equal(response.headers.get("Allow"), "GET");
+});
+
+test("operational API rejections use a request ID and never become authentication failures", async () => {
+  const api = await import("./admin-api");
+  const handler = vi.spyOn(api, "handleAdminApi").mockRejectedValue(new Error("sensitive internal payload"));
+  const logs = vi.spyOn(console, "error").mockImplementation(() => undefined);
+  try {
+    const response = await handleAdminApi(new Request("https://admin.example.test/api/admin/dashboard"), env, undefined,
+      async () => ({ email: "administrator@example.test", role: "administrator", subject: "subject" }));
+    assert.equal(response.status, 500);
+    const body = await response.json() as { error: { code: string; message: string; requestId: string } };
+    assert.equal(body.error.code, "INTERNAL_ERROR");
+    assert.equal(response.headers.get("X-Request-ID"), body.error.requestId);
+    assert.match(body.error.requestId, /^[a-f0-9-]{36}$/);
+    assert.doesNotMatch(JSON.stringify(logs.mock.calls), /sensitive internal payload/);
+  } finally { handler.mockRestore(); logs.mockRestore(); }
 });

@@ -4,12 +4,13 @@ import localWorker, { authenticateLocalRequest } from "./local";
 
 const firestore = vi.hoisted(() => ({
   createDocument: vi.fn<(collection: string, data: Record<string, unknown>) => Promise<{ id: string }>>(async () => ({ id: "point-1" })),
-  getDocument: vi.fn(async () => ({ id: "point-1", name: "documents/recycle_points/point-1", data: {} })),
+  getDocument: vi.fn(async () => ({ id: "point-1", name: "documents/recycle_points/point-1", updateTime: "2026-08-24T12:00:00.000Z", data: {} })),
   listDocuments: vi.fn(async () => []),
   updateDocument: vi.fn(async () => ({})),
-  deleteDocument: vi.fn(async () => ({})),
+  deleteDocumentsIfUnchanged: vi.fn(async () => ({})),
 }));
-vi.mock("../../../workers/shared/api/_lib/firestore", () => ({
+vi.mock("@abrigo/backend/adapters/firestore", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@abrigo/backend/adapters/firestore")>(),
   createFirestoreClient: vi.fn(() => firestore),
 }));
 
@@ -122,10 +123,10 @@ test("local CRUD still rejects mutations without Origin and invalid payloads", a
 test("local CRUD reaches persistence and audit with the local identity", async () => {
   const response = await localWorker.fetch(request("/api/admin/recycle-points/point-1", {
     method: "DELETE",
-    headers: { Origin: "http://127.0.0.1:5174" },
+    headers: { Origin: "http://127.0.0.1:5174", "If-Match": '"2026-08-24T12:00:00.000Z"' },
   }), env, ctx);
   expect(response.status).toBe(204);
-  expect(firestore.deleteDocument).toHaveBeenCalledOnce();
+  expect(firestore.deleteDocumentsIfUnchanged).toHaveBeenCalledOnce();
   await Promise.all(pendingWork);
   expect(firestore.createDocument).toHaveBeenCalledWith("admin_audit_log", expect.objectContaining({
     actor: "local-administrator@example.test", actorRole: "administrator", outcome: "success",

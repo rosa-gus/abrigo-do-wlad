@@ -6,10 +6,10 @@ import { Button, ButtonLink } from "@jaci/ui/Button";
 import { Card, CardBody, CardContent, CardFooter } from "@jaci/ui/Card";
 import { Separator } from "@jaci/ui/Separator";
 import { EmptyState } from "@jaci/ui/EmptyState";
-import { getRecyclePoints, deleteRecyclePoint } from "../../services/recycle";
+import { getRecyclePointsPage, deleteRecyclePoint } from "../../services/recycle";
 import type { RecyclePoint } from "../../types/recycle";
 import { ListingFilters } from "../../components/ListingFilters";
-import { PUBLICATION_LABELS } from "../../../shared/entities";
+import { PUBLICATION_LABELS } from "@abrigo/contracts/entities";
 import { DeleteModal } from "../../components/DeleteModal";
 import { ErrorModal } from "../../components/ErrorModal";
 import { Pagination } from "@jaci/ui/Pagination";
@@ -25,6 +25,19 @@ export default function RecycleDashboard() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  async function loadMore() {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const page = await getRecyclePointsPage(nextCursor);
+      setPoints(current => [...current, ...page.items]);
+      setNextCursor(page.nextCursor);
+    } catch { setLoadError("Não foi possível carregar a próxima página. Tente novamente."); }
+    finally { setLoadingMore(false); }
+  }
+
 
   const [searchTerm, setSearchTerm] = useState("");
   const [publicationFilter, setPublicationFilter] = useState("all");
@@ -37,8 +50,10 @@ export default function RecycleDashboard() {
   useEffect(() => {
     let active = true;
 
-    getRecyclePoints()
-      .then((data) => {
+    getRecyclePointsPage()
+      .then((page) => {
+        const data = page.items;
+        if (active) setNextCursor(page.nextCursor);
         if (active) {
           setPoints([...data].sort((a, b) =>
             a.zone.localeCompare(b.zone) || a.neighborhood.localeCompare(b.neighborhood)
@@ -83,12 +98,12 @@ export default function RecycleDashboard() {
     setIsDeleting(true);
 
     try {
-      await deleteRecyclePoint(selectedPoint.id);
+      await deleteRecyclePoint(selectedPoint.id, points.find(point => point.id === selectedPoint.id)?.revision);
       setPoints(prev => prev.filter(p => p.id !== selectedPoint.id));
       setPointToDelete(null);
-    } catch {
+    } catch (cause) {
       setPointToDelete(null);
-      setOperationError("Não foi possível excluir o ponto de coleta.");
+      setOperationError(cause instanceof Error ? cause.message : "Não foi possível excluir o ponto de coleta.");
     } finally {
       setIsDeleting(false);
     }
@@ -256,6 +271,13 @@ export default function RecycleDashboard() {
         </>
       )}
 
+      {!loading && nextCursor && <div>
+        <p>A busca e os filtros consideram os registros carregados.</p>
+        <Button type="button" variant="outline" disabled={loadingMore} onClick={() => void loadMore()}>
+          {loadingMore ? "Carregando..." : "Carregar mais registros"}
+        </Button>
+      </div>}
+
       <DeleteModal
         isOpen={!!pointToDelete}
         onClose={() => setPointToDelete(null)}
@@ -265,6 +287,7 @@ export default function RecycleDashboard() {
       />
 
       <ErrorModal
+        onReload={() => window.location.reload()}
         isOpen={operationError !== null}
         onClose={() => setOperationError(null)}
         message={operationError ?? undefined}

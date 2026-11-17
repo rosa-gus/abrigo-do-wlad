@@ -113,8 +113,9 @@ Comandos principais:
 - [Aplicação pública](apps/public/README.md)
 - [Painel administrativo](apps/admin/README.md)
 - [Migrações do Firestore](docs/firestore-migrations.md)
-- [Publicação segura do Access e regras do Firestore](docs/security/access-and-rules-rollout.md)
+- [Segurança e consistência das APIs](docs/security/README.md)
 - [Diagrama da arquitetura](docs/architecture.svg)
+- [Arquitetura modular do backend](docs/security/backend-architecture.md)
 - [Diagrama da arquitetura do painel administrativo](docs/admin-architecture.svg)
 
 ## Autores

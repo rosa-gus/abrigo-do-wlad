@@ -10,9 +10,9 @@ e-mail como `developer` ou `administrator`. O navegador não recebe credenciais
 administrativas nem acessa o Firestore ou o Cloudinary diretamente.
 
 Banco de dados, descriptografia e mídia passam pela API do Worker. Credenciais,
-chaves e listas de e-mails autorizados ficam apenas no runtime. O roteiro de
-configuração e publicação está em
-[`docs/security/access-and-rules-rollout.md`](../../docs/security/access-and-rules-rollout.md).
+chaves e listas de e-mails autorizados ficam apenas no runtime. Os contratos de
+autenticação, consistência e recuperação estão em
+[Segurança e consistência das APIs](../../docs/security/README.md).
 
 O ambiente da aplicação é definido por `APP_ENV` no `wrangler.jsonc`:
 `local` no desenvolvimento e `production` no Worker padrão, seguindo o mesmo
@@ -264,6 +264,6 @@ as regras do Firestore (pontos também recusam leitura direta), atualize públic
 e cron e, por último, o admin. Não habilite o novo admin com Workers públicos
 antigos: eles não conhecem rascunhos. A migração e o deploy não são automáticos.
 
-A configuração está em [`wrangler.jsonc`](wrangler.jsonc). Para verificar e
-publicar o painel, siga o
-[roteiro de publicação](../../docs/security/access-and-rules-rollout.md).
+A configuração está em [`wrangler.jsonc`](wrangler.jsonc). Os requisitos de IAM,
+índices, TTL e compatibilidade entre versões estão na
+[referência de segurança](../../docs/security/README.md).

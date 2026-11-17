@@ -2,4 +2,4 @@ export type {
   RecyclePoint,
   RecyclePointInput,
   RecyclePointUpdate,
-} from "../../shared/entities";
+} from "@abrigo/contracts/entities";

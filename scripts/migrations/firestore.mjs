@@ -13,6 +13,7 @@ export class MigrationStoreError extends Error {
 export function encodeMetadata(data) {
   function encode(value) {
     if (value === null) return { nullValue: null };
+    if (value instanceof Date) return { timestampValue: value.toISOString() };
     if (typeof value === "string") return { stringValue: value };
     if (typeof value === "boolean") return { booleanValue: value };
     if (Number.isSafeInteger(value)) return { integerValue: String(value) };
@@ -49,7 +50,7 @@ export function metadataWrite(name, data, previous) {
   };
 }
 
-export function createMigrationStore({ project, email, privateKey, fetcher = fetch, tokenProvider }) {
+export function createMigrationStore({ project, email, privateKey, fetcher = fetch, tokenProvider, commitMetadata }) {
   if (!/^[a-z][a-z0-9-]{4,61}[a-z0-9]$/.test(project)) throw new Error("Invalid Firebase project ID.");
   if (!tokenProvider && (!email || !privateKey)) throw new Error("Missing Firebase service account credentials.");
   const root = `projects/${project}/databases/(default)/documents`;
@@ -138,6 +139,7 @@ export function createMigrationStore({ project, email, privateKey, fetcher = fet
       return documents;
     },
     async commit(writes) {
+      if (commitMetadata) writes = [...writes, ...commitMetadata(root, writes)];
       if (!writes.length || writes.length > 102) throw new Error("Invalid migration batch.");
       for (const write of writes) assertName(write.update?.name ?? "");
       const body = JSON.stringify({ writes });

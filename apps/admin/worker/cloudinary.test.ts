@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { test, vi } from "vitest";
 
 import {
   CloudinaryUploadError,
@@ -223,4 +223,33 @@ test("image deletion accepts only this account and managed folder", async () => 
     ),
     /outside the managed dog folder/,
   );
+});
+
+test("multipart does not trust a small declared length", async () => {
+  const request = new Request("https://admin.example.test/api/admin/media/upload", {
+    method: "POST", headers: { "Content-Type": "multipart/form-data; boundary=test", "Content-Length": "1" },
+    body: new Uint8Array(MAX_SOURCE_DOG_IMAGE_BYTES + 64 * 1024 + 1),
+  });
+  await assert.rejects(() => uploadCloudinaryImage(request, env), (error: unknown) => error instanceof CloudinaryUploadError && error.status === 413);
+});
+
+test("Cloudinary response-body stalls hit the same deadline without retry", async () => {
+  vi.useFakeTimers();
+  let calls = 0;
+  let aborted = false;
+  const fetcher = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+    calls++;
+    init?.signal?.addEventListener("abort", () => { aborted = true; });
+    return new Response(new ReadableStream({ start(controller) { controller.enqueue(new TextEncoder().encode('{')); } }));
+  }) as typeof fetch;
+  try {
+    const outcome = assert.rejects(() => deleteCloudinaryImage(
+      "https://res.cloudinary.com/test-cloud/image/upload/v1/abrigo-do-wlad/dogs/wlad.jpg", env, fetcher,
+    ), (error: unknown) => error instanceof CloudinaryUploadError && error.status === 504);
+    await vi.waitFor(() => assert.equal(calls, 1));
+    await vi.advanceTimersByTimeAsync(15_001);
+    await outcome;
+    assert.equal(aborted, true);
+    assert.equal(calls, 1);
+  } finally { vi.useRealTimers(); }
 });

@@ -1,2 +1,1 @@
-export const ADOPTION_EXPIRATION_DAYS = 30;
-export const ADOPTION_DECISION_RETENTION_DAYS = 7;
+export * from "@abrigo/domain/adoptions/retention";

@@ -1,8 +1,9 @@
-import { DOG_DOCUMENT_SCHEMA_VERSION, RECYCLE_POINT_DOCUMENT_SCHEMA_VERSION, supportsDocumentVersion } from "../../../../workers/shared/document-schema";
-import { isPublished, publicationMetadata } from "../../../../workers/shared/publication";
+import { errorCodeForStatus } from "@abrigo/contracts/errors";
+import { DOG_DOCUMENT_SCHEMA_VERSION, RECYCLE_POINT_DOCUMENT_SCHEMA_VERSION, supportsDocumentVersion } from "@abrigo/domain/document-schema";
+import { isPublished, publicationMetadata } from "@abrigo/domain/publication";
 import type { DogProps } from "../types/dogs";
-import { systemSettingsSchema, type SystemSettings } from "../../shared/system-settings";
-import { adoptionStatusUpdate, AdoptionTransitionError } from "../../shared/adoption-retention";
+import { systemSettingsSchema, type SystemSettings } from "@abrigo/contracts/system-settings";
+import { adoptionStatusUpdate, AdoptionTransitionError } from "@abrigo/domain/adoptions/transitions";
 import type {
   AdminNotification,
   NotificationExpiration,
@@ -10,20 +11,21 @@ import type {
 } from "../types/notifications";
 import type { RecyclePoint } from "../types/recycle";
 import type { SystemKey } from "../types/systemKeys";
-import type { MigrationOverview } from "../../shared/migrations";
+import type { MigrationOverview } from "@abrigo/contracts/migrations";
 import {
   dogInputSchema,
   dogUpdateSchema,
   recyclePointInputSchema,
   recyclePointUpdateSchema,
-} from "../../shared/entities";
-import { dogArchiveDates, isDogArchived } from "../../../../workers/shared/api/dogs/archive";
+} from "@abrigo/contracts/entities";
+import { dogArchiveDates, isDogArchived } from "@abrigo/domain/dogs/archive";
 import { createMockMediaUrl, deleteMockMediaUrl, resetMockMedia } from "./media";
 
-type AdoptionStatus = "pending" | "approved" | "rejected";
+import type { AdoptionStatus } from "@abrigo/contracts/adoptions";
 
 interface MockAdoption {
   id: string;
+  revision: string;
   nome_adotante: string;
   telefone: string;
   animal_especifico: string;
@@ -35,15 +37,15 @@ interface MockAdoption {
 
 interface MockState {
   migrations: MigrationOverview;
-  systemSettings: SystemSettings;
+  systemSettings: SystemSettings & { revision?: string };
   dogs: DogProps[];
   recyclePoints: RecyclePoint[];
   adoptions: MockAdoption[];
   notification: AdminNotification | null;
   systemKeys: SystemKey[];
+  systemKeysRevision: string;
   adoptionsViaSite: number;
   auditLog: Array<Record<string, unknown>>;
-  nextDogId: number;
   nextRecycleId: number;
 }
 
@@ -64,10 +66,12 @@ function createInitialState(): MockState {
       migrations: [{ id: "0001-publication-status", description: "Publicação de cães e pontos de coleta (simulado).",
         status: "pending", scanned: 0, changed: 0, attempts: 0, checkpoint: null }],
     },
-    systemSettings: { acceptingApplications: true },
+    systemSettings: { acceptingApplications: true, revision: "2026-01-01T00:00:00.000Z" },
     dogs: [
       {
         id: 103,
+        documentId: "mock-dog-103",
+        revision: "2026-01-01T00:00:00.000Z",
         publicationStatus: "published",
         schemaVersion: 1,
         publishedAt: "2026-01-01T00:00:00.000Z",
@@ -85,6 +89,8 @@ function createInitialState(): MockState {
       },
       {
         id: 102,
+        documentId: "mock-dog-102",
+        revision: "2026-01-01T00:00:00.000Z",
         publicationStatus: "published",
         schemaVersion: 1,
         publishedAt: "2026-01-01T00:00:00.000Z",
@@ -102,6 +108,8 @@ function createInitialState(): MockState {
       },
       {
         id: 101,
+        documentId: "mock-dog-101",
+        revision: "2026-01-01T00:00:00.000Z",
         publicationStatus: "published",
         schemaVersion: 1,
         publishedAt: "2026-01-01T00:00:00.000Z",
@@ -120,7 +128,7 @@ function createInitialState(): MockState {
     ],
     recyclePoints: [
       {
-        id: "eco-morumbi",
+        id: "eco-morumbi", revision: "2026-01-01T00:00:00.000Z",
         publicationStatus: "published",
         schemaVersion: 1,
         publishedAt: "2026-01-01T00:00:00.000Z",
@@ -131,7 +139,7 @@ function createInitialState(): MockState {
         googleMapsUrl: "https://maps.google.com/?q=Morumbi,+São+Paulo+-+SP",
       },
       {
-        id: "pet-vila-sonia",
+        id: "pet-vila-sonia", revision: "2026-01-01T00:00:00.000Z",
         publicationStatus: "published",
         schemaVersion: 1,
         publishedAt: "2026-01-01T00:00:00.000Z",
@@ -142,7 +150,7 @@ function createInitialState(): MockState {
         googleMapsUrl: "https://www.google.com/maps/place/Vila+Sônia,+São+Paulo+-+SP",
       },
       {
-        id: "coleta-campo-limpo",
+        id: "coleta-campo-limpo", revision: "2026-01-01T00:00:00.000Z",
         publicationStatus: "published",
         schemaVersion: 1,
         publishedAt: "2026-01-01T00:00:00.000Z",
@@ -156,6 +164,7 @@ function createInitialState(): MockState {
     adoptions: [
       {
         id: "adoption-livia",
+        revision: "2026-01-01T00:00:00.000Z",
         nome_adotante: "Fulana de Tal",
         telefone: "(11) 99999-1001",
         animal_especifico: "Simba",
@@ -230,6 +239,7 @@ function createInitialState(): MockState {
       },
       {
         id: "adoption-rafael",
+        revision: "2026-01-01T00:00:00.000Z",
         nome_adotante: "Rafael Nogueira",
         telefone: "(11) 98888-2002",
         animal_especifico: "Amora",
@@ -245,6 +255,7 @@ function createInitialState(): MockState {
       },
       {
         id: "adoption-camila",
+        revision: "2026-01-01T00:00:00.000Z",
         nome_adotante: "Camila Oliveira",
         telefone: "(11) 97777-3003",
         animal_especifico: "Sem preferência",
@@ -260,6 +271,7 @@ function createInitialState(): MockState {
       },
     ],
     notification: {
+      revision: "2026-01-01T00:00:00.000Z",
       message: "Este painel usa somente dados simulados locais.",
       type: "info",
       target: "admin",
@@ -268,6 +280,7 @@ function createInitialState(): MockState {
       expiration: "until_deleted",
       expiresAt: null,
     },
+    systemKeysRevision: "2026-01-01T00:00:00.000Z",
     systemKeys: [
       {
         id: "mock-key-v2",
@@ -288,7 +301,6 @@ function createInitialState(): MockState {
     ],
     adoptionsViaSite: 7,
     auditLog: [],
-    nextDogId: 104,
     nextRecycleId: 1,
   };
 }
@@ -314,6 +326,7 @@ function noContentResponse(): Response {
 function adoptionSummary(adoption: MockAdoption) {
   const {
     id,
+    revision,
     nome_adotante,
     telefone,
     animal_especifico,
@@ -323,6 +336,7 @@ function adoptionSummary(adoption: MockAdoption) {
   } = adoption;
   return {
     id,
+    revision,
     nome_adotante,
     telefone,
     animal_especifico,
@@ -330,6 +344,22 @@ function adoptionSummary(adoption: MockAdoption) {
     submittedAt,
     expiresAt,
   };
+}
+
+function readableAdoption(adoption: MockAdoption): boolean {
+  const expiry = Date.parse(adoption.expiresAt);
+  return Number.isFinite(expiry) && expiry > Date.now();
+}
+
+function currentNotification(): AdminNotification | null {
+  return state.notification?.expiresAt && Date.parse(state.notification.expiresAt) <= Date.now()
+    ? null : state.notification;
+}
+
+function revisionResponse(body: unknown, revision?: string, status = 200): Response {
+  const response = jsonResponse(body, status);
+  response.headers.set("ETag", `"${revision ?? "absent"}"`);
+  return response;
 }
 
 function methodNotAllowed(allowed: string[]): Response {
@@ -366,6 +396,30 @@ function recordMutation(request: Request, target: string): void {
   });
 }
 
+function mockPage<T extends { id?: string | number; documentId?: string; expiresAt?: string; publicationStatus?: string; status?: string }>(request: Request, data: T[], scope: string, byExpiry = false): Response {
+  const params = new URL(request.url).searchParams;
+  const limit = Number(params.get("limit") ?? 25);
+  const publication = params.get("publicationStatus");
+  const status = params.get("status");
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100 || (publication && !["draft", "published"].includes(publication)) || (status && !["pending", "approved", "rejected"].includes(status))) return jsonResponse({ error: "Invalid pagination filter." }, 400);
+  const key = (item: T) => `${byExpiry ? `${item.expiresAt}:` : ""}${item.documentId ?? item.id}`;
+  const bound = JSON.stringify({ scope, publication, status });
+  let after = "";
+  if (params.has("cursor")) {
+    try {
+      const cursor = JSON.parse(decodeURIComponent(atob(params.get("cursor")!)));
+      if (cursor.scope !== bound || typeof cursor.after !== "string") throw new Error();
+      after = cursor.after;
+    } catch { return jsonResponse({ error: "Invalid pagination cursor." }, 400); }
+  }
+  const ordered = data.filter(item => (!publication || item.publicationStatus === publication) && (!status || item.status === status))
+    .sort((left, right) => key(left) < key(right) ? -1 : key(left) > key(right) ? 1 : 0)
+    .filter(item => key(item) > after);
+  const items = ordered.slice(0, limit);
+  const nextCursor = ordered.length > limit ? btoa(encodeURIComponent(JSON.stringify({ scope: bound, after: key(items.at(-1)!) }))) : null;
+  return jsonResponse({ items, nextCursor });
+}
+
 async function handleDogs(
   request: Request,
   idSegment?: string,
@@ -377,9 +431,9 @@ async function handleDogs(
       if (listState !== "active" && listState !== "archived") {
         return jsonResponse({ error: "Invalid dog list state." }, 400);
       }
-      return jsonResponse(state.dogs.filter((dog) =>
+      return mockPage(request, state.dogs.filter((dog) =>
         isDogArchived(dog) === (listState === "archived")
-      ));
+      ), `dogs:${listState}`);
     }
     if (request.method !== "POST") return methodNotAllowed(["GET", "POST"]);
 
@@ -390,23 +444,32 @@ async function handleDogs(
       );
     }
     const input = parsedInput.data;
-    const dog = { ...input, schemaVersion: DOG_DOCUMENT_SCHEMA_VERSION, id: state.nextDogId++, ...publicationMetadata({}, input.publicationStatus) };
+    const documentId = crypto.randomUUID();
+    const dog = { ...input, schemaVersion: DOG_DOCUMENT_SCHEMA_VERSION, documentId, revision: new Date().toISOString(), ...publicationMetadata({}, input.publicationStatus) };
     state.dogs.push(dog);
-    recordMutation(request, `dogs/${dog.id}`);
-    return jsonResponse({ id: dog.id }, 201);
+    recordMutation(request, `dogs/${documentId}`);
+    return jsonResponse({ id: documentId, documentId }, 201);
   }
 
-  const id = Number(idSegment);
+  let routeId: string;
+  try { routeId = decodeURIComponent(idSegment); } catch { return jsonResponse({ error: "Invalid dog ID." }, 400); }
   if (operation && request.method !== "POST") return methodNotAllowed(["POST"]);
   if (!operation && !["GET", "PATCH", "DELETE"].includes(request.method)) {
     return methodNotAllowed(["GET", "PATCH", "DELETE"]);
   }
-  const index = state.dogs.findIndex((dog) => dog.id === id);
+  const matches = state.dogs.flatMap((dog, index) =>
+    (routeId.startsWith("doc:") ? dog.documentId === routeId.slice(4) : dog.id === Number(routeId)) ? [index] : []
+  );
+  if (matches.length > 1) return jsonResponse({ error: "O identificador antigo corresponde a mais de uma ficha." }, 409);
+  const index = matches[0] ?? -1;
   if (index < 0) return jsonResponse({ error: "Dog not found." }, 404);
+  const id = state.dogs[index].documentId;
 
-  if (request.method === "GET") return jsonResponse({
-    ...state.dogs[index], revision: state.dogs[index].updatedAt ?? state.dogs[index].publishedAt,
-  });
+  if (request.method === "GET") {
+    const response = jsonResponse(state.dogs[index]);
+    response.headers.set("ETag", `"${state.dogs[index].revision}"`);
+    return response;
+  }
   if (!supportsDocumentVersion(state.dogs[index], DOG_DOCUMENT_SCHEMA_VERSION)) {
     return jsonResponse({ error: "A ficha usa uma versão de dados mais recente ou inválida." }, 409);
   }
@@ -420,9 +483,8 @@ async function handleDogs(
         parsedUpdate.error.issues[0]?.message ?? "Atualização do cachorro inválida.",
       );
     }
-    if (parsedUpdate.data.expectedUpdateTime && parsedUpdate.data.expectedUpdateTime !== (state.dogs[index].updatedAt ?? state.dogs[index].publishedAt)) {
-      return jsonResponse({ error: "A ficha foi alterada por outra pessoa. Recarregue antes de salvar." }, 409);
-    }
+    const precondition = mockDogPrecondition(request, state.dogs[index], parsedUpdate.data.expectedUpdateTime);
+    if (precondition) return precondition;
     const merged = dogInputSchema.safeParse({ ...state.dogs[index], ...parsedUpdate.data });
     if (!merged.success) return validationErrorResponse(merged.error.issues[0]?.message ?? "Ficha incompleta.");
     const previous = state.dogs[index];
@@ -430,13 +492,16 @@ async function handleDogs(
       ? previous.fotos.filter((photo) => !parsedUpdate.data.fotos?.includes(photo))
       : [];
     state.dogs[index] = {
-      ...previous, ...merged.data, ...publicationMetadata(previous, merged.data.publicationStatus), id,
+      ...previous, ...merged.data, ...publicationMetadata(previous, merged.data.publicationStatus),
+      revision: nextDogRevision(previous),
       retainedPhotos: Array.from(new Set([...(previous.retainedPhotos ?? []), ...removedPhotos])),
     };
     recordMutation(request, `dogs/${id}`);
     return jsonResponse({ ok: true });
   }
   if (request.method === "DELETE") {
+    const precondition = mockDogPrecondition(request, state.dogs[index]);
+    if (precondition) return precondition;
     if (isDogArchived(state.dogs[index]) || state.dogs[index].publicationStatus !== "draft") {
       return jsonResponse({ error: "Somente rascunhos não arquivados podem ser excluídos." }, 409);
     }
@@ -445,6 +510,8 @@ async function handleDogs(
     return noContentResponse();
   }
   if (operation === "archive" && request.method === "POST") {
+    const precondition = mockDogPrecondition(request, state.dogs[index]);
+    if (precondition) return precondition;
     const input = await readJson<{ reason?: unknown }>(request);
     if (input.reason !== "adopted_via_site" && input.reason !== "other") {
       return jsonResponse({ error: "Invalid archive reason." }, 400);
@@ -463,7 +530,7 @@ async function handleDogs(
     const shouldCountAdoption = input.reason === "adopted_via_site"
       && !state.dogs[index].adoptionCountedAt;
     state.dogs[index] = {
-      ...state.dogs[index], ...dates,
+      ...state.dogs[index], ...dates, revision: nextDogRevision(state.dogs[index]),
       archiveReason: input.reason,
       archivedBy: MOCK_AUTHOR,
       ...(shouldCountAdoption ? { adoptionCountedAt: dates.archivedAt } : {}),
@@ -473,11 +540,14 @@ async function handleDogs(
     return jsonResponse({ ...dates, id });
   }
   if (operation === "restore" && request.method === "POST") {
+    const precondition = mockDogPrecondition(request, state.dogs[index]);
+    if (precondition) return precondition;
     if (!isDogArchived(state.dogs[index])) return jsonResponse({ ok: true });
     state.dogs[index] = {
       ...state.dogs[index], archivedAt: null, purgeAfter: null,
       archiveReason: null, archivedBy: null, publicationStatus: "draft",
       updatedAt: new Date().toISOString(),
+      revision: nextDogRevision(state.dogs[index]),
     };
     recordMutation(request, `dogs/${id}`);
     return jsonResponse({ ok: true });
@@ -485,9 +555,32 @@ async function handleDogs(
   return methodNotAllowed(operation ? ["POST"] : ["GET", "PATCH"]);
 }
 
+function nextDogRevision(dog: DogProps): string {
+  return new Date(Math.max(Date.now(), Date.parse(dog.revision ?? "") + 1)).toISOString();
+}
+
+function mockDogPrecondition(request: Request, dog: DogProps, legacyRevision?: string): Response | null {
+  const actual = dog.revision;
+  const expected = request.headers.get("If-Match") ?? (legacyRevision ? `"${legacyRevision}"` : null);
+  if (!expected) return jsonResponse({ error: "Recarregue a ficha e revise antes de tentar novamente." }, 428);
+  if (expected !== `"${actual}"`) return jsonResponse({ error: "A ficha foi alterada por outra pessoa. Recarregue e revise antes de tentar novamente." }, 412);
+  return null;
+}
+
+function mockRevisionCheck(request: Request, revision: string | undefined, legacy?: string): Response | null {
+  const expected = request.headers.get("If-Match") ?? (legacy ? `"${legacy}"` : null);
+  if (!expected) return jsonResponse({ error: "Recarregue e revise antes de salvar." }, 428);
+  if (expected !== `"${revision ?? "absent"}"`) return jsonResponse({ error: "O registro mudou. Recarregue e revise." }, 412);
+  return null;
+}
+
+function nextRevision(previous?: string): string {
+  return new Date(Math.max(Date.now(), (Date.parse(previous ?? "") || 0) + 1)).toISOString();
+}
+
 async function handleRecyclePoints(request: Request, idSegment?: string): Promise<Response> {
   if (!idSegment) {
-    if (request.method === "GET") return jsonResponse(state.recyclePoints);
+    if (request.method === "GET") return mockPage(request, state.recyclePoints, "recycle_points");
     if (request.method !== "POST") return methodNotAllowed(["GET", "POST"]);
 
     const parsedInput = recyclePointInputSchema.safeParse(await readJson<unknown>(request));
@@ -497,7 +590,7 @@ async function handleRecyclePoints(request: Request, idSegment?: string): Promis
       );
     }
     const input = parsedInput.data;
-    const point = { ...input, schemaVersion: RECYCLE_POINT_DOCUMENT_SCHEMA_VERSION, id: `mock-recycle-${state.nextRecycleId++}`, ...publicationMetadata({}, input.publicationStatus) };
+    const point = { ...input, revision: nextRevision(), schemaVersion: RECYCLE_POINT_DOCUMENT_SCHEMA_VERSION, id: `mock-recycle-${state.nextRecycleId++}`, ...publicationMetadata({}, input.publicationStatus) };
     state.recyclePoints.push(point);
     recordMutation(request, `recycle_points/${point.id}`);
     return jsonResponse({ id: point.id }, 201);
@@ -507,9 +600,9 @@ async function handleRecyclePoints(request: Request, idSegment?: string): Promis
   const index = state.recyclePoints.findIndex((point) => point.id === id);
   if (index < 0) return jsonResponse({ error: "Recycle point not found." }, 404);
 
-  if (request.method === "GET") return jsonResponse({
-    ...state.recyclePoints[index], revision: state.recyclePoints[index].updatedAt ?? state.recyclePoints[index].publishedAt,
-  });
+  if (request.method === "GET") return revisionResponse({
+    ...state.recyclePoints[index], revision: state.recyclePoints[index].revision,
+  }, state.recyclePoints[index].revision);
   if (!supportsDocumentVersion(state.recyclePoints[index], RECYCLE_POINT_DOCUMENT_SCHEMA_VERSION)) {
     return jsonResponse({ error: "O ponto usa uma versão de dados mais recente ou inválida." }, 409);
   }
@@ -520,19 +613,21 @@ async function handleRecyclePoints(request: Request, idSegment?: string): Promis
         parsedUpdate.error.issues[0]?.message ?? "Atualização do ponto de coleta inválida.",
       );
     }
-    if (parsedUpdate.data.expectedUpdateTime && parsedUpdate.data.expectedUpdateTime !== (state.recyclePoints[index].updatedAt ?? state.recyclePoints[index].publishedAt)) {
-      return jsonResponse({ error: "O ponto foi alterado por outra pessoa. Recarregue antes de salvar." }, 409);
-    }
+    const precondition = mockRevisionCheck(request, state.recyclePoints[index].revision, parsedUpdate.data.expectedUpdateTime);
+    if (precondition) return precondition;
     const merged = recyclePointInputSchema.safeParse({ ...state.recyclePoints[index], ...parsedUpdate.data });
     if (!merged.success) return validationErrorResponse(merged.error.issues[0]?.message ?? "Ponto incompleto.");
     state.recyclePoints[index] = {
       ...state.recyclePoints[index], ...merged.data,
       ...publicationMetadata(state.recyclePoints[index], merged.data.publicationStatus), id,
+      revision: nextRevision(state.recyclePoints[index].revision),
     };
     recordMutation(request, `recycle_points/${id}`);
     return jsonResponse({ ok: true });
   }
   if (request.method === "DELETE") {
+    const precondition = mockRevisionCheck(request, state.recyclePoints[index].revision);
+    if (precondition) return precondition;
     state.recyclePoints.splice(index, 1);
     recordMutation(request, `recycle_points/${id}`);
     return noContentResponse();
@@ -541,11 +636,17 @@ async function handleRecyclePoints(request: Request, idSegment?: string): Promis
 }
 
 async function handleNotification(request: Request): Promise<Response> {
-  if (request.method === "GET") return jsonResponse(state.notification);
+  if (request.method === "GET") {
+    return revisionResponse(currentNotification(), state.notification?.revision);
+  }
+  if (!["PUT", "DELETE"].includes(request.method)) return methodNotAllowed(["GET", "PUT", "DELETE"]);
+  const precondition = mockRevisionCheck(request, state.notification?.revision);
+  if (precondition) return precondition;
   if (request.method === "PUT") {
     const input = await readJson<NotificationInput>(request);
     state.notification = {
       ...input,
+      revision: nextRevision(state.notification?.revision),
       target: "admin",
       updatedAt: new Date().toISOString(),
       author: MOCK_AUTHOR,
@@ -589,20 +690,22 @@ async function handleMedia(request: Request, operation: string): Promise<Respons
   return jsonResponse({ error: "Not found" }, 404);
 }
 
-export async function handleMockAdminRequest(request: Request): Promise<Response> {
+async function routeMockAdminRequest(request: Request): Promise<Response> {
   await Promise.resolve();
 
   const url = new URL(request.url);
   const segments = url.pathname.split("/").filter(Boolean);
 
   if (url.pathname === "/api/admin/system/settings") {
-    if (request.method === "GET") return jsonResponse(state.systemSettings);
+    if (request.method === "GET") return revisionResponse(state.systemSettings, state.systemSettings.revision);
     if (request.method !== "PATCH") return methodNotAllowed(["GET", "PATCH"]);
     const input = systemSettingsSchema.safeParse(await request.json().catch(() => null));
     if (!input.success) return jsonResponse({ error: "Configuração inválida." }, 400);
-    state.systemSettings = input.data;
+    const precondition = mockRevisionCheck(request, state.systemSettings.revision);
+    if (precondition) return precondition;
+    state.systemSettings = { ...input.data, revision: nextRevision(state.systemSettings.revision) };
     recordMutation(request, "system/settings");
-    return jsonResponse(state.systemSettings);
+    return revisionResponse(state.systemSettings, state.systemSettings.revision);
   }
 
   if (url.pathname === "/api/session") {
@@ -632,10 +735,11 @@ export async function handleMockAdminRequest(request: Request): Promise<Response
   if (url.pathname === "/api/admin/dashboard") {
     if (request.method !== "GET") return methodNotAllowed(["GET"]);
     const now = Date.now();
-    const expiringAdoptions = state.adoptions
+    const readable = state.adoptions.filter(readableAdoption);
+    const expiringAdoptions = readable
       .filter((adoption) => {
         const expiry = Date.parse(adoption.expiresAt);
-        return expiry >= now && expiry <= now + 5 * 86_400_000;
+        return expiry > now && expiry <= now + 5 * 86_400_000;
       })
       .map((adoption) => ({
         id: adoption.id,
@@ -650,24 +754,24 @@ export async function handleMockAdminRequest(request: Request): Promise<Response
         recycles: state.recyclePoints.length,
         publishedDogs: state.dogs.filter(dog => !isDogArchived(dog) && isPublished(dog)).length,
         publishedRecycles: state.recyclePoints.filter(isPublished).length,
-        adoptions: state.adoptions.length,
+        adoptions: readable.length,
         adoptionsViaSite: state.adoptionsViaSite,
       },
       expiringAdoptions,
-      notification: state.notification,
+      notification: currentNotification(),
     });
   }
 
   if (url.pathname === "/api/admin/adoptions") {
     if (request.method !== "GET") return methodNotAllowed(["GET"]);
-    return jsonResponse(state.adoptions.map(adoptionSummary));
+    return mockPage(request, state.adoptions.filter(readableAdoption).map(adoptionSummary), "adoptions", true);
   }
 
   if (segments[2] === "adoptions" && segments.length === 4) {
     if (request.method !== "GET") return methodNotAllowed(["GET"]);
     const adoption = state.adoptions.find((item) => item.id === segments[3]);
-    if (!adoption) return jsonResponse({ error: "Adoption application not found." }, 404);
-    return jsonResponse(adoption);
+    if (!adoption || !readableAdoption(adoption)) return jsonResponse({ error: "Adoption application not found." }, 404);
+    return revisionResponse(adoption, adoption.revision);
   }
 
   if (
@@ -678,6 +782,8 @@ export async function handleMockAdminRequest(request: Request): Promise<Response
     if (request.method !== "PATCH") return methodNotAllowed(["PATCH"]);
     const adoption = state.adoptions.find((item) => item.id === segments[3]);
     if (!adoption) return jsonResponse({ error: "Adoption application not found." }, 404);
+    const precondition = mockRevisionCheck(request, adoption.revision);
+    if (precondition) return precondition;
     const { status } = await readJson<{ status: AdoptionStatus }>(request);
     if (!["pending", "approved", "rejected"].includes(status)) return jsonResponse({ error: "Invalid status" }, 400);
     let update;
@@ -687,9 +793,9 @@ export async function handleMockAdminRequest(request: Request): Promise<Response
       if (error instanceof AdoptionTransitionError) return jsonResponse({ error: error.message }, 409);
       throw error;
     }
-    Object.assign(adoption, update);
+    Object.assign(adoption, update, { revision: nextRevision(adoption.revision) });
     recordMutation(request, `adoption_application/${adoption.id}`);
-    return jsonResponse({ ok: true, ...update });
+    return revisionResponse({ ok: true, ...update, revision: adoption.revision }, adoption.revision);
   }
 
   if (segments[2] === "dogs" && segments.length <= 5) {
@@ -710,11 +816,13 @@ export async function handleMockAdminRequest(request: Request): Promise<Response
 
   if (url.pathname === "/api/admin/system-keys") {
     if (request.method !== "GET") return methodNotAllowed(["GET"]);
-    return jsonResponse(state.systemKeys);
+    return revisionResponse(state.systemKeys, state.systemKeysRevision);
   }
 
   if (url.pathname === "/api/admin/system-keys/rotate") {
     if (request.method !== "POST") return methodNotAllowed(["POST"]);
+    const precondition = mockRevisionCheck(request, state.systemKeysRevision);
+    if (precondition) return precondition;
     state.systemKeys.forEach((key) => { key.active = false; });
     const number = state.systemKeys.length + 1;
     const created: SystemKey = {
@@ -726,8 +834,9 @@ export async function handleMockAdminRequest(request: Request): Promise<Response
       active: true,
     };
     state.systemKeys.unshift(created);
+    state.systemKeysRevision = nextRevision(state.systemKeysRevision);
     recordMutation(request, "system/keys");
-    return jsonResponse({ id: created.id, version: created.version }, 201);
+    return revisionResponse({ id: created.id, version: created.version }, state.systemKeysRevision, 201);
   }
 
   if (url.pathname === "/api/admin/audit-log") {
@@ -740,4 +849,21 @@ export async function handleMockAdminRequest(request: Request): Promise<Response
   }
 
   return jsonResponse({ error: "Not found" }, 404);
+}
+
+export async function handleMockAdminRequest(request: Request): Promise<Response> {
+  const requestId = crypto.randomUUID();
+  const response = await routeMockAdminRequest(request);
+  response.headers.set("X-Request-ID", requestId);
+  if (response.ok) return response;
+  let message = "Não foi possível concluir a operação.";
+  try {
+    const payload = await response.json() as { error?: unknown };
+    if (typeof payload.error === "string") message = payload.error;
+  } catch { /* Empty method errors use the fallback. */ }
+  const headers = new Headers(response.headers);
+  headers.delete("Content-Type");
+  headers.delete("Content-Length");
+  headers.delete("ETag");
+  return Response.json({ error: { code: errorCodeForStatus(response.status), message, requestId } }, { status: response.status, headers });
 }

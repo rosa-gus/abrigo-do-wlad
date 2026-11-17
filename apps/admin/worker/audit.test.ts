@@ -6,7 +6,7 @@ const firestoreMocks = vi.hoisted(() => ({
   listDocuments: vi.fn(),
 }));
 
-vi.mock("../../../workers/shared/api/_lib/firestore", () => ({
+vi.mock("@abrigo/backend/adapters/firestore", () => ({
   createFirestoreClient: () => firestoreMocks,
 }));
 
@@ -47,6 +47,7 @@ test("audit events persist only structured operational metadata", async () => {
       actor: "administrator@example.test",
       actorRole: "administrator",
       createdAt: "2026-08-25T18:00:00.000Z",
+      expiresAt: new Date("2027-02-21T18:00:00.000Z"),
       durationMs: 13,
       method: "PATCH",
       outcome: "success",

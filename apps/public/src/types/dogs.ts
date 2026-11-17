@@ -1,3 +1,4 @@
+import type { PublicDog } from "@abrigo/contracts/public";
 export const CORES_MAP: Record<string, string> = {
   caramelo: "Caramelo (Patrimônio Nacional)",
   pretinho: "Pretinho (Nada Básico)",
@@ -100,35 +101,9 @@ export const DOG_HEALTH_STATUSES = [
 
 export type DogHealthStatus = (typeof DOG_HEALTH_STATUSES)[number];
 
-export interface Dog {
-  id: string;
-  publicSlug: string;
-  nome: string;
-  idade: string;
-  cateIdade: "filhote" | "adulto" | "idoso";
-  sexo: string;
-  temperamento: string;
-  tags: string[];
-  status: DogHealthStatus;
-  fotos: string[];
-  cor: string;
-  instaLink?: string;
-  descricaoCompleta?: string;
-  createdAt?: Date;
-}
-
-export interface DogTombstone {
-  schemaVersion: 1;
-  id: string;
-  publicSlug: string;
-  nome: string;
-  status: "adopted" | "unavailable";
-  removedAt: string;
-}
-
-export type DogProfile =
-  | { state: "available"; dog: Dog }
-  | { state: "unavailable"; tombstone: DogTombstone };
+export interface Dog extends PublicDog<DogHealthStatus> { createdAt?: Date }
+export type { DogTombstone } from "@abrigo/contracts/public";
+export type DogProfile = import("@abrigo/contracts/public").DogProfile<Dog>;
 
 type FilterValue<T> = T | "all";
 

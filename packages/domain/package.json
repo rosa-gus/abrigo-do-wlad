@@ -1,0 +1,17 @@
+{
+  "name": "@abrigo/domain",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    "./admin/policies": "./src/admin/policies.ts",
+    "./adoptions/retention": "./src/adoptions/retention.ts",
+    "./adoptions/transitions": "./src/adoptions/transitions.ts",
+    "./document-schema": "./src/document-schema.ts",
+    "./dogs/archive": "./src/dogs/archive.ts",
+    "./publication": "./src/publication.ts"
+  },
+  "dependencies": {
+    "@abrigo/contracts": "*"
+  }
+}

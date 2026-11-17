@@ -1,0 +1,16 @@
+{
+  "name": "@abrigo/backend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "@abrigo/contracts": "*",
+    "@abrigo/domain": "*",
+    "jose": "^6.2.9",
+    "zod": "^4.6.7",
+    "@abrigo/media": "*"
+  }
+}

@@ -59,6 +59,7 @@ describe("admin entity contracts", () => {
     const result = dogEntitySchema.parse({
       ...validDogInput,
       id: 123,
+      documentId: "legacy-dog",
       tags: ["Dócil", "Sociável"],
     });
 
@@ -69,6 +70,7 @@ describe("admin entity contracts", () => {
     const result = dogEntitySchema.safeParse({
       ...validDogInput,
       id: 123,
+      documentId: "legacy-dog",
       idade: "aproximadamente dois anos",
     });
 
@@ -100,6 +102,7 @@ describe("admin entity contracts", () => {
     const result = dogEntitySchema.safeParse({
       ...validDogInput,
       id: 123,
+      documentId: "legacy-dog",
       temperamento: "a".repeat(MAX_DOG_TEMPERAMENT_LENGTH + 1),
     });
 
@@ -164,7 +167,7 @@ describe("publication contracts", () => {
     expect(draft.status).toBe("");
     expect(draft.sexo).toBe("");
     expect(draft.cateIdade).toBe("");
-    expect(dogEntitySchema.array().parse([{ ...draft, id: 1 }])[0]).toEqual({ ...draft, id: 1 });
+    expect(dogEntitySchema.array().parse([{ ...draft, id: 1, documentId: "legacy-dog" }])[0]).toEqual({ ...draft, id: 1, documentId: "legacy-dog" });
     expect(dogInputSchema.safeParse({ ...draft, publicationStatus: "published" }).success).toBe(false);
     expect(dogInputSchema.safeParse({ ...validDogInput, publicationStatus: "published" }).success).toBe(true);
   });

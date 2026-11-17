@@ -41,7 +41,7 @@ import {
 } from "../../components/AdoptionApplicationDetails";
 import {
   getAdoptionApplication,
-  getAdoptionApplications,
+  getAdoptionApplicationsPage,
   updateAdoptionStatus,
 } from "../../services/adoptions";
 import { ConfirmModal } from "../../components/ConfirmModal";
@@ -201,6 +201,7 @@ function getExpirationPresentation(
 
 export default function AdoptionsDashboard() {
   const [allowsNewRequests, setAllowsNewRequests] = useState<boolean | null>(null);
+  const [settingsRevision, setSettingsRevision] = useState<string | undefined>();
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const [settingsReloadToken, setSettingsReloadToken] = useState(0);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
@@ -209,12 +210,24 @@ export default function AdoptionsDashboard() {
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  async function loadMore() {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const page = await getAdoptionApplicationsPage<AdoptionRequestSummary>(nextCursor);
+      setRequests(current => [...current, ...page.items]);
+      setNextCursor(page.nextCursor);
+    } catch { setListError("Não foi possível carregar a próxima página."); }
+    finally { setLoadingMore(false); }
+  }
+
   const [selectedSummary, setSelectedSummary] =
     useState<AdoptionRequestSummary | null>(null);
   const [selectedReq, setSelectedReq] = useState<AdoptionRequest | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [activeReviewStep, setActiveReviewStep] = useState(0);
-  const detailsCache = useRef(new Map<string, AdoptionRequest>());
   const detailRequestToken = useRef(0);
   const reviewMainRef = useRef<HTMLDivElement>(null);
 
@@ -244,7 +257,7 @@ export default function AdoptionsDashboard() {
     let active = true;
     setSettingsError(null);
     void getSystemSettings().then((settings) => {
-      if (active) setAllowsNewRequests(settings.acceptingApplications);
+      if (active) { setAllowsNewRequests(settings.acceptingApplications); setSettingsRevision(settings.revision); }
     }).catch((error: unknown) => {
       if (active) setSettingsError(error instanceof ApiError
         ? error.message
@@ -259,7 +272,8 @@ export default function AdoptionsDashboard() {
     setIsSavingSettings(true);
     setSettingsError(null);
     try {
-      const settings = await updateSystemSettings(acceptingApplications);
+      const settings = await updateSystemSettings(acceptingApplications, settingsRevision);
+      setSettingsRevision(settings.revision);
       setAllowsNewRequests(settings.acceptingApplications);
     } catch (error: unknown) {
       setSettingsError(error instanceof ApiError
@@ -276,7 +290,9 @@ export default function AdoptionsDashboard() {
 
     async function fetchRequests() {
       try {
-        const data = await getAdoptionApplications<AdoptionRequestSummary>();
+        const page = await getAdoptionApplicationsPage<AdoptionRequestSummary>();
+        const data = page.items;
+        if (active) setNextCursor(page.nextCursor);
         const sortedData = [...data].sort((a, b) => {
           if (a.status === "pending" && b.status !== "pending") return -1;
           if (a.status !== "pending" && b.status === "pending") return 1;
@@ -306,17 +322,16 @@ export default function AdoptionsDashboard() {
     setIsUpdatingStatus(true);
 
     try {
-      const update = await updateAdoptionStatus(id, type);
+      const update = await updateAdoptionStatus(id, type, actionModal.req.revision);
       const updatedFields = {
         status: update.status,
+        revision: update.revision,
         expiresAt: update.expiresAt,
       };
 
       setRequests((prev) =>
         prev.map((r) => (r.id === id ? { ...r, ...updatedFields } : r)),
       );
-      const cached = detailsCache.current.get(id);
-      if (cached) detailsCache.current.set(id, { ...cached, ...updatedFields });
       setSelectedSummary((current) =>
         current?.id === id ? { ...current, ...updatedFields } : current,
       );
@@ -409,17 +424,10 @@ export default function AdoptionsDashboard() {
     setDetailError(null);
     setActiveReviewStep(0);
 
-    const cached = detailsCache.current.get(requestSummary.id);
-    if (cached) {
-      setSelectedReq(cached);
-      return;
-    }
-
     try {
       const detail = await getAdoptionApplication<AdoptionRequest>(
         requestSummary.id,
       );
-      detailsCache.current.set(requestSummary.id, detail);
       if (detailRequestToken.current === requestToken) setSelectedReq(detail);
     } catch (requestError: unknown) {
       if (detailRequestToken.current !== requestToken) return;
@@ -455,7 +463,7 @@ export default function AdoptionsDashboard() {
   const selectedStatus =
     selectedReq?.status ?? selectedSummary?.status ?? "pending";
   const selectedExpiration = getExpirationPresentation(
-    selectedSummary?.expiresAt,
+    selectedReq?.expiresAt ?? selectedSummary?.expiresAt,
   );
   const selectedWhatsAppLink = getWhatsAppLink(
     selectedReq?.telefone ?? selectedSummary?.telefone,
@@ -910,7 +918,7 @@ export default function AdoptionsDashboard() {
                       setActionModal({
                         isOpen: true,
                         type: "rejected",
-                        req: selectedSummary,
+                        req: selectedReq,
                       })
                     }
                   >
@@ -925,7 +933,7 @@ export default function AdoptionsDashboard() {
                       setActionModal({
                         isOpen: true,
                         type: "approved",
-                        req: selectedSummary,
+                        req: selectedReq,
                       })
                     }
                   >
@@ -947,7 +955,7 @@ export default function AdoptionsDashboard() {
                         setActionModal({
                           isOpen: true,
                           type: "pending",
-                          req: selectedSummary,
+                          req: selectedReq,
                         })
                       }
                     >
@@ -1003,7 +1011,12 @@ export default function AdoptionsDashboard() {
         }
       />
 
+      {!loading && nextCursor && <Button type="button" variant="outline" disabled={loadingMore} onClick={() => void loadMore()}>
+        {loadingMore ? "Carregando..." : "Carregar mais solicitações"}
+      </Button>}
+
       <ErrorModal
+        onReload={() => window.location.reload()}
         isOpen={operationError !== null}
         onClose={() => setOperationError(null)}
         message={operationError ?? undefined}

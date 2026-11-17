@@ -1,0 +1,26 @@
+{
+  "name": "@abrigo/contracts",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    "./admin": "./src/admin.ts",
+    "./adoption-form": "./src/adoption-form.ts",
+    "./adoption-recaptcha": "./src/adoption-recaptcha.ts",
+    "./adoptions": "./src/adoptions.ts",
+    "./audit": "./src/audit.ts",
+    "./dogs": "./src/dogs.ts",
+    "./entities": "./src/entities.ts",
+    "./errors": "./src/errors.ts",
+    "./migrations": "./src/migrations.ts",
+    "./notifications": "./src/notifications.ts",
+    "./publication": "./src/publication.ts",
+    "./recycle-points": "./src/recycle-points.ts",
+    "./system-keys": "./src/system-keys.ts",
+    "./system-settings": "./src/system-settings.ts",
+    "./public": "./src/public.ts"
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
+  }
+}

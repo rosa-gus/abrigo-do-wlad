@@ -26,14 +26,14 @@ import {
   dogSexSchema,
   formatDogAge,
   parseDogAge,
-} from "../../../shared/entities";
+} from "@abrigo/contracts/entities";
 import {
   deleteUploadedCloudinaryImage,
   DOG_IMAGE_ACCEPT,
   MAX_SOURCE_DOG_IMAGE_BYTES,
   uploadImageToCloudinary,
 } from "../../services/cloudinary";
-import type { PublicationStatus } from "../../../shared/entities";
+import type { PublicationStatus } from "@abrigo/contracts/entities";
 import { PublicationActions, PublicationSection } from "../Publication";
 import { SuccessModal } from "../SuccessModal";
 import { ErrorModal } from "../ErrorModal"; // <-- Importação do ErrorModal
@@ -320,6 +320,7 @@ export function DogForm({ initialData, onSubmit, title, buttonLabel }: DogFormPr
       />
 
       <ErrorModal
+        onReload={() => window.location.reload()}
         isOpen={errorInfo.show}
         onClose={() => setErrorInfo({ show: false, message: "" })}
         message={errorInfo.message}

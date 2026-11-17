@@ -1,275 +1,28 @@
+import { requestRouteForLog } from "./api-errors";
 import { z } from "zod";
-import { DOG_DOCUMENT_SCHEMA_VERSION, RECYCLE_POINT_DOCUMENT_SCHEMA_VERSION, supportsDocumentVersion } from "../../../workers/shared/document-schema";
-import { isPublished, publicationMetadata } from "../../../workers/shared/publication";
-import { systemSettingsSchema } from "../shared/system-settings";
-import { adoptionStatusUpdate, AdoptionTransitionError } from "../shared/adoption-retention";
-
-import {
-  dogInputSchema as dogSchema,
-  dogUpdateSchema,
-  recyclePointInputSchema as recycleSchema,
-  recyclePointUpdateSchema as recycleUpdateSchema,
-} from "../shared/entities";
-import { decryptDataBatch } from "../../../workers/shared/api/_lib/encryption";
-import {
-  createFirestoreClient,
-  FirestoreRestError,
-  type FirestoreDocument,
-} from "../../../workers/shared/api/_lib/firestore";
-import { updateDogFeed } from "../../../workers/shared/api/dogs/feed";
-import { updateHeroDog } from "../../../workers/shared/api/hero-dog/update";
-import { dogArchiveDates, isDogArchived } from "../../../workers/shared/api/dogs/archive";
-import {
-  deleteDogTombstone,
-  saveDogTombstone,
-  type DogTombstone,
-  type DogTombstoneInput,
-} from "../../../workers/shared/api/dogs/tombstone";
-import type { AccessIdentity } from "./access";
+import type { AccessIdentity } from "@abrigo/contracts/admin";
+import { hasAdminCapability } from "@abrigo/domain/admin/policies";
+import { AdoptionTransitionError } from "@abrigo/domain/adoptions/transitions";
+import { ApplicationError } from "@abrigo/backend/application/errors";
+import { AdoptionUnavailableError } from "@abrigo/backend/application/adoption-access";
+import { DogIdentityError } from "@abrigo/backend/application/dog-identity";
+import { FirestoreCursorError } from "@abrigo/backend/adapters/firestore";
+import { MediaAssetError } from "@abrigo/backend/adapters/admin/media-assets";
+import { CloudinaryUploadError } from "@abrigo/backend/adapters/admin/cloudinary";
+import { RevisionError } from "@abrigo/backend/http/revision";
+import { assertSameOrigin, jsonResponse, methodNotAllowed, parseJson } from "@abrigo/backend/http/admin-request";
+import { createAdminServices, productionDependencies } from "./composition";
+import type { AdminApiDependencies } from "./dependencies";
+import { adminRouteOperation, describeAdminMutation, matchAdminRoute } from "./routes/registry";
+import { routeDogs } from "./routes/dogs";
+import { routeRecycle } from "./routes/recycle-points";
+import { routeAdoptions } from "./routes/adoptions";
+import { routeSystem } from "./routes/system";
+import { routeMedia } from "./routes/media";
 import { handleMigrations } from "./migrations";
-import {
-  listAdminAuditEvents,
-  recordAdminAuditEvent,
-  type AdminAuditAction,
-  type AdminAuditEvent,
-  type AdminAuditEventInput,
-} from "./audit";
-import {
-  CloudinaryUploadError,
-  deleteCloudinaryImage,
-  publicIdFromUrl,
-  uploadCloudinaryImage,
-  type UploadedDogImage,
-} from "./cloudinary";
-import {
-  listSystemKeys,
-  rotateSystemKey,
-  type RotatedSystemKey,
-  type SystemKeyMetadata,
-} from "./system-keys";
-import {
-  deleteAdminNotification,
-  getAdminNotification,
-  notificationInputSchema,
-  saveAdminNotification,
-  type AdminNotification,
-  type NotificationInput,
-} from "./notifications";
-
-const MAX_BODY_BYTES = 256 * 1024;
-const MANAGED_COLLECTIONS = {
-  adoptions: "adoption_application",
-  dogs: "dogs",
-  recycle: "recycle_points",
-} as const;
-
-const httpsUrl = z.string().url().refine((value) => value.startsWith("https://"));
-const adoptionStatusSchema = z.object({ status: z.enum(["pending", "approved", "rejected"]) });
-const imageDeleteSchema = z.object({ imageUrl: httpsUrl });
-const archiveDogSchema = z.object({ reason: z.enum(["adopted_via_site", "other"]) });
-
-type StoredAdoption = {
-  sensitive?: unknown;
-  keyVersion?: unknown;
-  [key: string]: unknown;
-};
-
-function jsonResponse(status: number, body: unknown): Response {
-  return Response.json(body, {
-    status,
-    headers: {
-      "Cache-Control": "no-store",
-      "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
-      "X-Content-Type-Options": "nosniff",
-    },
-  });
-}
-
-function methodNotAllowed(allowed: string[]): Response {
-  return new Response(null, {
-    status: 405,
-    headers: { Allow: allowed.join(", "), "Cache-Control": "no-store" },
-  });
-}
-
-function assertSameOrigin(request: Request): void {
-  if (["GET", "HEAD", "OPTIONS"].includes(request.method)) return;
-  const origin = request.headers.get("Origin");
-  if (!origin || origin !== new URL(request.url).origin) {
-    throw new ApiError(403, "Cross-origin state change rejected.");
-  }
-}
-
-async function parseJson(request: Request): Promise<unknown> {
-  if (!request.headers.get("Content-Type")?.toLowerCase().startsWith("application/json")) {
-    throw new ApiError(415, "Content-Type must be application/json.");
-  }
-  const declaredLength = Number(request.headers.get("Content-Length") ?? 0);
-  if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES) {
-    throw new ApiError(413, "Request body is too large.");
-  }
-  const body = await request.text();
-  if (new TextEncoder().encode(body).byteLength > MAX_BODY_BYTES) {
-    throw new ApiError(413, "Request body is too large.");
-  }
-  try {
-    return JSON.parse(body) as unknown;
-  } catch {
-    throw new ApiError(400, "Request body is not valid JSON.");
-  }
-}
-
-class ApiError extends Error {
-  readonly status: number;
-
-  constructor(status: number, message: string) {
-    super(message);
-    this.name = "ApiError";
-    this.status = status;
-  }
-}
-
-function requireDeveloper(identity: AccessIdentity): void {
-  if (identity.role !== "developer") {
-    throw new ApiError(403, "Developer access required.");
-  }
-}
-
-export interface AdminApiDependencies {
-  listAdoptionApplications(env: Env): Promise<Record<string, unknown>[]>;
-  getAdoptionApplication(env: Env, id: string): Promise<Record<string, unknown>>;
-  consumeUploadRateLimit(env: Env, identity: AccessIdentity): Promise<boolean>;
-  listSystemKeys(env: Env): Promise<SystemKeyMetadata[]>;
-  rotateSystemKey(env: Env, identity: AccessIdentity): Promise<RotatedSystemKey>;
-  getAdminNotification(env: Env): Promise<AdminNotification | null>;
-  saveAdminNotification(
-    env: Env,
-    input: NotificationInput,
-    identity: AccessIdentity,
-  ): Promise<AdminNotification>;
-  deleteAdminNotification(env: Env, identity: AccessIdentity): Promise<void>;
-  listAdminAuditEvents(env: Env): Promise<AdminAuditEvent[]>;
-  recordAdminAuditEvent(env: Env, input: AdminAuditEventInput): Promise<void>;
-  uploadCloudinaryImage(request: Request, env: Env): Promise<UploadedDogImage>;
-  saveDogTombstone(env: Env, input: DogTombstoneInput): Promise<DogTombstone>;
-}
-
-async function consumeUploadRateLimit(
-  env: Env,
-  identity: AccessIdentity,
-): Promise<boolean> {
-  const rateLimiter = env.UPLOAD_RATE_LIMITER;
-  if (!rateLimiter) {
-    throw new Error("UPLOAD_RATE_LIMITER is not configured.");
-  }
-  const result = await rateLimiter.limit({
-    key: `admin-media:${identity.subject}`,
-  });
-  return result.success;
-}
-
-const productionDependencies: AdminApiDependencies = {
-  listAdoptionApplications: listAdoptions,
-  getAdoptionApplication: getAdoption,
-  consumeUploadRateLimit,
-  listSystemKeys,
-  rotateSystemKey,
-  getAdminNotification,
-  saveAdminNotification,
-  deleteAdminNotification,
-  listAdminAuditEvents,
-  recordAdminAuditEvent,
-  uploadCloudinaryImage,
-  saveDogTombstone,
-};
-
-interface AuditDescriptor {
-  action: AdminAuditAction;
-  method: AdminAuditEventInput["method"];
-  target: string;
-}
-
-function safeAuditId(value: string | undefined): string {
-  return value && /^[A-Za-z0-9_-]{1,128}$/.test(value) ? value : "invalid";
-}
-
-function describeAuditedMutation(request: Request): AuditDescriptor | null {
-  if (!["POST", "PUT", "PATCH", "DELETE"].includes(request.method)) return null;
-  const method = request.method as AuditDescriptor["method"];
-  const { pathname } = new URL(request.url);
-  const segments = pathname.split("/").filter(Boolean);
-
-  if (pathname === "/api/admin/system/settings" && method === "PATCH") {
-    return { action: "adoption.availability.updated", method, target: "system/settings" };
-  }
-
-  if (pathname === "/api/admin/dogs" && method === "POST") {
-    return { action: "dog.created", method, target: "dogs" };
-  }
-  if (segments[2] === "dogs" && segments.length === 4) {
-    const target = `dogs/${safeAuditId(segments[3])}`;
-    if (method === "PATCH") return { action: "dog.updated", method, target };
-    if (method === "DELETE") return { action: "dog.deleted", method, target };
-  }
-  if (segments[2] === "dogs" && segments.length === 5 && method === "POST") {
-    const target = `dogs/${safeAuditId(segments[3])}`;
-    if (segments[4] === "archive") return { action: "dog.archived", method, target };
-    if (segments[4] === "restore") return { action: "dog.restored", method, target };
-  }
-  if (pathname === "/api/admin/recycle-points" && method === "POST") {
-    return { action: "recycle-point.created", method, target: "recycle_points" };
-  }
-  if (segments[2] === "recycle-points" && segments.length === 4) {
-    const target = `recycle_points/${safeAuditId(segments[3])}`;
-    if (method === "PATCH") {
-      return { action: "recycle-point.updated", method, target };
-    }
-    if (method === "DELETE") {
-      return { action: "recycle-point.deleted", method, target };
-    }
-  }
-  if (
-    segments[2] === "adoptions" &&
-    segments[4] === "status" &&
-    segments.length === 5 &&
-    method === "PATCH"
-  ) {
-    return {
-      action: "adoption.status.updated",
-      method,
-      target: `adoption_application/${safeAuditId(segments[3])}`,
-    };
-  }
-  if (pathname === "/api/admin/system-keys/rotate" && method === "POST") {
-    return { action: "system-key.rotated", method, target: "system/keys" };
-  }
-  if (pathname === "/api/admin/migrations/apply" && method === "POST") {
-    return { action: "migration.batch.applied", method, target: "_migrations" };
-  }
-  if (pathname === "/api/admin/notifications") {
-    if (method === "PUT") {
-      return { action: "notification.saved", method, target: "system/notifications" };
-    }
-    if (method === "DELETE") {
-      return { action: "notification.deleted", method, target: "system/notifications" };
-    }
-  }
-  if (pathname === "/api/admin/media/upload" && method === "POST") {
-    return { action: "media.uploaded", method, target: "cloudinary/dogs" };
-  }
-  if (pathname === "/api/admin/media/delete" && method === "POST") {
-    return { action: "media.deleted", method, target: "cloudinary/dogs" };
-  }
-
-  return null;
-}
-
-function requestAuditId(request: Request): string {
-  const rayId = request.headers.get("Cf-Ray")?.trim();
-  return rayId && /^[A-Za-z0-9:-]{1,128}$/.test(rayId)
-    ? rayId
-    : crypto.randomUUID();
-}
+import { errorCause, logApiFailure, normalizeApiResponse, operationalErrorResponse, requestIdFor } from "@abrigo/backend/http/admin-errors";
+export type { AdminApiDependencies } from "./dependencies";
+type AuditDescriptor = NonNullable<ReturnType<typeof describeAdminMutation>>;
 
 async function scheduleAuditRecord(
   request: Request,
@@ -289,21 +42,18 @@ async function scheduleAuditRecord(
   const auditPromise = dependencies.recordAdminAuditEvent(env, {
     action: descriptor.action,
     actor: identity.email,
+    actorSubject: identity.subject,
+    phase: "response",
     actorRole: identity.role,
     durationMs: Date.now() - startedAt,
     method: descriptor.method,
     outcome,
     path: new URL(request.url).pathname,
-    requestId: requestAuditId(request),
+    requestId: request.headers.get("X-Request-ID") ?? requestIdFor(request),
     status: response.status,
     target: descriptor.target,
   }).catch((error: unknown) => {
-    console.error(JSON.stringify({
-      event: "admin.audit.failed",
-      action: descriptor.action,
-      actor: identity.email,
-      message: error instanceof Error ? error.message : "Unknown failure",
-    }));
+    logApiFailure("admin.audit.failed", request.headers.get("X-Request-ID")!, error);
   });
 
   if (executionContext) {
@@ -313,568 +63,40 @@ async function scheduleAuditRecord(
   }
 }
 
-function numericDogId(value: string): number {
-  if (!/^\d{1,16}$/.test(value)) throw new ApiError(400, "Invalid dog ID.");
-  const id = Number(value);
-  if (!Number.isSafeInteger(id)) throw new ApiError(400, "Invalid dog ID.");
-  return id;
-}
-
-function documentId(value: string): string {
-  if (!/^[A-Za-z0-9_-]{1,128}$/.test(value)) {
-    throw new ApiError(400, "Invalid document ID.");
-  }
-  return value;
-}
-
-async function serializeAdoptions(
-  documents: FirestoreDocument<StoredAdoption>[],
-  env: Env,
-): Promise<Record<string, unknown>[]> {
-  const encryptedDocuments = documents.filter(
-    (document) =>
-      typeof document.data.sensitive === "string" &&
-      typeof document.data.keyVersion === "string",
-  );
-  const decrypted = await decryptDataBatch(
-    encryptedDocuments.map((document) => ({
-      encryptedData: document.data.sensitive as string,
-      keyVersion: document.data.keyVersion as string,
-    })),
-    env,
-  );
-  const decryptedByName = new Map(
-    encryptedDocuments.map((document, index) => [document.name, decrypted[index]]),
-  );
-
-  return documents.map((document) => {
-    const publicData = { ...document.data };
-    delete publicData.sensitive;
-    delete publicData.keyVersion;
-    return { id: document.id, ...publicData, ...decryptedByName.get(document.name) };
-  });
-}
-
-async function listAdoptions(env: Env): Promise<Record<string, unknown>[]> {
-  const documents = await createFirestoreClient(env).listDocuments<StoredAdoption>(
-    MANAGED_COLLECTIONS.adoptions,
-    {
-      direction: "DESCENDING",
-      orderBy: "submittedAt",
-    },
-  );
-  const adoptions = await serializeAdoptions(documents, env);
-
-  return adoptions.map((adoption) => ({
-    id: adoption.id,
-    nome_adotante: adoption.nome_adotante,
-    telefone: adoption.telefone,
-    animal_especifico: adoption.animal_especifico,
-    status: adoption.status,
-    submittedAt: adoption.submittedAt,
-    expiresAt: adoption.expiresAt,
-  }));
-}
-
-async function getAdoption(env: Env, id: string): Promise<Record<string, unknown>> {
-  const document = await createFirestoreClient(env).getDocument<StoredAdoption>(
-    `${MANAGED_COLLECTIONS.adoptions}/${id}`,
-  );
-  if (!document) throw new ApiError(404, "Adoption application not found.");
-
-  const [adoption] = await serializeAdoptions([document], env);
-  if (!adoption) throw new ApiError(404, "Adoption application not found.");
-  return adoption;
-}
-
-function serializeDocuments<T extends Record<string, unknown>>(
-  documents: FirestoreDocument<T>[],
-): Array<T & { documentId: string }> {
-  return documents.map((document) => ({ documentId: document.id, ...document.data }));
-}
-
-function scheduleDogFeedUpdate(
-  env: Env,
-  executionContext?: Pick<ExecutionContext, "waitUntil">,
-): void {
-  if (!executionContext) return;
-  executionContext.waitUntil(
-    updateDogFeed(env).catch((error: unknown) => {
-      console.error(JSON.stringify({
-        event: "admin.dogs-feed.refresh.failed",
-        message: error instanceof Error ? error.message : "Unknown failure",
-      }));
-    }),
-  );
-}
-
-function scheduleHeroDogUpdate(
-  env: Env,
-  executionContext?: Pick<ExecutionContext, "waitUntil">,
-): void {
-  if (!executionContext) return;
-  executionContext.waitUntil(updateHeroDog(env).then((result) => {
-    if (result.status >= 400) {
-      console.error(JSON.stringify({ event: "admin.hero-dog.refresh.failed", status: result.status }));
-    }
-  }));
-}
-
-async function handleDogs(
-  request: Request,
-  env: Env,
-  pathId?: string,
-  executionContext?: Pick<ExecutionContext, "waitUntil">,
-  persistDogTombstone: AdminApiDependencies["saveDogTombstone"] = saveDogTombstone,
-  identity?: AccessIdentity,
-  operation?: "archive" | "restore",
-): Promise<Response> {
-  const firestore = createFirestoreClient(env);
-  if (!pathId) {
-    if (request.method === "GET") {
-      const state = new URL(request.url).searchParams.get("state") ?? "active";
-      if (state !== "active" && state !== "archived") {
-        throw new ApiError(400, "Invalid dog list state.");
-      }
-      const documents = await firestore.listDocuments<Record<string, unknown>>("dogs");
-      return jsonResponse(200, serializeDocuments(documents.filter((document) =>
-        isDogArchived(document.data) === (state === "archived")
-      )));
-    }
-    if (request.method === "POST") {
-      const dog = dogSchema.parse(await parseJson(request));
-      const id = Date.now();
-      await firestore.createDocument("dogs", { ...dog, id, schemaVersion: DOG_DOCUMENT_SCHEMA_VERSION, ...publicationMetadata({}, dog.publicationStatus) });
-      scheduleDogFeedUpdate(env, executionContext);
-      return jsonResponse(201, { id });
-    }
-    return methodNotAllowed(["GET", "POST"]);
-  }
-
-  const id = numericDogId(pathId);
-  if (operation && request.method !== "POST") return methodNotAllowed(["POST"]);
-  if (!operation && !["GET", "PATCH", "DELETE"].includes(request.method)) {
-    return methodNotAllowed(["GET", "PATCH", "DELETE"]);
-  }
-  const parsedUpdate = request.method === "PATCH"
-    ? dogUpdateSchema.parse(await parseJson(request))
-    : null;
-  const document = await firestore.findFirstDocumentByField<Record<string, unknown>>("dogs", "id", id);
-  if (!document) throw new ApiError(404, "Dog not found.");
-
-  if (request.method === "GET") return jsonResponse(200, { ...document.data, id, revision: document.updateTime });
-  if (!supportsDocumentVersion(document.data, DOG_DOCUMENT_SCHEMA_VERSION)) {
-    throw new ApiError(409, "A ficha usa uma versão de dados mais recente ou inválida. Atualize a aplicação antes de editar.");
-  }
-  if (request.method === "PATCH") {
-    if (isDogArchived(document.data)) throw new ApiError(409, "Archived dogs cannot be edited.");
-    if (!parsedUpdate) throw new ApiError(400, "Invalid request");
-    if (parsedUpdate.expectedUpdateTime && parsedUpdate.expectedUpdateTime !== document.updateTime) {
-      throw new ApiError(409, "A ficha foi alterada por outra pessoa. Recarregue antes de salvar.");
-    }
-    const merged = dogSchema.parse({ ...document.data, ...parsedUpdate });
-    const update: Record<string, unknown> = {
-      ...merged, ...publicationMetadata(document.data, merged.publicationStatus),
-    };
-    if (parsedUpdate.fotos) {
-      const previousPhotos = Array.isArray(document.data.fotos)
-        ? document.data.fotos.filter((photo): photo is string => typeof photo === "string")
-        : [];
-      const retainedPhotos = Array.isArray(document.data.retainedPhotos)
-        ? document.data.retainedPhotos.filter((photo): photo is string => typeof photo === "string")
-        : [];
-      update.retainedPhotos = Array.from(new Set([
-        ...retainedPhotos,
-        ...previousPhotos.filter((photo) => !parsedUpdate.fotos?.includes(photo)),
-      ]));
-    }
-    await firestore.updateDocument(document.name, update, {
-      expectedUpdateTime: document.updateTime,
-    });
-    scheduleDogFeedUpdate(env, executionContext);
-    return jsonResponse(200, { ok: true });
-  }
-  if (request.method === "DELETE") {
-    if (isDogArchived(document.data) || document.data.publicationStatus !== "draft") {
-      throw new ApiError(409, "Somente rascunhos não arquivados podem ser excluídos.");
-    }
-    if (!document.updateTime) throw new ApiError(409, "Document version unavailable.");
-    const result = await firestore.deleteDocumentsIfUnchanged([
-      { name: document.name, updateTime: document.updateTime },
-    ]);
-    if (result.deleted !== 1) throw new ApiError(409, "Document changed; retry the operation.");
-    await deleteDogTombstone(env, document.id);
-    scheduleDogFeedUpdate(env, executionContext);
-    scheduleHeroDogUpdate(env, executionContext);
-    return new Response(null, { status: 204, headers: { "Cache-Control": "no-store" } });
-  }
-  if (operation === "archive" && request.method === "POST") {
-    if (!identity) throw new ApiError(500, "Missing identity.");
-    const { reason } = archiveDogSchema.parse(await parseJson(request));
-    if (isDogArchived(document.data)) {
-      if (document.data.archiveReason !== reason || typeof document.data.archivedAt !== "string") {
-        throw new ApiError(409, "Dog is already archived.");
-      }
-      if (isPublished(document.data) && typeof document.data.publishedAt === "string") await persistDogTombstone(env, {
-        id: document.id,
-        nome: typeof document.data.nome === "string" && document.data.nome.trim()
-          ? document.data.nome : "Cão",
-        status: reason === "adopted_via_site" ? "adopted" : "unavailable",
-        removedAt: document.data.archivedAt,
-      });
-      scheduleDogFeedUpdate(env, executionContext);
-      scheduleHeroDogUpdate(env, executionContext);
-      return jsonResponse(200, {
-        id,
-        archivedAt: document.data.archivedAt,
-        purgeAfter: document.data.purgeAfter,
-      });
-    }
-    const dates = dogArchiveDates();
-    const shouldCountAdoption = reason === "adopted_via_site"
-      && typeof document.data.adoptionCountedAt !== "string";
-    const archive = {
-      ...dates,
-      purgeAfter: new Date(dates.purgeAfter),
-      archiveReason: reason,
-      archivedBy: identity.email,
-      ...(shouldCountAdoption ? { adoptionCountedAt: dates.archivedAt } : {}),
-    };
-    if (shouldCountAdoption) {
-      await firestore.updateDocumentAndIncrementField(
-        document.name, archive, "system/statistics", "adoptionsCount", 1,
-        { expectedUpdateTime: document.updateTime },
-      );
-    } else {
-      await firestore.updateDocument(document.name, archive, {
-        expectedUpdateTime: document.updateTime,
-      });
-    }
-    if (isPublished(document.data) && typeof document.data.publishedAt === "string") await persistDogTombstone(env, {
-      id: document.id,
-      nome:
-        typeof document.data.nome === "string" && document.data.nome.trim()
-          ? document.data.nome
-          : "Cão",
-      status: reason === "adopted_via_site" ? "adopted" : "unavailable",
-      removedAt: dates.archivedAt,
-    });
-    scheduleDogFeedUpdate(env, executionContext);
-    scheduleHeroDogUpdate(env, executionContext);
-    return jsonResponse(200, { ...dates, id, archiveReason: reason, archivedBy: identity.email });
-  }
-  if (operation === "restore" && request.method === "POST") {
-    if (!isDogArchived(document.data)) {
-      await deleteDogTombstone(env, document.id);
-      scheduleDogFeedUpdate(env, executionContext);
-      return jsonResponse(200, { ok: true });
-    }
-    await firestore.updateDocument(document.name, {
-      archivedAt: null, purgeAfter: null, archiveReason: null, archivedBy: null,
-      publicationStatus: "draft", updatedAt: new Date().toISOString(),
-    }, { expectedUpdateTime: document.updateTime });
-    await deleteDogTombstone(env, document.id);
-    scheduleDogFeedUpdate(env, executionContext);
-    return jsonResponse(200, { ok: true });
-  }
-  return methodNotAllowed(operation ? ["POST"] : ["GET", "PATCH"]);
-}
-
-async function handleRecycle(request: Request, env: Env, pathId?: string): Promise<Response> {
-  const firestore = createFirestoreClient(env);
-  if (!pathId) {
-    if (request.method === "GET") {
-      const documents = await firestore.listDocuments("recycle_points");
-      return jsonResponse(200, documents.map((document) => ({ id: document.id, ...document.data })));
-    }
-    if (request.method === "POST") {
-      const point = recycleSchema.parse(await parseJson(request));
-      const result = await firestore.createDocument("recycle_points", { ...point, schemaVersion: RECYCLE_POINT_DOCUMENT_SCHEMA_VERSION, ...publicationMetadata({}, point.publicationStatus) });
-      return jsonResponse(201, { id: result.id });
-    }
-    return methodNotAllowed(["GET", "POST"]);
-  }
-
-  const id = documentId(pathId);
-  const document = await firestore.getDocument(`recycle_points/${id}`);
-  if (!document) throw new ApiError(404, "Recycle point not found.");
-  if (request.method === "GET") return jsonResponse(200, { ...document.data, id, revision: document.updateTime });
-  if (!supportsDocumentVersion(document.data, RECYCLE_POINT_DOCUMENT_SCHEMA_VERSION)) {
-    throw new ApiError(409, "O ponto usa uma versão de dados mais recente ou inválida. Atualize a aplicação antes de editar.");
-  }
-  if (request.method === "PATCH") {
-    const patch = recycleUpdateSchema.parse(await parseJson(request));
-    if (patch.expectedUpdateTime && patch.expectedUpdateTime !== document.updateTime) {
-      throw new ApiError(409, "O ponto foi alterado por outra pessoa. Recarregue antes de salvar.");
-    }
-    const merged = recycleSchema.parse({ ...document.data, ...patch });
-    await firestore.updateDocument(document.name, {
-      ...merged, ...publicationMetadata(document.data, merged.publicationStatus),
-    }, { expectedUpdateTime: document.updateTime });
-    return jsonResponse(200, { ok: true });
-  }
-  if (request.method === "DELETE") {
-    await firestore.deleteDocument(document.name);
-    return new Response(null, { status: 204 });
-  }
-  return methodNotAllowed(["GET", "PATCH", "DELETE"]);
-}
-
-async function handleDashboard(
-  env: Env,
-  dependencies: AdminApiDependencies,
-): Promise<Response> {
-  const firestore = createFirestoreClient(env);
-  const now = new Date();
-  const alertWindowEnd = new Date(now.getTime() + 5 * 86_400_000);
-  const [dogs, recycles, adoptions, expiringDocuments, statistics, notification] =
-    await Promise.all([
-      firestore.listDocuments<Record<string, unknown>>(MANAGED_COLLECTIONS.dogs)
-        .then((documents) => documents.filter((document) => !isDogArchived(document.data))),
-      firestore.listDocuments(MANAGED_COLLECTIONS.recycle),
-      firestore.countDocuments(MANAGED_COLLECTIONS.adoptions),
-      firestore.findDocumentsByTimestampRange<StoredAdoption>(
-        MANAGED_COLLECTIONS.adoptions,
-        "expiresAt",
-        now,
-        alertWindowEnd,
-      ),
-      firestore.getDocument<{ adoptionsCount?: unknown }>("system/statistics"),
-      dependencies.getAdminNotification(env),
-    ]);
-  const expiring = await serializeAdoptions(expiringDocuments, env);
-  const expiringAdoptions = expiring.flatMap((adoption) => {
-    if (typeof adoption.expiresAt !== "string") return [];
-    const expiresAt = Date.parse(adoption.expiresAt);
-    if (!Number.isFinite(expiresAt)) return [];
-    const daysLeft = Math.max(0, Math.ceil((expiresAt - now.getTime()) / 86_400_000));
-    return [{
-      id: String(adoption.id),
-      nome: typeof adoption.nome_adotante === "string" ? adoption.nome_adotante : "Candidato",
-      daysLeft,
-    }];
-  }).sort((left, right) => left.daysLeft - right.daysLeft);
-
-  return jsonResponse(200, {
-    metrics: {
-      dogs: dogs.length,
-      recycles: recycles.length,
-      publishedDogs: dogs.filter(({ data }) => isPublished(data)).length,
-      publishedRecycles: recycles.filter(({ data }) => isPublished(data)).length,
-      adoptions,
-      adoptionsViaSite:
-        typeof statistics?.data.adoptionsCount === "number"
-          ? statistics.data.adoptionsCount
-          : 0,
-    },
-    expiringAdoptions,
-    notification,
-  });
-}
-
-async function routeAdminApi(
-  request: Request,
-  env: Env,
-  identity: AccessIdentity,
-  dependencies: AdminApiDependencies = productionDependencies,
-  executionContext?: Pick<ExecutionContext, "waitUntil">,
-): Promise<Response> {
+async function routeAdminApi(request: Request, env: Env, identity: AccessIdentity, dependencies: AdminApiDependencies,
+  executionContext?: Pick<ExecutionContext, "waitUntil">): Promise<Response> {
   try {
+    const route = matchAdminRoute(new URL(request.url).pathname);
+    if (!route || route.id === "session") return jsonResponse(404, { error: "Not found" });
+    const operation = adminRouteOperation(route, request.method);
+    if (!operation) return methodNotAllowed(Object.keys(route.methods));
+    if (!hasAdminCapability(identity.role, operation.capability)) throw new ApplicationError(403, "Developer access required.");
     assertSameOrigin(request);
-    const url = new URL(request.url);
-    const segments = url.pathname.split("/").filter(Boolean);
-
-    if (url.pathname === "/api/admin/migrations" || url.pathname.startsWith("/api/admin/migrations/")) {
-      requireDeveloper(identity);
-      return await handleMigrations(request, env, identity, parseJson);
+    if (["migrations", "migrationPlan", "migrationApply"].includes(route.id)) return await handleMigrations(request, env, identity, parseJson, request.headers.get("X-Request-ID") ?? undefined);
+    const services = createAdminServices(request, env, identity, dependencies, executionContext);
+    const context = { request, route, identity, services };
+    switch (route.id) {
+      case "dogs": case "dog": case "dogArchive": case "dogRestore": case "identityInventory": return await routeDogs(context);
+      case "recyclePoints": case "recyclePoint": return await routeRecycle(context);
+      case "adoptions": case "adoption": case "adoptionStatus": return await routeAdoptions(context);
+      case "mediaUpload": case "mediaDelete": return await routeMedia(context);
+      case "dashboard": return jsonResponse(200, await services.dashboard.get());
+      case "settings": case "auditLog": case "systemKeys": case "rotateKey": case "notifications": return await routeSystem(context);
+      default: return jsonResponse(404, { error: "Not found" });
     }
-
-    if (url.pathname === "/api/admin/system/settings") {
-      if (request.method !== "GET" && request.method !== "PATCH") {
-        return methodNotAllowed(["GET", "PATCH"]);
-      }
-      const input = request.method === "PATCH"
-        ? systemSettingsSchema.parse(await parseJson(request))
-        : null;
-      const firestore = createFirestoreClient(env);
-      const document = await firestore.getDocument("system/settings");
-      if (input) {
-        if (document) {
-          await firestore.updateDocument(document.name, input, {
-            expectedUpdateTime: document.updateTime,
-          });
-        } else {
-          await firestore.createDocument("system", input, { documentId: "settings" });
-        }
-        return jsonResponse(200, input);
-      }
-      if (!document || document.data.acceptingApplications === undefined) {
-        return jsonResponse(200, { acceptingApplications: false });
-      }
-      if (typeof document.data.acceptingApplications !== "boolean") {
-        throw new ApiError(503, "O campo acceptingApplications de system/settings precisa ser um booleano (true ou false).");
-      }
-      return jsonResponse(200, { acceptingApplications: document.data.acceptingApplications });
-    }
-
-    if (url.pathname === "/api/admin/dashboard" && request.method === "GET") {
-      return handleDashboard(env, dependencies);
-    }
-    if (url.pathname === "/api/admin/adoptions" && request.method === "GET") {
-      return jsonResponse(200, await dependencies.listAdoptionApplications(env));
-    }
-    if (segments[2] === "adoptions" && segments.length === 4) {
-      if (request.method !== "GET") return methodNotAllowed(["GET"]);
-      const id = documentId(segments[3] ?? "");
-      return jsonResponse(200, await dependencies.getAdoptionApplication(env, id));
-    }
-    if (url.pathname === "/api/admin/audit-log") {
-      requireDeveloper(identity);
-      if (request.method !== "GET") return methodNotAllowed(["GET"]);
-      return jsonResponse(200, await dependencies.listAdminAuditEvents(env));
-    }
-    if (url.pathname === "/api/admin/system-keys") {
-      requireDeveloper(identity);
-      if (request.method !== "GET") return methodNotAllowed(["GET"]);
-      return jsonResponse(200, await dependencies.listSystemKeys(env));
-    }
-    if (url.pathname === "/api/admin/system-keys/rotate") {
-      requireDeveloper(identity);
-      if (request.method !== "POST") return methodNotAllowed(["POST"]);
-      return jsonResponse(201, await dependencies.rotateSystemKey(env, identity));
-    }
-    if (url.pathname === "/api/admin/notifications") {
-      if (request.method === "GET") {
-        return jsonResponse(200, await dependencies.getAdminNotification(env));
-      }
-      if (request.method === "PUT") {
-        requireDeveloper(identity);
-        const input = notificationInputSchema.parse(await parseJson(request));
-        return jsonResponse(
-          200,
-          await dependencies.saveAdminNotification(env, input, identity),
-        );
-      }
-      if (request.method === "DELETE") {
-        requireDeveloper(identity);
-        await dependencies.deleteAdminNotification(env, identity);
-        return new Response(null, {
-          status: 204,
-          headers: { "Cache-Control": "no-store" },
-        });
-      }
-      return methodNotAllowed(["GET", "PUT", "DELETE"]);
-    }
-    if (segments[2] === "adoptions" && segments[4] === "status" && segments.length === 5) {
-      if (request.method !== "PATCH") return methodNotAllowed(["PATCH"]);
-      const id = documentId(segments[3] ?? "");
-      const document = await createFirestoreClient(env).getDocument(`adoption_application/${id}`);
-      if (!document) throw new ApiError(404, "Adoption application not found.");
-      const { status } = adoptionStatusSchema.parse(await parseJson(request));
-      const update = adoptionStatusUpdate(document.data, status);
-      if (!document.updateTime) throw new ApiError(409, "A versão da solicitação não está disponível. Atualize a página.");
-      await createFirestoreClient(env).updateDocument(document.name, {
-        ...update,
-        expiresAt: new Date(update.expiresAt),
-      }, { expectedUpdateTime: document.updateTime });
-      return jsonResponse(200, { ok: true, ...update });
-    }
-    if (segments[2] === "dogs" && segments.length <= 5) {
-      const operation = segments.length === 5
-        && (segments[4] === "archive" || segments[4] === "restore")
-        ? segments[4] : undefined;
-      if (segments.length === 5 && !operation) return jsonResponse(404, { error: "Not found" });
-      return await handleDogs(
-        request,
-        env,
-        segments[3],
-        executionContext,
-        dependencies.saveDogTombstone,
-        identity,
-        operation,
-      );
-    }
-    if (segments[2] === "recycle-points" && segments.length <= 4) {
-      return await handleRecycle(request, env, segments[3]);
-    }
-    if (url.pathname === "/api/admin/media/upload") {
-      if (request.method !== "POST") return methodNotAllowed(["POST"]);
-      if (!await dependencies.consumeUploadRateLimit(env, identity)) {
-        const response = jsonResponse(429, {
-          error: "Limite de uploads excedido. Aguarde um minuto.",
-        });
-        response.headers.set("Retry-After", "60");
-        return response;
-      }
-      return jsonResponse(
-        201,
-        await dependencies.uploadCloudinaryImage(request, env),
-      );
-    }
-    if (url.pathname === "/api/admin/media/delete") {
-      if (request.method !== "POST") return methodNotAllowed(["POST"]);
-      const { imageUrl } = imageDeleteSchema.parse(await parseJson(request));
-      const cloudName = env.CLOUDINARY_CLOUD_NAME;
-      if (!cloudName) throw new ApiError(500, "Image service is not configured.");
-      let publicId: string;
-      try {
-        publicId = publicIdFromUrl(imageUrl, cloudName);
-      } catch {
-        throw new ApiError(400, "Invalid managed image URL.");
-      }
-      const dogs = await createFirestoreClient(env).listDocuments<Record<string, unknown>>("dogs");
-      if (dogs.some(({ data }) => !supportsDocumentVersion(data, DOG_DOCUMENT_SCHEMA_VERSION))) {
-        throw new ApiError(409, "Atualize a aplicação antes de excluir imagens de fichas com versões de dados mais recentes ou inválidas.");
-      }
-      const isSameImage = (photo: unknown): boolean => {
-        if (typeof photo !== "string") return false;
-        try {
-          return publicIdFromUrl(photo, cloudName) === publicId;
-        } catch {
-          // External and legacy URLs cannot identify an image in this account.
-          return false;
-        }
-      };
-      if (dogs.some(({ data }) =>
-        (Array.isArray(data.fotos) && data.fotos.some(isSameImage))
-        || (Array.isArray(data.retainedPhotos) && data.retainedPhotos.some(isSameImage))
-      )) {
-        throw new ApiError(409, "Image is linked to a dog.");
-      }
-      await deleteCloudinaryImage(imageUrl, env);
-      return jsonResponse(200, { ok: true });
-    }
-    return jsonResponse(404, { error: "Not found" });
-  } catch (error) {
+  } catch (caught) {
+    const error = errorCause(caught);
+    if (error instanceof FirestoreCursorError) return jsonResponse(400, { error: error.message });
     if (error instanceof z.ZodError) {
-      const dogCollectionLimitIssue = error.issues.find(
-        (issue) =>
-          (issue.path[0] === "fotos" || issue.path[0] === "tags")
-          && issue.code === "too_big",
-      );
-      return jsonResponse(400, {
-        error: dogCollectionLimitIssue?.message
-          ?? error.issues[0]?.message
-          ?? "Invalid request",
-        issues: error.issues,
-      });
+      const issue = error.issues.find(issue => (issue.path[0] === "fotos" || issue.path[0] === "tags") && issue.code === "too_big");
+      return jsonResponse(400, { error: issue?.message ?? error.issues[0]?.message ?? "Invalid request", issues: error.issues });
     }
+    if (error instanceof AdoptionUnavailableError) return jsonResponse(404, { error: error.message });
+    if (error instanceof DogIdentityError || error instanceof MediaAssetError || error instanceof RevisionError || error instanceof ApplicationError || error instanceof CloudinaryUploadError) return jsonResponse(error.status, { error: error.message });
     if (error instanceof AdoptionTransitionError) return jsonResponse(409, { error: error.message });
-    if (error instanceof ApiError) return jsonResponse(error.status, { error: error.message });
-    if (error instanceof CloudinaryUploadError) {
-      return jsonResponse(error.status, { error: error.message });
-    }
-    if (error instanceof FirestoreRestError && error.status === 404) {
-      return jsonResponse(404, { error: "Document not found" });
-    }
-    if (error instanceof FirestoreRestError && (error.status === 409 || error.status === 412)) {
-      return jsonResponse(409, { error: "Document changed; retry the operation." });
-    }
-    console.error(JSON.stringify({
-      event: "admin.api.error",
-      message: error instanceof Error ? error.message : "Unknown failure",
-    }));
-    return jsonResponse(500, { error: "Internal server error" });
+    const requestId = request.headers.get("X-Request-ID")!;
+    logApiFailure("admin.api.error", requestId, caught);
+    return operationalErrorResponse(caught, requestId, new URL(request.url).pathname === "/api/admin/dashboard");
   }
 }
 
@@ -884,16 +106,24 @@ export async function handleAdminApi(
   identity: AccessIdentity,
   dependencies: AdminApiDependencies = productionDependencies,
   executionContext?: Pick<ExecutionContext, "waitUntil">,
+  requestId: string = requestIdFor(request),
 ): Promise<Response> {
   const startedAt = Date.now();
-  const auditDescriptor = describeAuditedMutation(request);
-  const response = await routeAdminApi(
+  const headers = new Headers(request.headers);
+  headers.set("X-Request-ID", requestId);
+  request = new Request(request, { headers });
+  const auditDescriptor = describeAdminMutation(request);
+  console.info(JSON.stringify({ event: "admin.api.request", requestId, method: request.method, route: requestRouteForLog(request) }));
+  const response = await normalizeApiResponse(await routeAdminApi(
     request,
     env,
     identity,
     dependencies,
     executionContext,
-  );
+  ), requestId);
+
+  if (auditDescriptor?.action.startsWith("dog.") && response.ok) response.headers.set("X-Publication-State", "pending");
+  response.headers.set("X-Request-ID", request.headers.get("X-Request-ID")!);
 
   if (auditDescriptor) {
     await scheduleAuditRecord(
@@ -908,5 +138,6 @@ export async function handleAdminApi(
     );
   }
 
+  console.info(JSON.stringify({ event: "admin.api.completed", requestId, status: response.status, durationMs: Date.now() - startedAt }));
   return response;
 }

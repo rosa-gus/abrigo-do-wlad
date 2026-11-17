@@ -47,7 +47,14 @@ export default defineConfig({
       provider: "istanbul",
       reporter: ["text", "html", "lcov"],
       reportsDirectory: "./coverage",
-      include: ["apps/public/src/**/*.{ts,tsx}", "workers/**/*.ts"],
+      include: [
+        "apps/public/src/**/*.{ts,tsx}",
+        "apps/admin/worker/**/*.ts",
+        "workers/**/*.ts",
+        "packages/contracts/src/**/*.ts",
+        "packages/domain/src/**/*.ts",
+        "packages/backend/src/**/*.ts",
+      ],
       exclude: [
         "**/*.test.{ts,tsx}",
         "apps/public/src/test/**",

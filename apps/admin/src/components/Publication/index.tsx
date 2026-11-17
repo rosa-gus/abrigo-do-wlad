@@ -4,7 +4,7 @@ import { Button } from "@jaci/ui/Button";
 import { Card, CardBody } from "@jaci/ui/Card";
 import { Label } from "@jaci/ui/Label";
 import * as SelectComponent from "@jaci/ui/Select";
-import { PUBLICATION_LABELS, type PublicationStatus } from "../../../shared/entities";
+import { PUBLICATION_LABELS, type PublicationStatus } from "@abrigo/contracts/entities";
 import styles from "./Publication.module.css";
 
 const updatedAtFormatter = new Intl.DateTimeFormat("pt-BR", {

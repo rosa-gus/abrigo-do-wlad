@@ -3,6 +3,7 @@
   "references": [
     { "path": "./apps/public" },
     { "path": "./apps/admin" },
+    { "path": "./packages/backend" },
     { "path": "./tsconfig.node.json" }
   ]
 }

@@ -104,3 +104,24 @@ test("cron waits for both jobs and reports every failure", async () => {
   );
   assert.equal(cleanupFinished, true);
 });
+
+test("an outbox failure still awaits retention jobs and the daily refresh", async () => {
+  const completed: string[] = [];
+  const cleanup = async (label: string) => {
+    await Promise.resolve();
+    completed.push(label);
+    return { batches: 0, cutoff: new Date(controller.scheduledTime).toISOString(), deleted: 0, hasMore: false, matched: 0 };
+  };
+  const dependencies: CronDependencies = {
+    async processDogPublicationOutbox() { throw new Error("outbox unavailable"); },
+    async updateHeroDog() { completed.push("hero"); return { status: 200, body: { message: "ok" } }; },
+    async updateDogFeed() {
+      completed.push("feed");
+      return { schemaVersion: 2, version: "snapshot", generatedAt: new Date().toISOString(), dogs: [] };
+    },
+    cleanupExpiredAdoptionApplications: () => cleanup("adoptions"),
+    purgeArchivedDogs: () => cleanup("dogs"),
+  };
+  await assert.rejects(runCronJobs(controller, { ADOPTION_CLEANUP_MODE: "delete", DOG_PURGE_MODE: "delete" }, dependencies), /publication-outbox/);
+  assert.deepEqual(completed.sort(), ["adoptions", "dogs", "feed", "hero"]);
+});
