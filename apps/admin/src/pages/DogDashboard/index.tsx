@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { CircleAlert, Plus, Dog, RefreshCw } from "lucide-react";
 import { Button } from "@jaci/ui/Button";
 import { EmptyState } from "@jaci/ui/EmptyState";
-import { getDogs, archiveDog, deleteDraftDog, dogRouteId } from "../../services/dogs";
+import { getDogsPage, archiveDog, deleteDraftDog, dogRouteId } from "../../services/dogs";
 import { ListingFilters } from "../../components/ListingFilters";
 import { ConfirmModal } from "../../components/ConfirmModal";
 import { DogCard } from "../../components/DogCard";
@@ -24,6 +24,19 @@ export default function DogDashboard() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  async function loadMore() {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const page = await getDogsPage("active", nextCursor);
+      setDogs(current => [...current, ...page.items]);
+      setNextCursor(page.nextCursor);
+    } catch { setLoadError("Não foi possível carregar a próxima página. Tente novamente."); }
+    finally { setLoadingMore(false); }
+  }
+
 
   const [searchTerm, setSearchTerm] = useState("");
   const [publicationFilter, setPublicationFilter] = useState("all");
@@ -43,8 +56,10 @@ export default function DogDashboard() {
   useEffect(() => {
     let active = true;
 
-    getDogs()
-      .then((data) => {
+    getDogsPage()
+      .then((page) => {
+        const data = page.items;
+        if (active) setNextCursor(page.nextCursor);
         if (active) setDogs([...data].sort((a, b) =>
           (b.updatedAt ?? b.publishedAt ?? "").localeCompare(a.updatedAt ?? a.publishedAt ?? "")
           || b.documentId.localeCompare(a.documentId)
@@ -219,6 +234,13 @@ export default function DogDashboard() {
           />
         </>
       )}
+
+      {!loading && nextCursor && <div>
+        <p>A busca e os filtros consideram os registros carregados.</p>
+        <Button type="button" variant="outline" disabled={loadingMore} onClick={() => void loadMore()}>
+          {loadingMore ? "Carregando..." : "Carregar mais registros"}
+        </Button>
+      </div>}
 
       <ConfirmModal isOpen={draftToDelete !== null} onClose={() => setDraftToDelete(null)}
         onConfirm={() => void discardDraft()} title="Excluir rascunho?"

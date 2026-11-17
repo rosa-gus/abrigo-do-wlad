@@ -395,6 +395,30 @@ function recordMutation(request: Request, target: string): void {
   });
 }
 
+function mockPage<T extends { id?: string | number; documentId?: string; expiresAt?: string; publicationStatus?: string; status?: string }>(request: Request, data: T[], scope: string, byExpiry = false): Response {
+  const params = new URL(request.url).searchParams;
+  const limit = Number(params.get("limit") ?? 25);
+  const publication = params.get("publicationStatus");
+  const status = params.get("status");
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100 || (publication && !["draft", "published"].includes(publication)) || (status && !["pending", "approved", "rejected"].includes(status))) return jsonResponse({ error: "Invalid pagination filter." }, 400);
+  const key = (item: T) => `${byExpiry ? `${item.expiresAt}:` : ""}${item.documentId ?? item.id}`;
+  const bound = JSON.stringify({ scope, publication, status });
+  let after = "";
+  if (params.has("cursor")) {
+    try {
+      const cursor = JSON.parse(decodeURIComponent(atob(params.get("cursor")!)));
+      if (cursor.scope !== bound || typeof cursor.after !== "string") throw new Error();
+      after = cursor.after;
+    } catch { return jsonResponse({ error: "Invalid pagination cursor." }, 400); }
+  }
+  const ordered = data.filter(item => (!publication || item.publicationStatus === publication) && (!status || item.status === status))
+    .sort((left, right) => key(left) < key(right) ? -1 : key(left) > key(right) ? 1 : 0)
+    .filter(item => key(item) > after);
+  const items = ordered.slice(0, limit);
+  const nextCursor = ordered.length > limit ? btoa(encodeURIComponent(JSON.stringify({ scope: bound, after: key(items.at(-1)!) }))) : null;
+  return jsonResponse({ items, nextCursor });
+}
+
 async function handleDogs(
   request: Request,
   idSegment?: string,
@@ -406,9 +430,9 @@ async function handleDogs(
       if (listState !== "active" && listState !== "archived") {
         return jsonResponse({ error: "Invalid dog list state." }, 400);
       }
-      return jsonResponse(state.dogs.filter((dog) =>
+      return mockPage(request, state.dogs.filter((dog) =>
         isDogArchived(dog) === (listState === "archived")
-      ));
+      ), `dogs:${listState}`);
     }
     if (request.method !== "POST") return methodNotAllowed(["GET", "POST"]);
 
@@ -555,7 +579,7 @@ function nextRevision(previous?: string): string {
 
 async function handleRecyclePoints(request: Request, idSegment?: string): Promise<Response> {
   if (!idSegment) {
-    if (request.method === "GET") return jsonResponse(state.recyclePoints);
+    if (request.method === "GET") return mockPage(request, state.recyclePoints, "recycle_points");
     if (request.method !== "POST") return methodNotAllowed(["GET", "POST"]);
 
     const parsedInput = recyclePointInputSchema.safeParse(await readJson<unknown>(request));
@@ -739,7 +763,7 @@ export async function handleMockAdminRequest(request: Request): Promise<Response
 
   if (url.pathname === "/api/admin/adoptions") {
     if (request.method !== "GET") return methodNotAllowed(["GET"]);
-    return jsonResponse(state.adoptions.filter(readableAdoption).map(adoptionSummary));
+    return mockPage(request, state.adoptions.filter(readableAdoption).map(adoptionSummary), "adoptions", true);
   }
 
   if (segments[2] === "adoptions" && segments.length === 4) {

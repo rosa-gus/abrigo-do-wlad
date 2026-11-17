@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
 import { FirestoreRestClient, FirestoreRestError, type FirestoreDocument } from "../../../workers/shared/api/_lib/firestore";
 import { decryptDataBatch } from "../../../workers/shared/api/_lib/encryption";
+import { recordAdminAuditEvent } from "./audit";
 import { handleAdminApi } from "./admin-api";
 import type { AccessIdentity } from "./access";
 
@@ -91,20 +92,20 @@ function adoption(id: string, expiresAt: unknown): FirestoreDocument<Record<stri
 test("production adoption list filters the query and decrypts only unexpired valid records", async () => {
   vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(now);
   const live = adoption("live", "2026-11-17T12:00:00Z");
-  const list = vi.spyOn(FirestoreRestClient.prototype, "listDocuments").mockResolvedValue([
+  const list = vi.spyOn(FirestoreRestClient.prototype, "pageDocuments").mockResolvedValue({ items: [
     adoption("exact", now.toISOString()), adoption("old", "2026-11-15T00:00:00Z"),
     adoption("invalid", "not-a-date"), adoption("missing", undefined), live,
-  ]);
+  ], nextCursor: null });
   vi.spyOn(console, "warn").mockImplementation(() => {});
   vi.mocked(decryptDataBatch).mockResolvedValue([{ nome_adotante: "Live candidate", telefone: "123", secretExtra: "not-in-summary" }]);
   const response = await handleAdminApi(request("adoptions"), env, identity);
   assert.equal(response.status, 200);
-  const body = await response.json() as Record<string, unknown>[];
+  const { items: body } = await response.json() as { items: Record<string, unknown>[] };
   assert.deepEqual(body.map(item => item.id), ["live"]);
   assert.equal(body[0].secretExtra, undefined);
   assert.equal(body[0].sensitive, undefined);
   assert.deepEqual(list.mock.calls[0], ["adoption_application", {
-    direction: "DESCENDING", timestampAfter: { fieldPath: "expiresAt", cutoff: now },
+    limit: 25, cursor: undefined, filters: [{ fieldPath: "expiresAt", op: "GREATER_THAN", value: now }], orderBy: "expiresAt", movingTimestampCutoff: true,
   }]);
   assert.deepEqual(vi.mocked(decryptDataBatch).mock.calls[0][0], [{ encryptedData: "encrypted-live", keyVersion: "key-1" }]);
 });
@@ -147,7 +148,7 @@ test("production dashboard filters expiring candidates before decrypting and cou
   const body = await response.json() as { metrics: { adoptions: number }; expiringAdoptions: { id: string }[] };
   assert.equal(body.metrics.adoptions, 1);
   assert.deepEqual(body.expiringAdoptions.map(item => item.id), ["live"]);
-  assert.deepEqual(count.mock.calls[0], ["adoption_application", { timestampAfter: { fieldPath: "expiresAt", cutoff: now } }]);
+  assert.ok(count.mock.calls.some(call => call[0] === "adoption_application" && call[1]?.timestampAfter?.cutoff.getTime() === now.getTime()));
   assert.deepEqual(vi.mocked(decryptDataBatch).mock.calls[0][0], [{ encryptedData: "encrypted-live", keyVersion: "key-1" }]);
 });
 
@@ -179,4 +180,14 @@ test("two real POST routes with a fixed clock create distinct canonical dog iden
     assert.equal(body.nome, name); assert.equal(body.documentId, created.documentId);
     assert.equal(response.headers.get("ETag"), `"${revision}"`);
   }
+});
+
+
+test("audit persistence failure denies sensitive detail before Firestore read or decryption", async () => {
+  vi.mocked(recordAdminAuditEvent).mockRejectedValueOnce(new Error("audit unavailable"));
+  const read = vi.spyOn(FirestoreRestClient.prototype, "getDocument");
+  const response = await handleAdminApi(request("adoptions/application-1"), env, identity);
+  assert.equal(response.status, 500);
+  assert.equal(read.mock.calls.length, 0);
+  assert.equal(vi.mocked(decryptDataBatch).mock.calls.length, 0);
 });

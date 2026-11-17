@@ -78,7 +78,7 @@ test("application uses Worker bindings and the authenticated developer, and reco
   await Promise.all(waits);
   // The migration engine receives the human actor rather than the service-account identity.
   expect(response.status).toBe(200);
-  expect(applyMigrationBatch).toHaveBeenCalledWith(env, developer.email);
+  expect(applyMigrationBatch).toHaveBeenCalledWith(env, developer.email, { subject: developer.subject, requestId: expect.any(String) });
   expect(recordAdminAuditEvent).toHaveBeenCalledWith(env, expect.objectContaining({
     action: "migration.batch.applied", actor: developer.email, outcome: "success",
   }));

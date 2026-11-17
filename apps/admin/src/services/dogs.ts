@@ -5,6 +5,7 @@ import {
   type DogUpdate,
 } from "../../shared/entities";
 import { ApiError, apiRequest, revisionHeaders } from "./api";
+import { pageQuery, type AdminPage } from "./pagination";
 
 export async function addDog(dogData: DogInput) {
   await apiRequest<{ id: string; documentId: string }>("/api/admin/dogs", {
@@ -14,8 +15,12 @@ export async function addDog(dogData: DogInput) {
   return true;
 }
 
+export async function getDogsPage(state: "active" | "archived" = "active", cursor?: string | null): Promise<AdminPage<Dog>> {
+  const page = await apiRequest<AdminPage<unknown>>(`/api/admin/dogs?state=${state}${pageQuery(cursor)}`);
+  return { items: dogEntitySchema.array().parse(page.items), nextCursor: page.nextCursor };
+}
 export async function getDogs(state: "active" | "archived" = "active"): Promise<Dog[]> {
-  return dogEntitySchema.array().parse(await apiRequest<unknown>(`/api/admin/dogs?state=${state}`));
+  return (await getDogsPage(state)).items;
 }
 
 export function dogRouteId(dog: Pick<Dog, "documentId">): string {

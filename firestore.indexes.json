@@ -1,0 +1,21 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "adoption_application",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "expiresAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "dogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "publicationStatus", "order": "ASCENDING" },
+        { "fieldPath": "archivedAt", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

@@ -30,12 +30,12 @@ export default defineConfig({
   ],
   test: {
     name: "worker",
-    include: ["workers/**/*.worker.test.ts"],
+    include: ["workers/**/*.worker.test.ts", "apps/admin/worker/**/*.worker.test.ts"],
     coverage: {
       provider: "istanbul",
       reporter: ["text", "html", "lcov"],
       reportsDirectory: "./coverage/worker",
-      include: ["workers/**/*.ts"],
+      include: ["workers/**/*.ts", "apps/admin/worker/**/*.ts"],
       exclude: ["**/*.test.ts", "**/*.worker.test.ts"],
     },
   },

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { createFirestoreClient } from "../../../workers/shared/api/_lib/firestore";
+import { createFirestoreClient, type FirestoreRestClient } from "../../../workers/shared/api/_lib/firestore";
 import type { AccessIdentity } from "./access";
 import { assertRevision } from "./revision";
 
@@ -82,8 +82,8 @@ export async function saveAdminNotification(
   identity: AccessIdentity,
   now: Date = new Date(),
   expected?: string,
+  firestore: FirestoreRestClient = createFirestoreClient(env),
 ): Promise<AdminNotification> {
-  const firestore = createFirestoreClient(env);
   const existing = await firestore.getDocument(NOTIFICATION_DOCUMENT);
   if (expected !== undefined) assertRevision(expected, existing?.updateTime);
   const updatedAt = now.toISOString();
@@ -122,8 +122,7 @@ export async function saveAdminNotification(
   return { ...notification, ...(revision ? { revision } : {}) };
 }
 
-export async function deleteAdminNotification(env: Env, identity: AccessIdentity, expected?: string): Promise<void> {
-  const firestore = createFirestoreClient(env);
+export async function deleteAdminNotification(env: Env, identity: AccessIdentity, expected?: string, firestore: FirestoreRestClient = createFirestoreClient(env)): Promise<void> {
   const existing = await firestore.getDocument(NOTIFICATION_DOCUMENT);
   if (expected !== undefined) assertRevision(expected, existing?.updateTime);
 

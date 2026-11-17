@@ -4,7 +4,7 @@ import { Badge } from "@jaci/ui/Badge";
 import { Button } from "@jaci/ui/Button";
 import { Input } from "@jaci/ui/Field";
 import { EmptyState } from "@jaci/ui/EmptyState";
-import { dogRouteId, getDogs, restoreDog } from "../../services/dogs";
+import { dogRouteId, getDogsPage, restoreDog } from "../../services/dogs";
 import type { DogProps } from "../../types/dogs";
 import { ErrorModal } from "../../components/ErrorModal";
 import styles from "./DogArchive.module.css";
@@ -28,11 +28,26 @@ export default function DogArchive() {
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [reloadToken, setReloadToken] = useState(0);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  async function loadMore() {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const page = await getDogsPage("archived", nextCursor);
+      setDogs(current => [...current, ...page.items]);
+      setNextCursor(page.nextCursor);
+    } catch { setLoadError("Não foi possível carregar a próxima página. Tente novamente."); }
+    finally { setLoadingMore(false); }
+  }
+
 
   useEffect(() => {
     let active = true;
-    getDogs("archived")
-      .then((data) => {
+    getDogsPage("archived")
+      .then((page) => {
+        const data = page.items;
+        if (active) setNextCursor(page.nextCursor);
         if (active) setDogs([...data].sort((a, b) =>
           (b.archivedAt ?? "").localeCompare(a.archivedAt ?? "")
         ));
@@ -131,6 +146,13 @@ export default function DogArchive() {
           ))}
         </div>
       )}
+
+      {!loading && nextCursor && <div>
+        <p>A busca e os filtros consideram os registros carregados.</p>
+        <Button type="button" variant="outline" disabled={loadingMore} onClick={() => void loadMore()}>
+          {loadingMore ? "Carregando..." : "Carregar mais registros"}
+        </Button>
+      </div>}
 
       <ErrorModal
         onReload={() => window.location.reload()}

@@ -41,7 +41,7 @@ import {
 } from "../../components/AdoptionApplicationDetails";
 import {
   getAdoptionApplication,
-  getAdoptionApplications,
+  getAdoptionApplicationsPage,
   updateAdoptionStatus,
 } from "../../services/adoptions";
 import { ConfirmModal } from "../../components/ConfirmModal";
@@ -210,6 +210,19 @@ export default function AdoptionsDashboard() {
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  async function loadMore() {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const page = await getAdoptionApplicationsPage<AdoptionRequestSummary>(nextCursor);
+      setRequests(current => [...current, ...page.items]);
+      setNextCursor(page.nextCursor);
+    } catch { setListError("Não foi possível carregar a próxima página."); }
+    finally { setLoadingMore(false); }
+  }
+
   const [selectedSummary, setSelectedSummary] =
     useState<AdoptionRequestSummary | null>(null);
   const [selectedReq, setSelectedReq] = useState<AdoptionRequest | null>(null);
@@ -277,7 +290,9 @@ export default function AdoptionsDashboard() {
 
     async function fetchRequests() {
       try {
-        const data = await getAdoptionApplications<AdoptionRequestSummary>();
+        const page = await getAdoptionApplicationsPage<AdoptionRequestSummary>();
+        const data = page.items;
+        if (active) setNextCursor(page.nextCursor);
         const sortedData = [...data].sort((a, b) => {
           if (a.status === "pending" && b.status !== "pending") return -1;
           if (a.status !== "pending" && b.status === "pending") return 1;
@@ -995,6 +1010,10 @@ export default function AdoptionsDashboard() {
           </>
         }
       />
+
+      {!loading && nextCursor && <Button type="button" variant="outline" disabled={loadingMore} onClick={() => void loadMore()}>
+        {loadingMore ? "Carregando..." : "Carregar mais solicitações"}
+      </Button>}
 
       <ErrorModal
         onReload={() => window.location.reload()}

@@ -11,6 +11,8 @@ export const DOG_IMAGE_ACCEPT = {
   "image/webp": [".webp"],
 };
 
+const uploadKeys = new WeakMap<File, string>();
+
 const ALLOWED_IMAGE_TYPES = new Set(Object.keys(DOG_IMAGE_ACCEPT));
 
 export async function uploadImageToCloudinary(file: File): Promise<string> {
@@ -21,10 +23,16 @@ export async function uploadImageToCloudinary(file: File): Promise<string> {
     throw new Error("Use uma imagem JPEG, PNG ou WebP.");
   }
 
+  let operationKey = uploadKeys.get(file);
+  if (!operationKey) {
+    operationKey = crypto.randomUUID();
+    uploadKeys.set(file, operationKey);
+  }
   const formData = new FormData();
   formData.append("file", file);
   const response = await adminFetch("/api/admin/media/upload", {
     method: "POST",
+    headers: { "Idempotency-Key": operationKey },
     body: formData,
     credentials: "same-origin",
   });

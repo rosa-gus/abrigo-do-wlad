@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { z } from "zod";
 
 import { encryptSystemKey } from "../../../workers/shared/api/_lib/encryption";
-import { createFirestoreClient, FirestoreRestError } from "../../../workers/shared/api/_lib/firestore";
+import { createFirestoreClient, FirestoreRestError, type FirestoreRestClient } from "../../../workers/shared/api/_lib/firestore";
 import { assertRevision } from "./revision";
 import type { AccessIdentity } from "./access";
 
@@ -64,10 +64,11 @@ export async function rotateSystemKey(
   env: Env,
   identity: AccessIdentity,
   expected?: string,
+  firestore: FirestoreRestClient = createFirestoreClient(env),
 ): Promise<RotatedSystemKey> {
   for (let attempt = 0; ; attempt++) {
     try {
-      return await rotateSystemKeyOnce(env, identity, expected);
+      return await rotateSystemKeyOnce(env, identity, expected, firestore);
     } catch (error) {
       const details = error instanceof FirestoreRestError ? error.details : undefined;
       const code = typeof details === "object" && details !== null && "error" in details
@@ -80,8 +81,7 @@ export async function rotateSystemKey(
   }
 }
 
-async function rotateSystemKeyOnce(env: Env, identity: AccessIdentity, expected?: string): Promise<RotatedSystemKey> {
-  const firestore = createFirestoreClient(env);
+async function rotateSystemKeyOnce(env: Env, identity: AccessIdentity, expected: string | undefined, firestore: FirestoreRestClient): Promise<RotatedSystemKey> {
   const document = await firestore.getDocument("system/keys");
   if (expected !== undefined) assertRevision(expected, document?.updateTime);
   const current = document ? keyDocumentSchema.parse(document.data) : undefined;

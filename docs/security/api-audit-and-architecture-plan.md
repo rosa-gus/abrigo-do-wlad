@@ -2,6 +2,8 @@
 
 Data: 16/11/2026. Escopo: APIs do repositório, com prioridade para o painel administrativo. Este documento registra os achados da auditoria, o estado das correções e o plano de evolução da arquitetura. As evidências originais descrevem o código anterior às correções; o campo **Status** identifica os achados implementados.
 
+O comportamento atual está descrito na [referência técnica de segurança](README.md). A01–A10 estão implementados; este plano permanece como referência para A11/P3, a extração arquitetural e as verificações operacionais pendentes. As etapas abaixo descrevem o plano original e podem combinar entregas já implementadas com trabalho ainda pendente.
+
 ## 1. Escopo, método e limites
 
 Foram examinados os entrypoints público, administrativo e cron; autenticação Access; roteamento e autorização administrativa; CRUD de cães e pontos de reciclagem; leitura e decisões sobre candidaturas; mídia; chaves; avisos; auditoria; acesso REST ao Firestore; publicação, feed e perfis públicos; retenção; serviço e mecanismos centrais de migração; configurações Wrangler, Rules, CI e testes relevantes.
@@ -29,7 +31,7 @@ Prioridades: **P1** = integridade/privacidade a tratar primeiro; **P2** = robust
 
 ### Matriz das APIs na auditoria inicial
 
-Todas as rotas abaixo passam pela autenticação do entrypoint; mutações exigem Origin igual ao da requisição. `Ambos` significa administrator e developer. A tabela registra o estado anterior às correções e não comprova políticas aplicadas no dashboard Access. O estado de A01–A04 está indicado na seção de achados.
+Todas as rotas abaixo passam pela autenticação do entrypoint; mutações exigem Origin igual ao da requisição. `Ambos` significa administrator e developer. A tabela registra o estado anterior às correções e não comprova políticas aplicadas no dashboard Access. O estado de A01–A10 está indicado na seção de achados.
 
 | Recurso | Métodos e caminhos | Papel atual | Observação da auditoria |
 | --- | --- | --- | --- |
@@ -54,7 +56,7 @@ As referências abreviadas `/rotate`, `/plan`, `/apply` e `/:id` nesta tabela s�
 
 ### A01 — P1: exclusão de mídia disputa com vinculação simultânea
 
-**Status: implementado.** `media-assets.ts` coordena cão e referências por commit atômico, com estados `ready/deleting/deleted`. A exclusão inventaria fotos legadas e retidas antes de bloquear novas vinculações; falhas externas deixam a operação retomável. Os dois ordenamentos da disputa são cobertos por testes no emulador Firestore. Contrato, compatibilidade e restrições de implantação: [registro de mídia](media-registry.md).
+**Status: implementado.** `media-assets.ts` coordena cão e referências por commit atômico, com estados `ready/deleting/deleted`. A exclusão inventaria fotos legadas e retidas antes de bloquear novas vinculações; falhas externas deixam a operação retomável. Os dois ordenamentos da disputa são cobertos por testes no emulador Firestore. Contrato, compatibilidade e restrições de implantação: [registro de mídia](README.md#referências-e-exclusão).
 
 Evidência original: `apps/admin/worker/admin-api.ts:814`, especialmente a leitura de todos os cães em `:825`, seguida de exclusão externa. O PATCH de cães aceita fotos sem consultar um estado transacional do asset; `apps/admin/shared/entities.ts` aceita URLs HTTPS.
 
@@ -66,7 +68,7 @@ Aceite: teste concorrente coordenado entre vinculação e exclusão; apenas uma 
 
 ### A02 — P1: identificador administrativo de cão pode colidir
 
-**Status: implementado.** Novas fichas usam o ID aleatório do documento, e o painel utiliza rotas `doc:<documentId>`. A busca numérica legada consulta até dois resultados e rejeita ambiguidades com 409. O inventário exclusivo de developer identifica duplicidades sem alterar dados. IDs e slugs públicos são preservados. Contrato e inventário: [identidade administrativa de cães](admin-dog-identities.md).
+**Status: implementado.** Novas fichas usam o ID aleatório do documento, e o painel utiliza rotas `doc:<documentId>`. A busca numérica legada consulta até dois resultados e rejeita ambiguidades com 409. O inventário exclusivo de developer identifica duplicidades sem alterar dados. IDs e slugs públicos são preservados. Contrato e inventário: [identidade administrativa de cães](README.md#firestore-rules-e-identidade-dos-registros).
 
 Evidência original: `apps/admin/worker/admin-api.ts:446` usa `Date.now()`; o documento Firestore recebe ID aleatório, mas a rota busca pelo campo numérico `id` com `findFirstDocumentByField`.
 
@@ -94,7 +96,7 @@ Aceite: cliente A lê, B altera, A tenta editar/excluir e recebe conflito sem pe
 
 ### A04 — P1: leituras de candidaturas não aplicam o vencimento
 
-**Status: implementado.** `adoption-access.ts` rejeita datas inválidas e vencidas antes da descriptografia e confere novamente o prazo após I/O. Listagem e contagem usam filtro temporal no Firestore; detalhe indisponível retorna 404. Cada abertura da ficha consulta a API novamente, sem reutilizar cache de dados pessoais. A limpeza mantém as precondições de versão e emite diagnóstico agregado de atraso superior a 24 horas. Política e monitoramento: [retenção de candidaturas](adoption-retention-policy.md).
+**Status: implementado.** `adoption-access.ts` rejeita datas inválidas e vencidas antes da descriptografia e confere novamente o prazo após I/O. Listagem e contagem usam filtro temporal no Firestore; detalhe indisponível retorna 404. Cada abertura da ficha consulta a API novamente, sem reutilizar cache de dados pessoais. A limpeza mantém as precondições de versão e emite diagnóstico agregado de atraso superior a 24 horas. Política e monitoramento: [retenção de candidaturas](README.md#retenção-e-acesso-a-candidaturas).
 
 Evidência original: `admin-api.ts:358` lista sem filtro de `expiresAt`; `:379` devolve detalhe sem esse filtro. `adoption-retention.ts` bloqueia alteração vencida, enquanto a remoção física depende do cron diário e da conclusão dos lotes.
 
@@ -106,6 +108,8 @@ Aceite: exatamente no vencimento, resumo e detalhe não expõem a candidatura; c
 
 ### A05 — P2: paginação interna lê coleções inteiras
 
+**Status: implementado.** As listagens usam cursor vinculado à consulta, páginas de 25 com teto 100 e DTOs explícitos; candidaturas são descriptografadas somente na página. Dashboard usa agregações e até 25 alertas. Inventários técnicos de IDs e referências legadas de mídia permanecem integrais para preservar a integridade; reduzir essas varreduras depende de inventário persistido e protocolo completo de referências. Contrato: [paginação](README.md#revisões-e-contratos-http).
+
 Evidência: `firestore.ts:517` percorre páginas até esgotar a consulta quando não há limite total. Listagens de cães, pontos e candidaturas, dashboard e verificação de referências de imagem não passam limite. `serializeAdoptions` (`admin-api.ts:330`) descriptografa os registros antes de reduzir ao resumo.
 
 Impacto: consumo de memória, chamadas e latência cresce com toda a coleção; uma chave/payload inválido pode derrubar uma listagem completa. A paginação interna de 500 documentos não é paginação da API. O resumo retorna poucos campos, mas o servidor processa muito mais informação sensível.
@@ -115,6 +119,8 @@ Correção proposta: consultas por cursor e ordenação estável, páginas padr�
 Aceite: com mais de 500 registros, uma página faz trabalho limitado e não percorre a coleção inteira. Todos os itens são navegáveis sem duplicar/perder itens com a ordenação escolhida. Campos não previstos não aparecem na resposta.
 
 ### A06 — P2: limite JSON do admin é aplicado depois do buffering
+
+**Status: implementado.** Leitor compartilhado limita bytes durante o consumo do stream e cancela ao exceder. JSON mantém 256 KiB, com 413 para excesso e 400 para JSON/UTF-8 inválido; multipart recebe limite próprio antes do parser. Contrato: [corpos e mídia](README.md#corpos-e-operações-de-mídia).
 
 Evidência: `admin-api.ts:103` verifica Content-Length quando disponível, mas usa `request.text()` antes de medir os bytes efetivos. O limite anunciado é 256 KiB. Upload usa `formData()` após conferir tamanho declarado.
 
@@ -126,6 +132,8 @@ Aceite: JSON chunked/sem Content-Length acima do teto recebe 413 antes de ser to
 
 ### A07 — P2: auditoria parcial e sem persistência garantida
 
+**Status: implementado.** Mutações críticas gravam evento no mesmo commit Firestore, com subject, papel, alvo canônico e request ID. Detalhe sensível exige auditoria persistida antes da leitura/descriptografia. Eventos recebem expiração de 180 dias; ativação remota do TTL e tratamento do histórico são requisitos operacionais. Contrato: [auditoria durável](README.md#auditoria-durável).
+
 Evidência: `describeAuditedMutation` (`admin-api.ts:196`) registra apenas mutações reconhecidas. `scheduleAuditRecord` (`:274`) grava separadamente, normalmente por `waitUntil`, e transforma falha em log. Não há evento de leitura de candidatura. Logs de negação do Access são separados.
 
 Impacto: não há trilha persistida de quem abriu dados pessoais; uma mutação pode ter sucesso sem evento durável. Isso é uma lacuna de rastreabilidade, não evidência de vazamento.
@@ -135,6 +143,8 @@ Correção proposta: definir matriz de eventos: detalhe sensível, decisões, ex
 Aceite: falha de persistência não perde silenciosamente evento crítico; entrega repetida não duplica o evento lógico; leitura sensível é rastreável; eventos de falha não carregam PII do payload.
 
 ### A08 — P2: publicação assíncrona sem recuperação durável e versão de feed mutável
+
+**Status: implementado.** Commits administrativos de cães criam outbox atômica, processada imediatamente e pelo cron com claims, tentativas e backoff. A reconciliação de tombstones, destaque e feed não repete contadores. Snapshots UUID imutáveis usam promoção por revisão/lease Firestore e ponteiro autoritativo; respostas sinalizam publicação pendente. Contrato: [publicação recuperável](README.md#publicação-recuperável).
 
 Evidência: `scheduleDogFeedUpdate` (`admin-api.ts:396`) registra falhas sem criar trabalho persistido. Arquivar/restaurar atualiza Firestore e KV em etapas. Em `dogs/feed.ts:236`, a versão é apenas a data; `:262` sobrescreve a mesma cópia versionada em toda atualização do dia.
 
@@ -146,6 +156,8 @@ Aceite: simular KV indisponível depois do commit, reiniciar o processamento e a
 
 ### A09 — P2: timeout de mídia e tratamento de erros não são uniformes
 
+**Status: implementado.** Chamadas Cloudinary têm deadline de 15 segundos incluindo leitura da resposta. Upload persiste identidade e hash antes da chamada e reconcilia resultados desconhecidos sem repetir a criação automaticamente. Exclusão permanece retomável. A API tem barreira operacional JSON com request ID separada da autenticação. Contrato: [operações de mídia](README.md#corpos-e-operações-de-mídia).
+
 Evidência: `cloudinary.ts:316` e `:464` fazem fetch e leitura de resposta sem o helper de timeout existente. Em `routeAdminApi`, `return handleDashboard(...)` retorna uma Promise sem `await` dentro do try; rejeições assíncronas desse caminho escapam do catch local. O entrypoint também retorna a Promise da API sem uma barreira final de erro operacional.
 
 Impacto: operações de mídia podem durar além do orçamento desejado; falha no dashboard pode sair sem o contrato JSON e sem o log padronizado da API. Timeout após upload/exclusão não prova que o provedor não executou a operação.
@@ -155,6 +167,8 @@ Correção proposta: deadline por chamada externa incluindo corpo da resposta; t
 Aceite: dashboard rejeitando uma consulta retorna JSON e request ID; Cloudinary travado aborta dentro do orçamento; upload com resposta perdida não gera automaticamente outro asset órfão.
 
 ### A10 — P2: lacunas na validação de segurança em runtime
+
+**Status: implementado.** Suíte administrativa em workerd usa o verificador real com chaves/JWKS sintéticos, cobrindo assinatura, issuer, audience, expiração, identidade, claims, papéis e origem. JWT exige RS256 e claims `exp`, `iat`, `iss`, `aud`, `sub` e `email`; admin integra as configurações de cobertura. Contrato e testes: [autenticação](README.md#autenticação-e-autorização) e [validação](README.md#dependências-e-validação).
 
 Evidência: `access.test.ts` injeta `verifyJwt`, validando principalmente o mapeamento/autorização. `vitest.worker.config.ts` inclui apenas `workers/**/*.worker.test.ts`, sem suíte runtime de `apps/admin/worker`. A cobertura configurada também exclui o Worker administrativo.
 
@@ -179,7 +193,7 @@ Aceite: rota desconhecida retorna 404, método conhecido incorreto retorna 405; 
 3. **Ambientes:** os arquivos Wrangler local e produção apontam para o mesmo ID de namespace KV. Sem ativar bindings remotos isso não prova compartilhamento de dados reais no desenvolvimento; configurações que permitam acesso remoto precisam de namespace próprio e verificação automática de destino.
 4. **Chaves:** comprovar entropia da MASTER_KEY, armazenamento, responsáveis pela rotação, recuperação testada e tratamento de comprometimento. Não alterar algoritmo ou formato criptográfico sem fixtures e leitura compatível com os dados existentes.
 5. **Observabilidade:** admin possui logs/traces; público mantém `observability.enabled: false` e cron não habilita traces. Definir eventos, amostragem e alertas por serviço, sem capturar PII ou credenciais.
-6. **Documentação:** `access-and-rules-rollout.md` ainda menciona leitura direta de `recycle_points`, enquanto as Rules atuais a negam. Corrigir o roteiro para evitar regressão em publicação futura.
+6. **Documentação — resolvido:** a [referência consolidada](README.md#firestore-rules-e-identidade-dos-registros) descreve as Rules atuais: somente `system/settings` permite leitura direta; `recycle_points` é acessado pela API.
 7. **Recuperação e retenção:** comprovar restauração, atraso do cron, limites por execução e retenção também de backups e logs. Definir valores com o responsável pelo produto; não inferir uma obrigação jurídica desta auditoria.
 
 ## 5. Arquitetura proposta

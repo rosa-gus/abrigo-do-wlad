@@ -65,6 +65,22 @@ describe("uploadImageToCloudinary", () => {
     await expect(uploadImageToCloudinary(original)).resolves.toContain("optimized.jpg");
   });
 
+  test("reuses the operation key after a lost response for the same File", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockRejectedValueOnce(new TypeError("response lost"))
+      .mockResolvedValueOnce(Response.json({ url: "https://res.cloudinary.com/test/recovered.jpg" }, { status: 201 }))
+      .mockResolvedValueOnce(Response.json({ url: "https://res.cloudinary.com/test/another.jpg" }, { status: 201 }));
+    const file = imageFile();
+    await expect(uploadImageToCloudinary(file)).rejects.toThrow("response lost");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await expect(uploadImageToCloudinary(file)).resolves.toContain("recovered.jpg");
+    await uploadImageToCloudinary(imageFile());
+    const keys = fetchMock.mock.calls.map(call => new Headers(call[1]?.headers).get("Idempotency-Key"));
+    expect(keys[0]).toMatch(/^[a-f0-9-]{36}$/);
+    expect(keys[1]).toBe(keys[0]);
+    expect(keys[2]).not.toBe(keys[0]);
+  });
+
   test("rejects unsupported and oversized files before making a request", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch");
     const unsupported = new File(["image"], "dog.gif", { type: "image/gif" });

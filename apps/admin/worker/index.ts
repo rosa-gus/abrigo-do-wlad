@@ -79,23 +79,34 @@ export async function handleAdminApi(
     });
   }
 
+  let identity: AccessIdentity;
   try {
-    const identity = await authenticate(request, env);
+    identity = await authenticate(request, env);
+  } catch (error) {
+    return unauthorizedResponse(error);
+  }
+  const requestId = crypto.randomUUID();
+  try {
     if (url.pathname === "/api/session") {
       return jsonResponse(200, {
         email: identity.email,
         role: identity.role,
       });
     }
-    return handleAuthenticatedAdminApi(
+    const response = await handleAuthenticatedAdminApi(
       request,
       env,
       identity,
       undefined,
       executionContext,
     );
-  } catch (error) {
-    return unauthorizedResponse(error);
+    response.headers.set("X-Request-ID", response.headers.get("X-Request-ID") ?? requestId);
+    return response;
+  } catch {
+    console.error(JSON.stringify({ event: "admin.api.unhandled", requestId }));
+    const response = jsonResponse(500, { error: "Internal server error", requestId });
+    response.headers.set("X-Request-ID", requestId);
+    return response;
   }
 }
 

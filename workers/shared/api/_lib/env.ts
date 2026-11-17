@@ -15,6 +15,7 @@ export type CloudflareEnv = Partial<Omit<Env, "KV" | "ASSETS" | "APP_ENV">> & {
   APP_ENV?: string;
   ADOPTION_CLEANUP_MODE?: string;
   DOG_PURGE_MODE?: string;
+  ADOPTION_RATE_LIMITER?: Pick<RateLimit, "limit">;
   KV?: KvBinding;
   ASSETS?: AssetsBinding;
 };

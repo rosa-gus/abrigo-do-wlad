@@ -202,7 +202,7 @@ test("adoption list returns only the summary contract provided by the repository
   );
 
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), summaries);
+  assert.deepEqual(await response.json(), { items: summaries, nextCursor: null });
 });
 
 test.each(["approved", "rejected", "pending"] as const)("adoption status %s saves its timestamp deadline with a read-version precondition", async (status) => {

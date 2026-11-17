@@ -157,8 +157,8 @@ describe("mock admin API", () => {
 
     const active = await handleMockAdminRequest(request("/api/admin/dogs"));
     const archived = await handleMockAdminRequest(request("/api/admin/dogs?state=archived"));
-    expect((await active.json() as Array<{ id: number }>).some((dog) => dog.id === 103)).toBe(false);
-    expect(await archived.json()).toEqual([expect.objectContaining({ id: 103, nome: "Simba" })]);
+    expect((await active.json() as { items: Array<{ id: number }> }).items.some((dog) => dog.id === 103)).toBe(false);
+    expect(await archived.json()).toEqual({ items: [expect.objectContaining({ id: 103, nome: "Simba" })], nextCursor: null });
     const dashboard = await handleMockAdminRequest(request("/api/admin/dashboard"));
     expect((await dashboard.json() as { metrics: { dogs: number; adoptionsViaSite: number } }).metrics)
       .toMatchObject({ dogs: 2, adoptionsViaSite: initialCount + 1 });
@@ -238,13 +238,13 @@ describe("mock admin API", () => {
 
     expect(updateResponse.status).toBe(200);
     const listResponse = await handleMockAdminRequest(request("/api/admin/adoptions"));
-    const adoptions = await listResponse.json() as Array<{ id: string; status: string }>;
+    const { items: adoptions } = await listResponse.json() as { items: Array<{ id: string; status: string }> };
     expect(adoptions.find((item) => item.id === "adoption-livia")?.status).toBe("approved");
   });
 
   test("lists adoption summaries and loads sensitive details on demand", async () => {
     const listResponse = await handleMockAdminRequest(request("/api/admin/adoptions"));
-    const summaries = await listResponse.json() as Array<Record<string, unknown>>;
+    const { items: summaries } = await listResponse.json() as { items: Array<Record<string, unknown>> };
 
     expect(summaries[0]).toMatchObject({
       id: "adoption-livia",
@@ -364,7 +364,7 @@ describe("mock admin API", () => {
       const original = await detail.json() as { expiresAt: string; revision: string };
       expect(detail.headers.get("ETag")).toBe(`"${original.revision}"`);
       vi.setSystemTime(new Date(original.expiresAt));
-      const list = await (await handleMockAdminRequest(request("/api/admin/adoptions"))).json() as { id: string; revision: string }[];
+      const { items: list } = await (await handleMockAdminRequest(request("/api/admin/adoptions"))).json() as { items: { id: string; revision: string }[] };
       expect(list.map(item => item.id)).not.toContain("adoption-livia");
       expect(list.every(item => Boolean(item.revision))).toBe(true);
       expect((await handleMockAdminRequest(request("/api/admin/adoptions/adoption-livia"))).status).toBe(404);

@@ -1,3 +1,6 @@
+import { readBodyBytesWithLimit, RequestBodyTooLargeError } from "../../../workers/shared/api/_lib/body";
+import { withUpstreamTimeout, UpstreamTimeoutError } from "../../../workers/shared/api/_lib/timeout";
+
 const DOG_IMAGE_FOLDER = "abrigo-do-wlad/dogs";
 const ALLOWED_FORMATS = "jpg,jpeg,png,webp";
 const UPLOAD_PROFILES = [
@@ -215,7 +218,7 @@ function inspectImage(bytes: Uint8Array): ImageMetadata | null {
   return pngDimensions(bytes) ?? webpDimensions(bytes) ?? jpegDimensions(bytes);
 }
 
-async function parseImageUpload(request: Request): Promise<{
+export async function parseImageUpload(request: Request): Promise<{
   file: File;
   metadata: ImageMetadata;
 }> {
@@ -237,8 +240,10 @@ async function parseImageUpload(request: Request): Promise<{
 
   let formData: FormData;
   try {
-    formData = await request.formData();
-  } catch {
+    const bytes = await readBodyBytesWithLimit(request, MAX_SOURCE_DOG_IMAGE_BYTES + MULTIPART_OVERHEAD_BYTES);
+    formData = await new Response(bytes, { headers: { "Content-Type": request.headers.get("Content-Type")! } }).formData();
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) throw new CloudinaryUploadError(413, "A imagem original deve ter no máximo 20 MB.");
     throw new CloudinaryUploadError(400, "O corpo multipart do upload é inválido.");
   }
   const entries = [...formData.entries()];
@@ -286,14 +291,22 @@ export async function uploadCloudinaryImage(
   request: Request,
   env: CloudinaryEnv,
   fetcher: typeof fetch = fetch,
+  operation?: { publicId: string; beforeAttempt(publicId: string): Promise<void> },
 ): Promise<UploadedDogImage> {
   const { file } = await parseImageUpload(request);
+  return uploadValidatedCloudinaryImage(file, env, fetcher, operation);
+}
+
+export async function uploadValidatedCloudinaryImage(
+  file: File, env: CloudinaryEnv, fetcher: typeof fetch = fetch,
+  operation?: { publicId: string; beforeAttempt(publicId: string): Promise<void> },
+): Promise<UploadedDogImage> {
   const cloudName = requireValue(env, "CLOUDINARY_CLOUD_NAME");
   const apiKey = requireValue(env, "CLOUDINARY_API_KEY");
   const apiSecret = requireValue(env, "CLOUDINARY_API_SECRET");
 
   for (const [profileIndex, profile] of UPLOAD_PROFILES.entries()) {
-    const publicId = crypto.randomUUID();
+    const publicId = operation ? `${operation.publicId}${profileIndex ? `-${profileIndex}` : ""}` : crypto.randomUUID();
     const expectedPublicId = `${DOG_IMAGE_FOLDER}/${publicId}`;
     const timestamp = Math.floor(Date.now() / 1000);
     const parameters = {
@@ -313,19 +326,11 @@ export async function uploadCloudinaryImage(
     }
     body.append("signature", signature);
 
-    const response = await fetcher(
+    await operation?.beforeAttempt(expectedPublicId);
+    const { response, payload } = await cloudinaryJson<CloudinaryUploadResponse>(
       `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/image/upload`,
-      { method: "POST", body },
+      { method: "POST", body }, fetcher,
     );
-    let payload: CloudinaryUploadResponse;
-    try {
-      payload = await response.json() as CloudinaryUploadResponse;
-    } catch {
-      throw new CloudinaryUploadError(
-        502,
-        "O serviço de imagens retornou uma resposta inválida.",
-      );
-    }
     const format = payload.format;
     const allowedResponseFormats = new Set(["jpg", "jpeg", "png", "webp"]);
     let returnedUrlMatches = false;
@@ -383,6 +388,7 @@ export async function uploadCloudinaryImage(
             message: error instanceof Error ? error.message : "Unknown failure",
             publicId: expectedPublicId,
           }));
+          throw error;
         },
       );
     }
@@ -461,11 +467,10 @@ async function destroyCloudinaryPublicId(
     signature,
     timestamp: String(timestamp),
   });
-  const response = await fetcher(
+  const { response, payload } = await cloudinaryJson<{ result?: string }>(
     `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/image/destroy`,
-    { method: "POST", body },
+    { method: "POST", body }, fetcher,
   );
-  const payload = (await response.json()) as { result?: string };
 
   if (!response.ok || !["ok", "not found"].includes(payload.result ?? "")) {
     throw new Error("Cloudinary image deletion failed.");
@@ -480,4 +485,40 @@ export async function deleteCloudinaryImage(
   const cloudName = requireValue(env, "CLOUDINARY_CLOUD_NAME");
   const publicId = publicIdFromUrl(imageUrl, cloudName);
   await destroyCloudinaryPublicId(publicId, env, fetcher);
+}
+
+/** One deadline covers connection, headers and the entire bounded JSON body. */
+async function cloudinaryJson<T>(url: string, init: RequestInit, fetcher: typeof fetch): Promise<{ response: Response; payload: T }> {
+  try {
+    return await withUpstreamTimeout(async signal => {
+      const response = await fetcher(url, { ...init, signal });
+      const bytes = await readBodyBytesWithLimit(response, 64 * 1024);
+      const payload = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)) as T;
+      return { response, payload };
+    }, "Cloudinary", 15_000);
+  } catch (error) {
+    if (error instanceof UpstreamTimeoutError) throw new CloudinaryUploadError(504, "O serviço de imagens excedeu o prazo. O resultado será reconciliado antes de repetir.");
+    if (error instanceof CloudinaryUploadError) throw error;
+    throw new CloudinaryUploadError(502, "O serviço de imagens retornou uma resposta inválida ou indisponível.");
+  }
+}
+
+/** Admin resource lookup reconciles a known public ID without another upload. */
+export async function reconcileCloudinaryImage(publicId: string, env: CloudinaryEnv, fetcher: typeof fetch = fetch): Promise<UploadedDogImage | null> {
+  if (!publicId.startsWith(`${DOG_IMAGE_FOLDER}/`)) throw new CloudinaryUploadError(400, "Invalid image identity.");
+  const cloudName = requireValue(env, "CLOUDINARY_CLOUD_NAME");
+  const { response, payload } = await cloudinaryJson<CloudinaryUploadResponse>(
+    `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/resources/image/upload/${encodeURIComponent(publicId)}`,
+    { headers: { Authorization: `Basic ${btoa(`${requireValue(env, "CLOUDINARY_API_KEY")}:${requireValue(env, "CLOUDINARY_API_SECRET")}`)}` } }, fetcher,
+  );
+  if (response.status === 404) return null;
+  if (!response.ok || payload.public_id !== publicId || payload.resource_type !== "image"
+    || typeof payload.secure_url !== "string" || publicIdFromUrl(payload.secure_url, cloudName) !== publicId
+    || !["jpg", "jpeg", "png", "webp"].includes(String(payload.format))
+    || typeof payload.bytes !== "number" || !Number.isSafeInteger(payload.bytes) || payload.bytes < 1 || payload.bytes > MAX_STORED_DOG_IMAGE_BYTES
+    || typeof payload.width !== "number" || !Number.isSafeInteger(payload.width) || payload.width < 1 || payload.width > 2560
+    || typeof payload.height !== "number" || !Number.isSafeInteger(payload.height) || payload.height < 1 || payload.height > 2560) {
+    throw new CloudinaryUploadError(502, "A imagem precisa de reconciliação operacional.");
+  }
+  return { publicId, url: payload.secure_url, bytes: payload.bytes, format: payload.format as UploadedDogImage["format"], width: payload.width, height: payload.height };
 }

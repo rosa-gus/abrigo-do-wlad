@@ -9,7 +9,8 @@ const firestore = vi.hoisted(() => ({
   updateDocument: vi.fn(async () => ({})),
   deleteDocumentsIfUnchanged: vi.fn(async () => ({})),
 }));
-vi.mock("../../../workers/shared/api/_lib/firestore", () => ({
+vi.mock("../../../workers/shared/api/_lib/firestore", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../../../workers/shared/api/_lib/firestore")>(),
   createFirestoreClient: vi.fn(() => firestore),
 }));
 

@@ -68,6 +68,35 @@ export interface FirestoreDocument<T extends Record<string, unknown>> {
   updateTime?: string;
 }
 
+export interface FirestoreQueryFilter {
+  fieldPath: string;
+  op: "EQUAL" | "GREATER_THAN" | "LESS_THAN_OR_EQUAL";
+  value: unknown;
+}
+
+export interface FirestorePageOptions {
+  limit?: number;
+  cursor?: string;
+  filters?: FirestoreQueryFilter[];
+  orderBy?: string;
+  /** Binds post-query filters (for example legacy archive state) to the cursor. */
+  scope?: string;
+  /** Moving retention cutoffs are checked again before returning plaintext. */
+  movingTimestampCutoff?: boolean;
+}
+
+export class FirestoreCursorError extends Error {}
+
+function queryWhere(filters: FirestoreQueryFilter[]): Record<string, unknown> | undefined {
+  if (!filters.length) return undefined;
+  const encoded = filters.map(({ fieldPath, op, value }) => {
+    assertFieldPath(fieldPath);
+    if (!["EQUAL", "GREATER_THAN", "LESS_THAN_OR_EQUAL"].includes(op)) throw new TypeError("Invalid filter operator.");
+    return { fieldFilter: { field: { fieldPath }, op, value: encodeFirestoreValue(value) } };
+  });
+  return encoded.length === 1 ? encoded[0] : { compositeFilter: { op: "AND", filters: encoded } };
+}
+
 export interface CreateDocumentOptions {
   serverTimestampFields?: string[];
   documentId?: string;
@@ -95,7 +124,14 @@ export interface UpdateDocumentOptions {
   expectedUpdateTime?: string;
 }
 
+export interface FirestoreCommitMetadata {
+  path: string;
+  data: Record<string, unknown>;
+}
+
 export interface FirestoreRestClientOptions {
+  /** Request-scoped metadata; receives only document paths, never payloads. */
+  commitMetadata?: (targets: readonly string[]) => FirestoreCommitMetadata[];
   fetcher?: typeof fetch;
   tokenProvider?: () => Promise<string>;
   documentIdGenerator?: () => string;
@@ -439,12 +475,14 @@ export class FirestoreRestClient {
   private readonly fetcher: typeof fetch;
   private readonly tokenProvider: () => Promise<string>;
   private readonly documentIdGenerator: () => string;
+  private readonly commitMetadata?: FirestoreRestClientOptions["commitMetadata"];
 
   constructor(
     projectId: string,
     options: FirestoreRestClientOptions = {},
     env?: CloudflareEnv,
   ) {
+    this.commitMetadata = options.commitMetadata;
     this.databaseRoot = `projects/${projectId}/databases/(default)`;
     this.documentsRoot = `${this.databaseRoot}/documents`;
     const fetcher = options.fetcher ?? fetch;
@@ -457,6 +495,20 @@ export class FirestoreRestClient {
   }
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
+    if (this.commitMetadata && path.endsWith("/documents:commit") && typeof init.body === "string") {
+      const body = JSON.parse(init.body) as { writes: Array<{ update?: { name: string }; delete?: string; transform?: { document: string } }> };
+      const targets = body.writes.map(write => (write.update?.name ?? write.delete ?? write.transform?.document ?? "").slice(this.documentsRoot.length + 1));
+      const extra = this.commitMetadata(targets).map(metadata => {
+        const parts = metadata.path.split("/");
+        if (parts.length !== 2 || parts.some(part => !/^[A-Za-z0-9_-]{1,128}$/.test(part))) {
+          throw new TypeError("Invalid commit metadata path.");
+        }
+        if (targets.includes(metadata.path)) throw new TypeError("Commit metadata duplicates a target.");
+        return { update: { name: `${this.documentsRoot}/${metadata.path}`, fields: encodeDocumentFields(metadata.data) }, currentDocument: { exists: false } };
+      });
+      if (body.writes.length + extra.length > MAX_COMMIT_WRITES) throw new RangeError("Too many commit writes including metadata.");
+      init = { ...init, body: JSON.stringify({ ...body, writes: [...body.writes, ...extra] }) };
+    }
     return withUpstreamTimeout(async (signal) => {
       const token = await this.tokenProvider();
       const response = await this.fetcher(
@@ -629,6 +681,53 @@ export class FirestoreRestClient {
     return document ? decodeDocument<T>(document) : null;
   }
 
+  /** Exactly one bounded runQuery; unlike listDocuments this never drains a collection. */
+  async pageDocuments<T extends Record<string, unknown>>(
+    collectionId: string,
+    options: FirestorePageOptions = {},
+  ): Promise<{ items: FirestoreDocument<T>[]; nextCursor: string | null }> {
+    assertCollectionId(collectionId);
+    const limit = options.limit ?? 25;
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new RangeError("Page size must be between 1 and 100.");
+    const filters = options.filters ?? [];
+    const orderBy = options.orderBy ?? "__name__";
+    assertFieldPath(orderBy);
+    const fields = orderBy === "__name__" ? ["__name__"] : [orderBy, "__name__"];
+    const scope = JSON.stringify({ root: this.documentsRoot, collectionId, orderBy, scope: options.scope,
+      filters: filters.map(filter => ({ ...filter, value: options.movingTimestampCutoff && filter.value instanceof Date ? "moving-cutoff" : filter.value })) });
+    let values: FirestoreValue[] | undefined;
+    if (options.cursor) {
+      try {
+        if (options.cursor.length > 8192) throw new Error();
+        const raw = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(options.cursor.replace(/-/g, "+").replace(/_/g, "/")), char => char.charCodeAt(0))));
+        if (raw.scope !== scope || !Array.isArray(raw.values) || raw.values.length !== fields.length) throw new Error();
+        const reference = raw.values.at(-1)?.referenceValue;
+        if (typeof reference !== "string" || !reference.startsWith(`${this.documentsRoot}/${collectionId}/`) || reference.slice(`${this.documentsRoot}/${collectionId}/`.length).includes("/")) throw new Error();
+        if (fields.length === 2 && (!raw.values[0] || Object.keys(raw.values[0]).length !== 1 || !("timestampValue" in raw.values[0]) || !Number.isFinite(Date.parse(raw.values[0].timestampValue)))) throw new Error();
+        values = raw.values;
+      } catch { throw new FirestoreCursorError("Invalid pagination cursor."); }
+    }
+    const where = queryWhere(filters);
+    const results = await this.request<RunQueryResult[]>(`${this.documentsRoot}:runQuery`, {
+      method: "POST", body: JSON.stringify({ structuredQuery: {
+        from: [{ collectionId }], ...(where ? { where } : {}),
+        orderBy: fields.map(fieldPath => ({ field: { fieldPath }, direction: "ASCENDING" })),
+        limit: limit + 1, ...(values ? { startAt: { values, before: false } } : {}),
+      } }),
+    });
+    const documents = results.flatMap(result => result.document ? [result.document] : []);
+    const page = documents.slice(0, limit);
+    const last = page.at(-1);
+    let nextCursor: string | null = null;
+    if (documents.length > limit && last) {
+      const cursorValues = fields.map(field => field === "__name__" ? { referenceValue: last.name } : last.fields?.[field]);
+      if (cursorValues.some(value => !value)) throw new Error("Missing pagination field.");
+      const bytes = new TextEncoder().encode(JSON.stringify({ scope, values: cursorValues }));
+      nextCursor = btoa(Array.from(bytes, byte => String.fromCharCode(byte)).join("")).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    }
+    return { items: page.map(document => decodeDocument<T>(document)), nextCursor };
+  }
+
   async listDocuments<T extends Record<string, unknown>>(
     collectionId: string,
     options: {
@@ -680,7 +779,7 @@ export class FirestoreRestClient {
 
   async countDocuments(
     collectionId: string,
-    options: { timestampAfter?: { fieldPath: string; cutoff: Date } } = {},
+    options: { timestampAfter?: { fieldPath: string; cutoff: Date }; filters?: FirestoreQueryFilter[] } = {},
   ): Promise<number> {
     assertCollectionId(collectionId);
     const timestampAfter = options.timestampAfter;
@@ -690,6 +789,10 @@ export class FirestoreRestClient {
         throw new TypeError("Firestore query cutoff must be a valid Date.");
       }
     }
+    const where = queryWhere([
+      ...(options.filters ?? []),
+      ...(timestampAfter ? [{ fieldPath: timestampAfter.fieldPath, op: "GREATER_THAN" as const, value: timestampAfter.cutoff }] : []),
+    ]);
     const results = await this.request<RunAggregationQueryResult[]>(
       `${this.documentsRoot}:runAggregationQuery`,
       {
@@ -699,10 +802,7 @@ export class FirestoreRestClient {
             aggregations: [{ alias: "count", count: {} }],
             structuredQuery: {
               from: [{ collectionId }],
-              ...(timestampAfter ? { where: { fieldFilter: {
-                field: { fieldPath: timestampAfter.fieldPath }, op: "GREATER_THAN",
-                value: encodeFirestoreValue(timestampAfter.cutoff),
-              } } } : {}),
+              ...(where ? { where } : {}),
             },
           },
         }),
@@ -728,6 +828,7 @@ export class FirestoreRestClient {
     fieldPath: string,
     start: Date,
     end: Date,
+    limit?: number,
   ): Promise<FirestoreDocument<T>[]> {
     assertCollectionId(collectionId);
     assertFieldPath(fieldPath);
@@ -769,6 +870,7 @@ export class FirestoreRestClient {
         ],
       },
       [fieldPath, "__name__"],
+      limit,
     );
   }
 

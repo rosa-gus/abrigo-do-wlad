@@ -3,6 +3,7 @@ import { createFirestoreClient } from "../_lib/firestore";
 import type { CloudflareEnv } from "../_lib/env";
 import { jsonResponse } from "../_lib/env";
 import { getKvStore } from "../_lib/kv";
+import { acquireFeedPublicationLease, promoteFeedSnapshot, currentFeedSnapshotVersion } from "./publication-state";
 import { isDogArchived } from "./archive";
 import { isPublished } from "../../publication";
 import {
@@ -84,6 +85,7 @@ type DogFeedSource = Pick<FirestoreRestClient, "listDocuments">;
 export interface DogFeedUpdateOptions {
   now?: Date;
   source?: DogFeedSource;
+  publicationRepository?: Pick<FirestoreRestClient, "getDocument" | "createDocument" | "updateDocument">;
 }
 
 function rotationVersion(date: Date): string {
@@ -233,7 +235,10 @@ export async function updateDogFeed(
   options: DogFeedUpdateOptions = {},
 ): Promise<DogFeed> {
   const now = options.now ?? new Date();
-  const version = rotationVersion(now);
+  const seed = rotationVersion(now);
+  const version = `${seed}_${crypto.randomUUID()}`;
+  const publicationRepository = options.publicationRepository ?? createFirestoreClient(env);
+  const lease = await acquireFeedPublicationLease(publicationRepository);
   const source = options.source ?? createFirestoreClient(env);
   const documents = await source.listDocuments<Record<string, unknown>>(
     DOGS_COLLECTION,
@@ -253,7 +258,7 @@ export async function updateDogFeed(
     schemaVersion: FEED_SCHEMA_VERSION,
     version,
     generatedAt: now.toISOString(),
-    dogs: seededShuffle(dogs, version),
+    dogs: seededShuffle(dogs, seed),
   };
   const kv = getKvStore(env);
 
@@ -262,6 +267,8 @@ export async function updateDogFeed(
   await kv.set(`${FEED_KEY_PREFIX}${version}`, feed, {
     expirationTtl: FEED_RETENTION_SECONDS,
   });
+  await promoteFeedSnapshot(publicationRepository, lease, version);
+  // Compatibility cache only. Readers use the Firestore pointer once initialized.
   await kv.set(CURRENT_FEED_KEY, feed);
 
   console.log(JSON.stringify({
@@ -277,15 +284,17 @@ async function readDogFeed(
   requestedVersion?: string,
 ): Promise<DogFeed | null> {
   const kv = getKvStore(env);
+  const authoritativeVersion = requestedVersion ? undefined : await currentFeedSnapshotVersion(createFirestoreClient(env));
+  const selectedVersion = requestedVersion ?? authoritativeVersion;
   const feed = await kv.get<unknown>(
-    requestedVersion
-      ? `${FEED_KEY_PREFIX}${requestedVersion}`
+    selectedVersion
+      ? `${FEED_KEY_PREFIX}${selectedVersion}`
       : CURRENT_FEED_KEY,
   );
   const normalizedFeed = normalizeStoredDogFeed(feed);
   if (
     normalizedFeed &&
-    (!requestedVersion || normalizedFeed.version === requestedVersion)
+    (!selectedVersion || normalizedFeed.version === selectedVersion)
   ) {
     return normalizedFeed;
   }
@@ -411,7 +420,7 @@ export async function getDogFeedResponse(
 
   const url = new URL(request.url);
   const requestedVersion = optionalFilter(url.searchParams.get("version"));
-  if (requestedVersion && !/^\d{4}-\d{2}-\d{2}$/.test(requestedVersion)) {
+  if (requestedVersion && !/^\d{4}-\d{2}-\d{2}(?:_[0-9a-f-]{36})?$/.test(requestedVersion)) {
     return jsonResponse(400, { message: "Invalid feed version." });
   }
 

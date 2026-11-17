@@ -75,6 +75,8 @@ const productionDependencies: AccessDependencies = {
     }
 
     const { payload } = await jwtVerify(token, getRemoteKeySet(teamDomain), {
+      algorithms: ["RS256"],
+      requiredClaims: ["exp", "iat", "iss", "aud", "sub", "email"],
       audience,
       issuer: `https://${teamDomain}`,
     });

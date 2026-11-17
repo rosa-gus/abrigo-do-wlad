@@ -1,10 +1,12 @@
 import type { CloudflareEnv } from "../shared/api/_lib/env";
 import { cleanupExpiredAdoptionApplications } from "../shared/api/adoption/cleanup";
+import { processDogPublicationOutbox } from "../shared/api/dogs/publication-outbox";
 import { updateDogFeed } from "../shared/api/dogs/feed";
 import { purgeArchivedDogs } from "../shared/api/dogs/purge";
 import { updateHeroDog } from "../shared/api/hero-dog/update";
 
 export interface CronDependencies {
+  processDogPublicationOutbox?: typeof processDogPublicationOutbox;
   cleanupExpiredAdoptionApplications: typeof cleanupExpiredAdoptionApplications;
   purgeArchivedDogs: typeof purgeArchivedDogs;
   updateDogFeed: typeof updateDogFeed;
@@ -12,6 +14,7 @@ export interface CronDependencies {
 }
 
 const productionDependencies: CronDependencies = {
+  processDogPublicationOutbox,
   cleanupExpiredAdoptionApplications,
   purgeArchivedDogs,
   updateDogFeed,
@@ -64,6 +67,11 @@ export async function runCronJobs(
         cutoff: scheduledAt,
         dryRun: dogPurgeMode === "dry-run",
       });
+  // Serialize the outbox before the daily refresh: both share the publication fence.
+  let publicationFailure: unknown;
+  try {
+    if (dependencies.processDogPublicationOutbox) await dependencies.processDogPublicationOutbox(env);
+  } catch (error) { publicationFailure = error; }
   const results = await Promise.allSettled([
     dependencies.updateHeroDog(env),
     dependencies.updateDogFeed(env, { now: scheduledAt }),
@@ -71,7 +79,7 @@ export async function runCronJobs(
     dogPurgePromise,
   ]);
   const [heroResult, dogFeedResult, cleanupResult, dogPurgeResult] = results;
-  const errors: string[] = [];
+  const errors: string[] = publicationFailure ? ["publication-outbox: processing failed"] : [];
 
   if (heroResult.status === "rejected") {
     errors.push(

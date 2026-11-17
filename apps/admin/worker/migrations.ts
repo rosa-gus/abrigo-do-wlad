@@ -18,6 +18,7 @@ const previewSchema = targetSchema.extend({
 export async function handleMigrations(
   request: Request, env: Env, identity: AccessIdentity,
   parseJson: (request: Request) => Promise<unknown>,
+  requestId: string = crypto.randomUUID(),
 ): Promise<Response> {
   const json = (status: number, body: unknown) => Response.json(body, {
     status, headers: { "Cache-Control": "no-store", "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'", "X-Content-Type-Options": "nosniff" },
@@ -47,7 +48,7 @@ export async function handleMigrations(
       }
       return json(200, await previewMigrations(env, cursor));
     }
-    return json(200, await applyMigrationBatch(env, identity.email));
+    return json(200, await applyMigrationBatch(env, identity.email, { subject: identity.subject, requestId }));
   } catch (error) {
     const locked = error instanceof Error && error.message === "Another migration runner holds the database lock.";
     const conflict = error instanceof Error && "status" in error && [409, 412].includes(Number(error.status));

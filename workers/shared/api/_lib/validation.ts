@@ -1,4 +1,4 @@
-import { HTTP_STATUS, MAX_REQUEST_SIZE, RATE_LIMIT_WINDOW } from "./constants";
+import { HTTP_STATUS, RATE_LIMIT_WINDOW } from "./constants";
 import {
   getClientIp,
   checkRateLimit,
@@ -10,56 +10,7 @@ import {
 import { sendError } from "./response";
 import type { CloudflareEnv } from "./env";
 
-export class RequestBodyTooLargeError extends Error {
-  constructor() {
-    super("Request body exceeds the configured size limit.");
-    this.name = "RequestBodyTooLargeError";
-  }
-}
-
-export async function readJsonBodyWithLimit(
-  request: Request,
-  maxBytes = MAX_REQUEST_SIZE,
-): Promise<unknown> {
-  if (!request.body) {
-    return JSON.parse("") as unknown;
-  }
-
-  const reader = request.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let totalBytes = 0;
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-
-      if (done) {
-        break;
-      }
-
-      totalBytes += value.byteLength;
-
-      if (totalBytes > maxBytes) {
-        await reader.cancel();
-        throw new RequestBodyTooLargeError();
-      }
-
-      chunks.push(value);
-    }
-  } finally {
-    reader.releaseLock();
-  }
-
-  const body = new Uint8Array(totalBytes);
-  let offset = 0;
-
-  for (const chunk of chunks) {
-    body.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-
-  return JSON.parse(new TextDecoder().decode(body)) as unknown;
-}
+export { RequestBodyTooLargeError, readBodyBytesWithLimit, readJsonBodyWithLimit } from "./body";
 
 export async function validateRequest(
   req: Request,

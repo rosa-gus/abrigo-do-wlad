@@ -5,6 +5,7 @@ import {
   type RecyclePointUpdate,
 } from "../../shared/entities";
 import { ApiError, apiRequest, revisionHeaders } from "./api";
+import { pageQuery, type AdminPage } from "./pagination";
 
 export async function addRecyclePoint(data: RecyclePointInput) {
   return (await apiRequest<{ id: string }>("/api/admin/recycle-points", {
@@ -13,10 +14,12 @@ export async function addRecyclePoint(data: RecyclePointInput) {
   })).id;
 }
 
+export async function getRecyclePointsPage(cursor?: string | null): Promise<AdminPage<RecyclePoint>> {
+  const page = await apiRequest<AdminPage<unknown>>(`/api/admin/recycle-points?${pageQuery(cursor)}`);
+  return { items: recyclePointEntitySchema.array().parse(page.items), nextCursor: page.nextCursor };
+}
 export async function getRecyclePoints(): Promise<RecyclePoint[]> {
-  return recyclePointEntitySchema.array().parse(
-    await apiRequest<unknown>("/api/admin/recycle-points"),
-  );
+  return (await getRecyclePointsPage()).items;
 }
 
 export async function deleteRecyclePoint(id: string, revision?: string) {

@@ -1,23 +1,23 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, expect, test, vi } from "vitest";
 import AdoptionsDashboard from ".";
-import { getAdoptionApplication, getAdoptionApplications, updateAdoptionStatus } from "../../services/adoptions";
+import { getAdoptionApplication, getAdoptionApplicationsPage, updateAdoptionStatus } from "../../services/adoptions";
 import { ApiError } from "../../services/api";
 
 vi.mock("../../services/adoptions", () => ({
-  getAdoptionApplications: vi.fn(),
+  getAdoptionApplicationsPage: vi.fn(),
   getAdoptionApplication: vi.fn(),
   updateAdoptionStatus: vi.fn(),
 }));
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(getAdoptionApplications).mockResolvedValue([{
+  vi.mocked(getAdoptionApplicationsPage).mockResolvedValue({ items: [{
     revision: "2026-11-16T10:00:00.123456Z",
     id: "application-1", nome_adotante: "Lívia", status: "approved",
     submittedAt: new Date(Date.now() - 86400000).toISOString(),
     expiresAt: new Date(Date.now() + 86400000).toISOString(),
-  }]);
+  }], nextCursor: null });
 });
 
 test("reconsideration requires confirmation and keeps the first decision deadline", async () => {
@@ -36,10 +36,10 @@ test("reconsideration requires confirmation and keeps the first decision deadlin
 }, 15_000);
 
 test("an expired completed application cannot be reconsidered", async () => {
-  vi.mocked(getAdoptionApplications).mockResolvedValue([{
+  vi.mocked(getAdoptionApplicationsPage).mockResolvedValue({ items: [{
     id: "expired", nome_adotante: "Lívia", status: "rejected",
     expiresAt: new Date(Date.now() - 86400000).toISOString(),
-  }]);
+  }], nextCursor: null });
   render(<AdoptionsDashboard />);
   await screen.findByRole("button", { name: "Consultar análise de Lívia" });
   expect(screen.queryByRole("button", { name: "Reconsiderar" })).not.toBeInTheDocument();
@@ -86,4 +86,20 @@ test("reopening a detail always revalidates access and does not reuse expired ca
   await screen.findByText("Adoption application not found.");
   expect(getAdoptionApplication).toHaveBeenCalledTimes(2);
   expect(screen.queryByText("Análise concluída")).not.toBeInTheDocument();
+});
+
+test("loads the next cursor only after an explicit action, including an empty first window", async () => {
+  vi.mocked(getAdoptionApplicationsPage)
+    .mockResolvedValueOnce({ items: [], nextCursor: "next-window" })
+    .mockResolvedValueOnce({ items: [{
+      id: "application-2", nome_adotante: "Joana", status: "pending",
+      expiresAt: new Date(Date.now() + 86400000).toISOString(),
+    }], nextCursor: null });
+  render(<AdoptionsDashboard />);
+  const next = await screen.findByRole("button", { name: "Carregar mais solicitações" });
+  expect(getAdoptionApplicationsPage).toHaveBeenCalledTimes(1);
+  fireEvent.click(next);
+  await screen.findByRole("button", { name: "Revisar solicitação de Joana" });
+  expect(getAdoptionApplicationsPage).toHaveBeenLastCalledWith("next-window");
+  expect(screen.queryByRole("button", { name: "Carregar mais solicitações" })).not.toBeInTheDocument();
 });
