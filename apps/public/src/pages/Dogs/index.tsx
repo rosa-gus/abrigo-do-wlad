@@ -20,8 +20,6 @@ import {
 } from "@/types/dogs";
 import { useDogSearch } from "@/hooks/useDogSearch";
 import { useDailyDog } from "@/hooks/useDailyDog";
-import { getOptimizedImageUrl } from "@abrigo/media/cloudinary";
-import { preloadDogImages } from "@/utils/common";
 import { analytics } from "@/utils/analytics";
 import { dogProfilePath } from "@/utils/dogUrl";
 import {
@@ -353,25 +351,6 @@ export default function Dogs() {
     void fetchProfile();
     return () => controller.abort();
   }, [publicSlug]);
-
-  // Pré-carregamento de imagens da página atual
-  React.useEffect(() => {
-    const imagesToPreload = dogs
-      .map((dog) =>
-        getOptimizedImageUrl(dog.fotos?.[0], {
-          width: 400,
-          height: 600,
-          quality: 75,
-          crop: "fill",
-          gravity: "auto",
-        }),
-      )
-      .filter((url): url is string => !!url);
-
-    if (imagesToPreload.length > 0) {
-      preloadDogImages(imagesToPreload);
-    }
-  }, [dogs]);
 
   React.useEffect(() => {
     if (!loading && dogs.length === 0) {
