@@ -55,14 +55,11 @@ export function DogCard({ data, onClick, isLoading }: DogCardProps) {
       )}
 
       <CardBody imageSrc={dogImageUrl} className={styles.photo}>
-        <CardHeader className={styles.photoHeader}>
+        <CardHeader>
           <CardTitle className={styles.dogTitle}>
             <span>Oi, eu sou </span>
             <span className={styles.dogName}>{data.nome}!</span>
           </CardTitle>
-          {data.temperamento && (
-            <p className={styles.temperament}>{data.temperamento}</p>
-          )}
         </CardHeader>
         <CardContent className={styles.photoContent}>
           <div className={styles.cardContainer}>
@@ -106,7 +103,10 @@ export function DogCard({ data, onClick, isLoading }: DogCardProps) {
           </div>
         </CardContent>
       </CardBody>
-      <CardFooter>
+      <CardFooter className={styles.footer}>
+        {data.temperamento && (
+          <p className={styles.temperament}>{data.temperamento}</p>
+        )}
         <CardButton className={styles.cardAction}>
           Conheça {data.nome}
           <Lucide.ChevronRight aria-hidden="true" />

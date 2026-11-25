@@ -273,7 +273,12 @@ export function DogModal({ dog: parentDog, isOpen, onClose }: ModalProps) {
                     <CardComponent.CardContent>
                       <p>
                         Perfil{" "}
-                        <strong>{dog.temperamento?.toLowerCase()}</strong>.
+                        <strong>
+                          {dog.temperamento
+                            ?.trimEnd()
+                            .replace(/\.+$/u, "")
+                            .toLowerCase()}
+                        </strong>.
                         Ideal para lares com o mesmo ritmo.
                       </p>
                     </CardComponent.CardContent>
