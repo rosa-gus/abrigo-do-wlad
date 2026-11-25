@@ -76,10 +76,6 @@
   min-height: 32rem;
 }
 
-.photoHeader {
-  gap: 0.5rem;
-}
-
 /* Share the photo area between the introduction and the bottom metadata. */
 .photoContent.photoContent {
   min-height: 0;
@@ -89,20 +85,30 @@
 .dogCard.dogCard:hover .photo::before {
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--overlay-dark) 95%, transparent) 0%,
-    color-mix(in srgb, var(--overlay-dark) 65%, transparent) 28%,
-    var(--card-image-gradient) 52%,
-    color-mix(in srgb, var(--overlay-dark) 95%, transparent) 100%
+    rgb(0 0 0 / 65%) 0%,
+    rgb(0 0 0 / 50%) 17%,
+    transparent 32%,
+    transparent 73%,
+    rgb(0 0 0 / 50%) 100%
   );
 }
 
+.dogCard .footer {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
 .temperament {
+  display: -webkit-box;
   margin: 0;
-  color: var(--text-on-image);
+  overflow: hidden;
+  color: var(--text-secondary);
   font-size: 0.9375rem;
-  line-height: 1.65;
+  line-height: 1.5;
   overflow-wrap: anywhere;
-  text-shadow: 0 1px 3px var(--overlay-dark);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 @media (prefers-reduced-motion: reduce) {
